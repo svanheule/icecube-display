@@ -2,12 +2,13 @@
 
 An LED display consisting of 81 LEDs aranged in a hexagonal shape
 to represent the IceTop array, with one RGB LED per tank.
+Due to the small 16mm spacing of the LEDs, the total display has a size of
+about 20cm×20cm.
 
 
 ## Electronics
 
-Using strips of 60 LEDs/m the actual spacing is rather small, resulting in
-a display of about 20cm×20cm. The strips contain APA-102C LED which were
+The strips contain APA-102C LED which were
 selected due to their adjustable brightness setting and clocked data input
 lines. This results in less stringent timing contraints for the controlling
 electronics, as the controller can decide how fast the data is clocked, and
