@@ -43,6 +43,22 @@ void init_frame_buffer() {
 }
 
 
+static unsigned char frame_count;
+
+void render_test_frame() {
+  // Clear the frame
+  clear_frame(next_frame_ptr);
+  current_frame_ptr[frame_count, BUFFER_RED] = 0xFF;
+  current_frame_ptr[frame_count, BUFFER_GREEN] = 0xFF;
+  current_frame_ptr[frame_count, BUFFER_BLUE] = 0xFF;
+  frame_count = (frame_count + 1)%LED_COUNT;
+
+  unsigned char* tmp = current_frame_ptr;
+  current_frame_ptr = next_frame_ptr;
+  next_frame_ptr = tmp;
+}
+
+
 void write_frame_byte(unsigned char word) {
 
   switch (frame_rx_state.rx_state) {
