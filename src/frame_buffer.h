@@ -2,7 +2,7 @@
 // Frame buffer size and structure definitions
 // A frame consist of LED_COUNT 3-tuples of bytes, in the order: red, green, blue
 // For example, `buffer[n][0]` is the red compoment of the n-th LED.
-#define LED_COUNT 81
+#define LED_COUNT 78
 #define BUFFER_RED 0
 #define BUFFER_GREEN 1
 #define BUFFER_BLUE 2
