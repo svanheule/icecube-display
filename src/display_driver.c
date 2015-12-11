@@ -14,9 +14,13 @@ static inline void wait_write_finish () {
   while ( !(SPSR & (1<<SPIF)) ) {}
 }
 
-static inline void write_display_byte(const unsigned char byte) {
-  // ...then write next byte
+static inline void write_byte_no_block(const unsigned char byte) {
   SPDR = byte;
+}
+
+static inline void write_byte(const unsigned char byte) {
+  // Write next byte
+  write_byte_no_block(byte);
   // Wait for write to finish
   wait_write_finish();
 }
@@ -45,20 +49,32 @@ void display_frame(const unsigned char* buffer) {
     unsigned char i;
     // Start of frame
     for (i = 0; i < 4; ++i) {
-      write_display_byte(FRAME_HEADER);
+      write_byte(FRAME_HEADER);
     }
 
     // LED data
+    unsigned char next_byte;
     for (i = 0; i < LED_COUNT; ++i) {
-      write_display_byte(LED_HEADER | 0x10);
-      write_display_byte(buffer[i, BUFFER_BLUE]);
-      write_display_byte(buffer[i, BUFFER_GREEN]);
-      write_display_byte(buffer[i, BUFFER_RED]);
+      write_byte_no_block(LED_HEADER | 0x10);
+
+      next_byte = buffer[i, BUFFER_BLUE];
+      wait_write_finish();
+      write_byte_no_block(next_byte);
+
+      next_byte = buffer[i, BUFFER_GREEN];
+      wait_write_finish();
+      write_byte_no_block(next_byte);
+
+      next_byte = buffer[i, BUFFER_RED];
+      wait_write_finish();
+      write_byte_no_block(next_byte);
     }
+
+    wait_write_finish();
 
     // End of frame
     for (i = 0; i < 4; ++i) {
-      write_display_byte(FRAME_FOOTER);
+      write_byte(FRAME_FOOTER);
     }
 
   }
