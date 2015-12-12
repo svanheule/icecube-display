@@ -82,16 +82,18 @@ int main () {
   UBRR0H = (unsigned char) ((baud_rate_register >> 8) & 0x0F);
   UBRR0L = (unsigned char) baud_rate_register;
 
-  init_driver();
   // Init pin configuration: USART, SPI
+  // DDRB must be set before SPCR, so the internal pull-up doens't cause SPI to go into slave mode
   /* Configure port B as SPI master:
    * * B5: SCK (out)
-   * * B4: MOSI (out)
-   * * B3: MISO (in, unused)
+   * * B4: MISO (in, unused)
+   * * B3: MOSI (out)
    * * B2: /SS (out, unused)
    */
-  DDRB = (1<<DDB5) | (1<<DDB4) | (1<<DDB2);
-  // USART port configuration is fixed by enable USART Rx and Tx
+  DDRB &= (1<<DDB7) | (1<<DDB6); // Clear all but the clock pins
+  DDRB |= (1<<DDB5) | (1<<DDB3) | (1<<DDB2);
+  init_driver();
+  // USART port configuration is fixed by enabling USART Rx and Tx
 
   init_frame_buffer();
 
