@@ -118,6 +118,9 @@ int main () {
   set_sleep_mode(SLEEP_MODE_IDLE);
   sleep_enable();
 
+  // Enable interrupts
+  sei();
+
   for (;;) {
     while (!draw_frame) {
       // Idle CPU until next interrupt
