@@ -1,5 +1,6 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <avr/sleep.h>
 
 #include "display_driver.h"
 #include "frame_buffer.h"
@@ -107,12 +108,18 @@ int main () {
   // TODO Set compare mode and enable interrupt
   // TODO enable interrupts
 
+  // Enable idle mode sleep
+  set_sleep_mode(SLEEP_MODE_IDLE);
+  sleep_enable();
+
   for (;;) {
+    while (!draw_frame) {
+      // Idle CPU until next interrupt
+      sleep_cpu();
+    }
+
     display_frame(get_frame_buffer());
     draw_frame = 0;
-
-    // TODO Implement actual idling, not just wait-for-flag infinite loop
-    while(!draw_frame) {}
   }
 
   return 0;
