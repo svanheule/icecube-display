@@ -47,8 +47,6 @@ ISR(USART_RX_vect) {
   //if (status & (1<<UPE0)) Parity error
 
   unsigned char word = UDR0;
-  // Echo byte for testing
-  UDR0 = word;
 
   switch (usart_state) {
     case USART_WAIT:
@@ -74,14 +72,18 @@ ISR(USART_RX_vect) {
 
 int main () {
   // Init USART configuration
-  // Enable Rx, Tx, and Rx interrupts
-  UCSR0B = (1<<RXCIE0) | (1<<RXEN0) | (1<<TXEN0);
   // Set mode to async, 8 bit, no parity, 1 stop bit
   UCSR0C = (1<<UCSZ01) | (1<<UCSZ00);
-  // Set baud rate to 250k, using 16MHz system clock
-  const unsigned int baud_rate_register = (16000/16/250)-1;
+  // Enable Rx, Tx, and Rx interrupts
+  // Enable USART RX interrupts
+  UCSR0B = (1<<RXCIE0) | (1<<RXEN0) | (1<<TXEN0);
+  // Set baud rate to 19.2k, using 16MHz system clock
+  // This is the fastest setting minicom was capable of that didn't procude garbage characters
+  const unsigned int baud_rate_register = 51; // 16000000/(16*19200)-1;
   UBRR0H = (unsigned char) ((baud_rate_register >> 8) & 0x0F);
   UBRR0L = (unsigned char) baud_rate_register;
+
+  usart_state = USART_WAIT;
 
   // Init pin configuration: USART, SPI
   // DDRB must be set before SPCR, so the internal pull-up doens't cause SPI to go into slave mode
