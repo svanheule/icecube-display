@@ -102,13 +102,17 @@ int main () {
 
   // Init counter configuration
   /* Clock is 16MHz
-   * 25 FPS: 640000 counts; prescale 1024, compare 625
-   * 50 FPS: 320000 counts; prescale 256, compare 1250
+   * 25 FPS: 640000 counts; prescale 1024, compare (625-1)
+   * 50 FPS: 320000 counts; prescale 256, compare (1250-1)
+   * Prescale factor is 8*2^(n-1) with n = CS12:CS11:CS10
+   * Set mode to 0100 : CTC with compare to OCR1A
    */
-  TCCR1B = (1<<CS12) | (1<<CS10);
-  OCR1A = 625;
-  // TODO Set compare mode and enable interrupt
-  // TODO enable interrupts
+  OCR1A = 625-1;
+  // Set compare mode, prescaler, and enable interrupt
+  TCCR1B = (1<<WGM12) | (1<<CS12) | (1<<CS10);
+  TIMSK1 = (1<<OCIE1A);
+
+  draw_frame = 0;
 
   // Enable idle mode sleep
   set_sleep_mode(SLEEP_MODE_IDLE);
