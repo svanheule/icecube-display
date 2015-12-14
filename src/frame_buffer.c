@@ -1,8 +1,8 @@
 #include "frame_buffer.h"
 
 // Double frame buffer
-static volatile unsigned char frame_buffer_0[LED_COUNT][3];
-static volatile unsigned char frame_buffer_1[LED_COUNT][3];
+static unsigned char frame_buffer_0[FRAME_LENGTH];
+static unsigned char frame_buffer_1[FRAME_LENGTH];
 
 // TODO Triple buffering with round-robin buffer usage
 
@@ -77,9 +77,9 @@ void write_frame_byte(unsigned char word) {
       // If this write completed the frame, swap frame pointers and return to STATE_WAIT
       if (frame_rx_state.write_ptr == frame_rx_state.next_end) {
         // Swap current and next frame pointers
-        unsigned char* tmp = next_frame_ptr;
-        next_frame_ptr = current_frame_ptr;
-        current_frame_ptr = tmp;
+        unsigned char* tmp = current_frame_ptr;
+        current_frame_ptr = next_frame_ptr;
+        next_frame_ptr = tmp;
         // Transition back to waiting
         frame_rx_state.rx_state = STATE_WAIT;
       }
@@ -90,7 +90,7 @@ void write_frame_byte(unsigned char word) {
   }
 }
 
-const unsigned char* const get_frame_buffer() {
+const unsigned char *const get_frame_buffer() {
   return current_frame_ptr;
 }
 
