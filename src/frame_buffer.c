@@ -92,35 +92,21 @@ typedef signed char Station[2];
 static unsigned char station_distance(Station s1, Station s2) {
   signed char dv = s1[0]-s2[0];
   signed char dw = s1[1]-s2[1];
-  return abs(dv) + abs(dw) + abs(dv+dw);
+  return (abs(dv) + abs(dw) + abs(dv-dw))>>1;
 }
 
 void render_ring() {
   unsigned char station;
+  unsigned char colour;
   for (station = 0; station < LED_COUNT; ++station) {
-    unsigned char d = distance(STATION_VECTOR[station], STATION_VECTOR[35]);
-    if (d == ring_frame) {
-      // Red ring
-      next_frame_ptr[3*station+BUFFER_RED] = 0x10;
-      next_frame_ptr[3*station+BUFFER_GREEN] = 0x00;
-      next_frame_ptr[3*station+BUFFER_BLUE] = 0x00;
-    }
-    else if (d+1 == ring_frame) {
-      // Green ring
-      next_frame_ptr[3*station+BUFFER_RED] = 0x00;
-      next_frame_ptr[3*station+BUFFER_GREEN] = 0x10;
-      next_frame_ptr[3*station+BUFFER_BLUE] = 0x00;
-    }
-    else if (d+2 == ring_frame) {
-      // Blue ring
-      next_frame_ptr[3*station+BUFFER_RED] = 0x00;
-      next_frame_ptr[3*station+BUFFER_GREEN] = 0x00;
-      next_frame_ptr[3*station+BUFFER_BLUE] = 0x10;
-    }
-    else {
-      next_frame_ptr[3*station+BUFFER_RED] = 0x00;
-      next_frame_ptr[3*station+BUFFER_GREEN] = 0x00;
-      next_frame_ptr[3*station+BUFFER_BLUE] = 0x00;
+    unsigned char d = station_distance(STATION_VECTOR[station], STATION_VECTOR[34]);
+    for (colour = 0; colour < 3; ++colour) {
+      if (d+colour == ring_frame) {
+        next_frame_ptr[3*station+colour] = 0x10;
+      }
+      else {
+        next_frame_ptr[3*station+colour] = 0x00;
+      }
     }
   }
 
