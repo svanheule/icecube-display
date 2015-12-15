@@ -18,9 +18,9 @@ struct FrameRxState_t {
 };
 typedef struct FrameRxState_t FrameRxState;
 
-static volatile FrameRxState frame_rx_state;
-static volatile unsigned char* current_frame_ptr;
-static volatile unsigned char* next_frame_ptr;
+static FrameRxState frame_rx_state;
+static unsigned char* current_frame_ptr;
+static unsigned char* next_frame_ptr;
 
 
 static void clear_frame(unsigned char* const frame_ptr) {
