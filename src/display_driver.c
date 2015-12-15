@@ -32,7 +32,7 @@ static inline void write_byte(const unsigned char byte) {
  * In this way, the interrupt duration is kept to a minimum, which ensures that the USART Rx ISR
  * can be called in due time to write a newly received byte to the next frame.
  */
-void display_frame(const unsigned char* buffer) {
+void display_frame(const unsigned char *const buffer) {
   /* # APA102C
    * Transmit bytes with MSB first
    * Data frame
