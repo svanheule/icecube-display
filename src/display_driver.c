@@ -2,6 +2,8 @@
 #include "display_driver.h"
 #include "frame_buffer.h"
 
+// TODO Define a look-up table for tank-number -> led-position conversion
+// {6..1}+{7..13}+{21..14}+{22..30}+{40..31}+{41..50}+{59..51}+{60..67}+{74..68}+{75..78}
 
 void init_driver() {
   // Enable SPI, set as master
