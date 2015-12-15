@@ -23,12 +23,11 @@ static unsigned char* current_frame_ptr;
 static unsigned char* next_frame_ptr;
 
 
-static void clear_frame(unsigned char* const frame_ptr) {
-  unsigned char* write_ptr = frame_ptr;
+static void clear_frame(unsigned char* frame_ptr) {
   unsigned char* frame_end = frame_ptr + FRAME_LENGTH;
 
-  while (write_ptr != frame_end) {
-    *(++write_ptr) = 0;
+  while (frame_ptr != frame_end) {
+    *(frame_ptr++) = 0;
   }
 }
 
