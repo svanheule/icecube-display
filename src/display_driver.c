@@ -44,7 +44,7 @@ void display_frame(const unsigned char *const buffer) {
    */
   const unsigned char FRAME_HEADER = 0x00;
   const unsigned char FRAME_FOOTER = 0xFF;
-  const unsigned char LED_HEADER = 0xE0;
+  const unsigned char LED_HEADER = 0xE0 | 0x10;
 
   if (buffer) {
     unsigned char i;
@@ -54,27 +54,15 @@ void display_frame(const unsigned char *const buffer) {
     }
 
     // LED data
-    unsigned char next_byte;
-    for (i = 0; i < LED_COUNT; ++i) {
-      write_byte_no_block(LED_HEADER | 0x10);
-
-      next_byte = buffer[i, BUFFER_BLUE];
-      wait_write_finish();
-      write_byte_no_block(next_byte);
-
-      next_byte = buffer[i, BUFFER_GREEN];
-      wait_write_finish();
-      write_byte_no_block(next_byte);
-
-      next_byte = buffer[i, BUFFER_RED];
-      wait_write_finish();
-      write_byte_no_block(next_byte);
+    for (i = 0; i < FRAME_LENGTH; i+=3) {
+      write_byte(LED_HEADER);
+      write_byte(buffer[i+BUFFER_BLUE]);
+      write_byte(buffer[i+BUFFER_GREEN]);
+      write_byte(buffer[i+BUFFER_RED]);
     }
 
-    wait_write_finish();
-
     // End of frame
-    for (i = 0; i < 4; ++i) {
+    for (i = 0; i < LED_COUNT; i+=16) {
       write_byte(FRAME_FOOTER);
     }
 
