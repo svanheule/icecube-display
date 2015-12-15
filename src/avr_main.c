@@ -63,25 +63,37 @@ ISR(USART_RX_vect) {
       }
       break;
 
+    case USART_TEST_MODE:
+      if (word == COMMAND_TEST) {
+        usart_state = USART_WAIT;
+      }
+      break;
+
     default:
       break;
+
   }
-  
+
+  // Return new state
+/*  UDR0 = (unsigned char) usart_state;*/
+
 }
 
 
 int main () {
   // Init USART configuration
-  // Set mode to async, 8 bit, no parity, 1 stop bit
-  UCSR0C = (1<<UCSZ01) | (1<<UCSZ00);
+  // The minimal throughput for 25 FPS is 58500 baud.
+  // This implies that 115200 baud is the minimal usable transmission rate.
+  // Set baud rate to 115.2k, using 16MHz system clock
+  UCSR0A = (0<<U2X0);
+  const unsigned int baud_rate_register = 7; // floor(16000000/(16*115200)-1);
+  UBRR0H = (unsigned char) ((baud_rate_register >> 8) & 0x0F);
+  UBRR0L = (unsigned char) baud_rate_register;
   // Enable Rx, Tx, and Rx interrupts
   // Enable USART RX interrupts
   UCSR0B = (1<<RXCIE0) | (1<<RXEN0) | (1<<TXEN0);
-  // Set baud rate to 19.2k, using 16MHz system clock
-  // This is the fastest setting minicom was capable of that didn't procude garbage characters
-  const unsigned int baud_rate_register = 51; // 16000000/(16*19200)-1;
-  UBRR0H = (unsigned char) ((baud_rate_register >> 8) & 0x0F);
-  UBRR0L = (unsigned char) baud_rate_register;
+  // Set mode to async, 8 bit, no parity, 1 stop bit
+  UCSR0C = (1<<UCSZ01) | (1<<UCSZ00);
 
   usart_state = USART_WAIT;
 
@@ -104,7 +116,7 @@ int main () {
   /* Clock is 16MHz
    * 25 FPS: 640000 counts; prescale 1024, compare (625-1)
    * 50 FPS: 320000 counts; prescale 256, compare (1250-1)
-   * Prescale factor is 8*2^(n-1) with n = CS12:CS11:CS10
+   * Prescale factor is 2^(n+2) with n = CS12:CS11:CS10
    * Set mode to 0100 : CTC with compare to OCR1A
    */
   OCR1A = 625-1;

@@ -4,8 +4,9 @@
 
 
 void init_driver() {
-  // Enable interrupt, set as master, transmit MSB first
-  SPCR = (1 << SPE) | (1 << MSTR) | (0 << DORD);
+  // Enable SPI, set as master
+  // Transmit MSB first, idle low, transmit on first (rising) edge, SCK=fOSC/4
+  SPCR = (1 << SPE)|(1 << MSTR) | (0 << DORD)|(0 << CPOL)|(0 << CPHA);
 //  SPSR = (1 << SPI2X); not necessary, now running at 16/4 MHz = 4 MHz (~times 0.5 idling overhead)
 }
 
