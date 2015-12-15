@@ -41,11 +41,11 @@ typedef enum Direction_t Direction;
 static Direction direction;
 
 void init_frame_buffer() {
+  clear_frame(frame_buffer_0);
+  clear_frame(frame_buffer_1);
+
   current_frame_ptr = frame_buffer_0;
   next_frame_ptr = frame_buffer_1;
-
-  clear_frame(current_frame_ptr);
-  clear_frame(next_frame_ptr);
 
   frame_rx_state.rx_state = STATE_WAIT;
   frame_count = 0;
