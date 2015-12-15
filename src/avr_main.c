@@ -27,7 +27,7 @@ ISR(TIMER1_COMPA_vect) {
 
 
 // USART interrupt handling
-#define COMMAND_FRAME 0x01
+#define COMMAND_FRAME 'A'
 
 enum UsartState_t {
     USART_WAIT
@@ -37,7 +37,7 @@ enum UsartState_t {
 typedef enum UsartState_t UsartState;
 
 volatile UsartState usart_state;
-volatile unsigned char bytes_remaining;
+volatile unsigned int bytes_remaining;
 
 ISR(USART_RX_vect) {
   // Check status before reading word
@@ -47,13 +47,18 @@ ISR(USART_RX_vect) {
   //if (status & (1<<UPE0)) Parity error
 
   unsigned char word = UDR0;
+/*  write_frame_byte(word);*/
 
   switch (usart_state) {
     case USART_WAIT:
-      if (word == COMMAND_FRAME) {
-        bytes_remaining = FRAME_LENGTH-1;
-        usart_state = USART_FRAME;
-      }
+      switch (word) {
+        case COMMAND_FRAME:
+          bytes_remaining = FRAME_LENGTH;
+          usart_state = USART_FRAME;
+          break;
+        default:
+          break;
+        }
       break;
 
     case USART_FRAME:
