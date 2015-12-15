@@ -14,7 +14,7 @@
  *
  * Frame transmission protocol requirements:
  * * Start-of-frame (SOF) indicator; to grab the frame buffer for writing
- * * 81 RGB 3-tuples (243 bytes) written to the buffer
+ * * 78 RGB 3-tuples (243 bytes) written to the buffer
  */
 
 // CTC interrupt handling
