@@ -31,6 +31,14 @@ static void clear_frame(unsigned char* frame_ptr) {
   }
 }
 
+static unsigned char frame_count;
+
+enum Direction_t {
+    COUNT_UP = 3
+  , COUNT_DOWN = -3
+};
+typedef enum Direction_t Direction;
+static Direction direction;
 
 void init_frame_buffer() {
   current_frame_ptr = frame_buffer_0;
@@ -40,22 +48,29 @@ void init_frame_buffer() {
   clear_frame(next_frame_ptr);
 
   frame_rx_state.rx_state = STATE_WAIT;
+  frame_count = 0;
+  direction = COUNT_UP;
 }
 
 
-static unsigned char frame_count;
-
-void render_test_frame() {
-  // Clear the frame
+void render_frame() {
   clear_frame(next_frame_ptr);
-  current_frame_ptr[frame_count, BUFFER_RED] = 0xFF;
-  current_frame_ptr[frame_count, BUFFER_GREEN] = 0xFF;
-  current_frame_ptr[frame_count, BUFFER_BLUE] = 0xFF;
-  frame_count = (frame_count + 1)%LED_COUNT;
+  next_frame_ptr[frame_count+BUFFER_RED] = 0x10;
+  next_frame_ptr[frame_count+BUFFER_GREEN] = 0x10;
+  next_frame_ptr[frame_count+BUFFER_BLUE] = 0x10;
 
   unsigned char* tmp = current_frame_ptr;
   current_frame_ptr = next_frame_ptr;
   next_frame_ptr = tmp;
+
+  if ((frame_count == FRAME_LENGTH-3) && (direction == COUNT_UP)) {
+    direction = COUNT_DOWN;
+  }
+  else if ((frame_count == 0) && (direction == COUNT_DOWN)) {
+    direction = COUNT_UP;
+  }
+
+  frame_count = frame_count + direction;
 }
 
 // Render consecutive concentric rings around pixel (5,4), i.e. station 36

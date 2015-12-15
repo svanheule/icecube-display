@@ -13,9 +13,7 @@
 // Initialise the frame buffer to an empty display (all LEDs off)
 void init_frame_buffer();
 
-// Render a test frame based on an internal frame counter.
-// Every consecutive frame will have the LED position shifted by one
-void render_test_frame();
+void render_frame();
 void render_ring();
 
 // For use with the USART Rx ISR
