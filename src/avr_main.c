@@ -28,10 +28,12 @@ ISR(TIMER1_COMPA_vect) {
 
 // USART interrupt handling
 #define COMMAND_FRAME 'A'
+#define COMMAND_TEST 'B'
 
 enum UsartState_t {
     USART_WAIT
   , USART_FRAME
+  , USART_TEST_MODE
   // TODO Add diagnostics
 };
 typedef enum UsartState_t UsartState;
@@ -55,6 +57,9 @@ ISR(USART_RX_vect) {
         case COMMAND_FRAME:
           bytes_remaining = FRAME_LENGTH;
           usart_state = USART_FRAME;
+          break;
+        case COMMAND_TEST:
+          usart_state = USART_TEST_MODE;
           break;
         default:
           break;
@@ -145,6 +150,9 @@ int main () {
     }
 
     display_frame(get_frame_buffer());
+    if (usart_state == USART_TEST_MODE) {
+      render_ring();
+    }
     draw_frame = 0;
   }
 
