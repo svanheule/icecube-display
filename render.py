@@ -110,9 +110,6 @@ class Event:
     self.decay_time = 2.5
     self.stop_time = max(times) + self.decay_time
 
-  def __iter__(self):
-    return EventIterator(self.stations, self.stop_time)
-
   def led_value(self, q0, t0):
     # Hue from 0 (red) to 2/3 (blue)
     hue = 2.*(t0-self.min_time)/(3*self.max_time)
@@ -124,7 +121,6 @@ class Event:
     return numpy.array(rgb)
 
   def render_overview(self):
-
     data = bytearray(LED_COUNT*3)
     for led in range(LED_COUNT):
       station = STATION_PIXEL_MAP[led]
