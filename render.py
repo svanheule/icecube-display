@@ -84,6 +84,8 @@ for row in range(len(ROW_START)-1):
     station += direction
 
 
+import colorsys
+
 class Event:
   # TODO charge range, time range
   # TODO gamma correction
@@ -91,13 +93,15 @@ class Event:
   def __init__(self, filename):
     stations, charges, times = numpy.loadtxt(filename, skiprows=1, unpack=True)
 
-    min_charge = min(charges)
-    max_charge = max(charges)
+    self.min_charge = min(charges)
+    self.max_charge = max(charges)
+    # Normalise charges and gamma correct for displayability
+    charges = numpy.power(charges/self.max_charge, .6)
 
     # Calculate time offset from first station and scale 1000ns real time to 0.5s display time
     times = 5e-3*(times - min(times)) + 0.5
-    # Normalise charges and gamma correct for displayability
-    charges = numpy.floor(255*numpy.power(charges/max_charge, .4))
+    self.min_time = min(times)
+    self.max_time = max(times)
 
     self.stations = {}
     for i,station in enumerate(stations):
@@ -109,6 +113,27 @@ class Event:
   def __iter__(self):
     return EventIterator(self.stations, self.stop_time)
 
+  def led_value(self, q0, t0):
+    # Hue from 0 (red) to 2/3 (blue)
+    hue = 2.*(t0-self.min_time)/(3*self.max_time)
+    # Fully saturated
+    saturation = 1.
+    # Value/brightness according to normalised charge
+    value = q0
+    rgb = colorsys.hsv_to_rgb(hue, saturation, value)
+    return numpy.array(rgb)
+
+  def render_overview(self):
+
+    data = bytearray(LED_COUNT*3)
+    for led in range(LED_COUNT):
+      station = STATION_PIXEL_MAP[led]
+      if station in self.stations:
+        q0, t0 = self.stations[station]
+        data[3*led:3*(led+1)] = [int(255*c) for c in self.led_value(q0, t0)]
+
+    return data
+
   def render(self):
     # Linear rise to max brightness in 0.5s
     # Exponential decay from max brightness to 0 in 4s (tau = 0.722s)
@@ -116,14 +141,14 @@ class Event:
     start_time = 0.25
     tau = self.decay_time / numpy.log(255)
 
-    def light_curve(t, q0, t0):
+    def brightness_curve(t, t0):
       t = t-t0
       if t <= -start_time:
         return 0
       elif t <= 0:
-        return q0/start_time * (t + start_time)
+        return start_time * (t+start_time)
       elif t <= 4:
-        return q0*numpy.exp(-t/tau)
+        return numpy.exp(-t/tau)
       else:
         return 0
 
@@ -134,10 +159,9 @@ class Event:
         station = STATION_PIXEL_MAP[led]
         if station in self.stations:
           q0, t0 = self.stations[station]
-          brightness = int(light_curve(time, q0, t0))
+          rgb = brightness_curve(time, t0)*self.led_value(q0, t0)
           # TODO Use colour for timing
-          for colour in range(3):
-            data[3*led + colour] = brightness
+          data[3*led:3*(led+1)] = [int(255*c) for c in rgb]
 
       time += 1./25
       yield data
@@ -156,6 +180,13 @@ if __name__ == "__main__":
       disp.send_frame(frame)
       frame_count += 1
       time.sleep(1./25)
+
+    data = event.render_overview()
+    for i in range(1):
+      disp.send_frame(data)
+      frame_count += 1
+      time.sleep(1./25)
+    time.sleep(3)
 
     disp.flush_buffer()
 
