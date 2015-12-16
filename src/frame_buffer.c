@@ -2,32 +2,38 @@
 #include <math.h>
 
 // Double frame buffer
-static unsigned char frame_buffer_0[FRAME_LENGTH];
-static unsigned char frame_buffer_1[FRAME_LENGTH];
+// Array of arrays of led_t objects
+static frame_t frame_buffers[2];
 
-// TODO Triple buffering with round-robin buffer usage
+// Pointers to front and back buffers
+static frame_t* front_ptr = frame_buffers;
+static frame_t* back_ptr = frame_buffers+1;
 
 
-static unsigned char* current_frame_ptr;
-static unsigned char* next_frame_ptr;
+const frame_t *const get_front_buffer() {
+  return front_ptr;
+}
 
-static void clear_frame(unsigned char* frame_ptr) {
-  unsigned char* frame_end = frame_ptr + FRAME_LENGTH;
 
-  while (frame_ptr != frame_end) {
-    *(frame_ptr++) = 0;
+frame_t *const get_back_buffer() {
+  return back_ptr;
+}
+
+
+void flip_pages() {
+  // TODO Maybe make the pointer swap atomic
+  frame_t* tmp = front_ptr;
+  front_ptr = back_ptr;
+  back_ptr = tmp;
+}
+
+
+void clear_frame(frame_t *const frame_ptr) {
+  struct led_t* write_ptr = *frame_ptr;
+  struct led_t* frame_end = write_ptr + LED_COUNT;
+
+  while (write_ptr != frame_end) {
+    *(write_ptr++) = (struct led_t) {0, 0, 0};
   }
-}
-
-void init_frame_buffer() {
-  clear_frame(frame_buffer_0);
-  clear_frame(frame_buffer_1);
-
-  current_frame_ptr = frame_buffer_0;
-  next_frame_ptr = frame_buffer_1;
-}
-
-const unsigned char *const get_frame_buffer() {
-  return current_frame_ptr;
 }
 
