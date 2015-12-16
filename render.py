@@ -96,7 +96,7 @@ class Event:
     self.min_charge = min(charges)
     self.max_charge = max(charges)
     # Normalise charges and gamma correct for displayability
-    charges = numpy.power(charges/self.max_charge, .6)
+    charges = numpy.power(charges/self.max_charge, .44)
 
     # Calculate time offset from first station and scale 1000ns real time to 0.5s display time
     times = 5e-3*(times - min(times)) + 0.5
@@ -107,7 +107,7 @@ class Event:
     for i,station in enumerate(stations):
       self.stations[station] = (charges[i], times[i])
 
-    self.decay_time = 3.5
+    self.decay_time = 2.5
     self.stop_time = max(times) + self.decay_time
 
   def __iter__(self):
@@ -147,7 +147,7 @@ class Event:
         return 0
       elif t <= 0:
         return start_time * (t+start_time)
-      elif t <= 4:
+      elif t <= self.decay_time:
         return numpy.exp(-t/tau)
       else:
         return 0
@@ -161,7 +161,7 @@ class Event:
           q0, t0 = self.stations[station]
           rgb = brightness_curve(time, t0)*self.led_value(q0, t0)
           # TODO Use colour for timing
-          data[3*led:3*(led+1)] = [int(255*c) for c in rgb]
+          data[3*led:3*(led+1)] = [int(round(255*c)) for c in rgb]
 
       time += 1./25
       yield data
