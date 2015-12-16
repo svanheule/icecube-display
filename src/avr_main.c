@@ -67,7 +67,7 @@ ISR(USART_RX_vect) {
       break;
 
     case USART_FRAME:
-      write_frame_byte(word);
+      // TODO write_frame_byte(word);
       if (!(--bytes_remaining)) {
         usart_state = USART_WAIT;
       }
@@ -149,9 +149,10 @@ int main () {
       sleep_cpu();
     }
 
-    display_frame(get_frame_buffer());
+    display_frame(get_front_buffer());
     if (usart_state == USART_TEST_MODE) {
-      render_ring();
+      render_ring(get_back_buffer());
+      flip_pages();
     }
     draw_frame = 0;
   }

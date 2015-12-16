@@ -1,6 +1,5 @@
 #include <avr/io.h>
 #include "display_driver.h"
-#include "frame_buffer.h"
 
 // TODO Define a look-up table for tank-number -> led-position conversion
 // {6..1}+{7..13}+{21..14}+{22..30}+{40..31}+{41..50}+{59..51}+{60..67}+{74..68}+{75..78}
@@ -34,7 +33,7 @@ static inline void write_byte(const unsigned char byte) {
  * In this way, the interrupt duration is kept to a minimum, which ensures that the USART Rx ISR
  * can be called in due time to write a newly received byte to the next frame.
  */
-void display_frame(const unsigned char *const buffer) {
+void display_frame(const frame_t *const buffer) {
   /* # APA102C
    * Transmit bytes with MSB first
    * Data frame
@@ -58,9 +57,9 @@ void display_frame(const unsigned char *const buffer) {
     // LED data
     for (i = 0; i < FRAME_LENGTH; i+=3) {
       write_byte(LED_HEADER);
-      write_byte(buffer[i+BUFFER_BLUE]);
-      write_byte(buffer[i+BUFFER_GREEN]);
-      write_byte(buffer[i+BUFFER_RED]);
+      write_byte((*buffer)[i].blue);
+      write_byte((*buffer)[i].green);
+      write_byte((*buffer)[i].red);
     }
 
     // End of frame
