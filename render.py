@@ -18,8 +18,6 @@ class DisplayCom:
     self.render_frame = True
     self.direction = 1
 
-    signal.signal(signal.SIGINT, self.interrupt_handler)
-
   # Render frames with decaying brightness
   def render_test(self):
     data = bytearray(3*LED_COUNT)
@@ -166,6 +164,8 @@ class Event:
 import sys
 if __name__ == "__main__":
   disp = DisplayCom()
+
+  signal.signal(signal.SIGINT, disp.interrupt_handler)
 
   frame_count = 0
 
