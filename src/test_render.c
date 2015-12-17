@@ -31,7 +31,7 @@ void render_snake(frame_t* buffer) {
 }
 
 
-// Render consecutive concentric rings around pixel (5,4), i.e. station 36 (pixel nr. 35)
+// Render expanding concentric rings around station 36 with coordinates (5,4) (pixel nr. 35)
 static const signed char STATION_VECTOR[LED_COUNT][2] = {
     {5,0}, {4,0}, {3,0}, {2,0}, {1,0}, {0,0}
   , {0,1}, {1,1}, {2,1}, {3,1}, {4,1}, {5,1}, {6,1}
@@ -56,6 +56,7 @@ static unsigned char station_distance(Station s1, Station s2) {
 void render_ring(frame_t *const buffer) {
   unsigned char station;
   unsigned char colour;
+  // Only expand every second frame
   unsigned char radius = ring_frame>>1;
 
   uint8_t* frame = (uint8_t*) *buffer;
@@ -72,6 +73,7 @@ void render_ring(frame_t *const buffer) {
     }
   }
 
-  // There are 6 rings available, so expand rendering beyond
+  // There are 6 rings available, but since there are two smaller circles 2 extra frames are needed
+  // Count up 16 to halve the frame rate
   ring_frame = (ring_frame+1)%16;
 }
