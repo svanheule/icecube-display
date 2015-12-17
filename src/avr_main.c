@@ -29,12 +29,14 @@ ISR(TIMER1_COMPA_vect) {
 
 // USART interrupt handling
 #define COMMAND_FRAME 'A'
-#define COMMAND_TEST 'B'
+#define COMMAND_TEST_RING 'R'
+#define COMMAND_TEST_SNAKE 'S'
 
 enum UsartState_t {
     USART_WAIT
   , USART_FRAME
-  , USART_TEST_MODE
+  , USART_TEST_RING
+  , USART_TEST_SNAKE
   // TODO Add diagnostics
 };
 typedef enum UsartState_t UsartState;
@@ -60,8 +62,11 @@ ISR(USART_RX_vect) {
           frame_end = write_ptr + sizeof(frame_t);
           usart_state = USART_FRAME;
           break;
-        case COMMAND_TEST:
-          usart_state = USART_TEST_MODE;
+        case COMMAND_TEST_RING:
+          usart_state = USART_TEST_RING;
+          break;
+        case COMMAND_TEST_SNAKE:
+          usart_state = USART_TEST_SNAKE;
           break;
         default:
           break;
@@ -76,8 +81,14 @@ ISR(USART_RX_vect) {
       }
       break;
 
-    case USART_TEST_MODE:
-      if (word == COMMAND_TEST) {
+    case USART_TEST_RING:
+      if (word == COMMAND_TEST_RING) {
+        usart_state = USART_WAIT;
+      }
+      break;
+
+    case USART_TEST_SNAKE:
+      if (word == COMMAND_TEST_SNAKE) {
         usart_state = USART_WAIT;
       }
       break;
@@ -151,10 +162,20 @@ int main () {
     }
 
     display_frame(get_front_buffer());
-    if (usart_state == USART_TEST_MODE) {
-      render_ring(get_back_buffer());
-      flip_pages();
+
+    switch (usart_state) {
+      case USART_TEST_RING:
+        render_ring(get_back_buffer());
+        flip_pages();
+        break;
+      case USART_TEST_SNAKE:
+        render_snake(get_back_buffer());
+        flip_pages();
+        break;
+      default:
+        break;
     }
+
     draw_frame = 0;
   }
 
