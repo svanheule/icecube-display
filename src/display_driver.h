@@ -7,6 +7,6 @@
 void init_driver();
 
 // Write a frame out to the display from the given frame buffer
-void display_frame(const frame_t *const buffer);
+void display_frame(const frame_t* buffer);
 
 #endif

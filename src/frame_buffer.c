@@ -10,12 +10,12 @@ static frame_t* front_ptr = frame_buffers;
 static frame_t* back_ptr = frame_buffers+1;
 
 
-const frame_t *const get_front_buffer() {
+const frame_t* get_front_buffer() {
   return front_ptr;
 }
 
 
-frame_t *const get_back_buffer() {
+frame_t* get_back_buffer() {
   return back_ptr;
 }
 
@@ -28,7 +28,7 @@ void flip_pages() {
 }
 
 
-void clear_frame(frame_t *const frame_ptr) {
+void clear_frame(frame_t* frame_ptr) {
   struct led_t* write_ptr = *frame_ptr;
   struct led_t* frame_end = write_ptr + LED_COUNT;
 

@@ -26,13 +26,13 @@ typedef struct led_t frame_t[LED_COUNT];
  * new frame contents.
  */
 /// Get the (read-only) pointer to the front buffer
-const frame_t *const get_front_buffer();
+const frame_t* get_front_buffer();
 /// Get the pointer the back bufer for drawing.
-frame_t *const get_back_buffer();
+frame_t* get_back_buffer();
 /// Swap the front and back buffer after completing a frame draw.
 void flip_pages();
 
 /// Clear the frame contents, i.e. set all values to zero.
-void clear_frame(frame_t *const frame);
+void clear_frame(frame_t* frame);
 
 #endif
