@@ -69,7 +69,7 @@ ISR(USART_RX_vect) {
       break;
 
     case USART_FRAME:
-      // TODO write_frame_byte(word);
+      *write_ptr = word;
       if (++write_ptr == frame_end) {
         flip_pages();
         usart_state = USART_WAIT;
