@@ -120,8 +120,6 @@ int main () {
   init_driver();
   // USART port configuration is fixed by enabling USART Rx and Tx
 
-  init_frame_buffer();
-
   // Init counter configuration
   /* Clock is 16MHz
    * 25 FPS: 640000 counts; prescale 1024, compare (625-1)
