@@ -58,7 +58,7 @@ void display_frame(const frame_t* buffer) {
 
     // LED data
     for (i = 0; i < LED_COUNT; ++i) {
-      write_byte(LED_HEADER | 0x08);
+      write_byte(LED_HEADER | leds[i].brightness);
       write_byte(leds[i].blue);
       write_byte(leds[i].green);
       write_byte(leds[i].red);

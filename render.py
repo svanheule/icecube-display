@@ -14,35 +14,36 @@ TYPE_FRAME = 1
 class DisplayCom:
   def __init__(self):
     self.port = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
-    self.frame_number = 0
+    self.test_frame_number = 0
     self.render_frame = True
     self.direction = 1
 
   # Render frames with decaying brightness
   def render_test(self):
-    data = bytearray(3*LED_COUNT)
+    data = bytearray(4*LED_COUNT)
 
     # Calculate LED brightness
     brightness = BRIGHTNESS_1
     for tail in range(DECAY_LENGTH):
-      led = self.frame_number + self.direction*tail
+      led = self.test_frame_number + self.direction*tail
       if led in range(0,LED_COUNT):
-        for colour in range(0,3):
-          data[3*led+colour] = brightness
+        data[4*led] = 0x10
+        for colour in range(1,4):
+          data[4*led+colour] = brightness
       brightness >>= 2
 
     # Update frame number
-    if self.frame_number == LED_COUNT and self.direction == 1:
+    if self.test_frame_number == LED_COUNT and self.direction == 1:
       self.direction = -1
-    elif self.frame_number == 0 and self.direction == -1:
+    elif self.test_frame_number == 0 and self.direction == -1:
       self.direction = 1
 
-    self.frame_number = self.frame_number + self.direction
+    self.test_frame_number = self.test_frame_number + self.direction
 
     self.send_frame(data)
 
   def flush_buffer(self):
-    self.send_frame(b"\x00"*(LED_COUNT*3))
+    self.send_frame(b"\x00"*(LED_COUNT*4))
 
   def send_frame(self, data):
     # Start with TYPE_FRAME
@@ -88,8 +89,7 @@ for row in range(len(ROW_START)-1):
 import colorsys
 
 class Event:
-  # TODO charge range, time range
-  # TODO gamma correction
+  MAX_BRIGHTNESS = (2**5-1)*0.8
 
   def __init__(self, filename):
     stations, charges, times = numpy.loadtxt(filename, skiprows=1, unpack=True)
@@ -121,13 +121,22 @@ class Event:
     rgb = colorsys.hsv_to_rgb(hue, saturation, value)
     return numpy.array(rgb)
 
+  def led_data(self, rgb):
+    # Factor out brightness from colour
+    brightness = max(1/(self.MAX_BRIGHTNESS), max(rgb))
+#    brightness = 1
+    scaling = brightness / self.MAX_BRIGHTNESS
+    rgb = [int(round(255 * c/brightness)) for c in rgb]
+    return [int(round(brightness*self.MAX_BRIGHTNESS)), rgb[0], rgb[1], rgb[2]]
+#    return [rgb[0], rgb[1], rgb[2]]
+
   def render_overview(self):
-    data = bytearray(LED_COUNT*3)
+    data = bytearray(LED_COUNT*4)
     for led in range(LED_COUNT):
       station = STATION_PIXEL_MAP[led]
       if station in self.stations:
         q0, t0 = self.stations[station]
-        data[3*led:3*(led+1)] = [int(255*c) for c in self.led_value(q0, t0)]
+        data[4*led:4*(led+1)] = self.led_data(self.led_value(q0, t0))
 
     return data
 
@@ -136,7 +145,7 @@ class Event:
     # Exponential decay from max brightness to 0 in 4s (tau = 0.722s)
 
     start_time = 0.25
-    tau = self.decay_time / numpy.log(255)
+    tau = self.decay_time / numpy.log(2**10)
 
     def brightness_curve(t, t0):
       t = t-t0
@@ -151,14 +160,13 @@ class Event:
 
     time = 0.
     while time < self.stop_time:
-      data = bytearray(LED_COUNT*3)
+      data = bytearray(LED_COUNT*4)
       for led in range(LED_COUNT):
         station = STATION_PIXEL_MAP[led]
         if station in self.stations:
           q0, t0 = self.stations[station]
           rgb = brightness_curve(time, t0)*self.led_value(q0, t0)
-          # TODO Use colour for timing
-          data[3*led:3*(led+1)] = [int(round(255*c)) for c in rgb]
+          data[4*led:4*(led+1)] = self.led_data(rgb)
 
       time += 1./25
       yield data

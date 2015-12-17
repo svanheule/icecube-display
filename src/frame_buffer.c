@@ -33,7 +33,7 @@ void clear_frame(frame_t* frame_ptr) {
   struct led_t* frame_end = write_ptr + LED_COUNT;
 
   while (write_ptr != frame_end) {
-    *(write_ptr++) = (struct led_t) {0, 0, 0};
+    *(write_ptr++) = (struct led_t) {0, 0, 0, 0};
   }
 }
 

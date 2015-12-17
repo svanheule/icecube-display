@@ -8,8 +8,7 @@
 #define LED_COUNT 78
 
 struct led_t {
-// uint8_t _unused:3;
-// uint8_t brightness:5; TODO
+  uint8_t brightness;
   uint8_t red;
   uint8_t green;
   uint8_t blue;

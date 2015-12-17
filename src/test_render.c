@@ -1,5 +1,7 @@
 #include "test_render.h"
 
+#define DEFAULT_BRIGHTNESS 0x10
+
 // Render snaking pixel trail
 #define TAIL_LENGTH 3
 static unsigned char snake_frame;
@@ -17,7 +19,7 @@ void render_snake(frame_t* buffer) {
 
   unsigned char tail = TAIL_LENGTH;
   while(tail--) {
-    write_ptr[snake_frame+tail] = (struct led_t) {0x10, 0x10, 0x10};
+    write_ptr[snake_frame+tail] = (struct led_t) {DEFAULT_BRIGHTNESS, 0x10, 0x10, 0x10};
   }
 
   if ((snake_frame == LED_COUNT-TAIL_LENGTH) && (direction == COUNT_UP)) {
@@ -53,22 +55,25 @@ static unsigned char station_distance(Station s1, Station s2) {
   return (abs(dv) + abs(dw) + abs(dv-dw))>>1;
 }
 
-void render_ring(frame_t *const buffer) {
-  unsigned char station;
-  unsigned char colour;
+void render_ring(frame_t* buffer) {
   // Only expand every second frame
   unsigned char radius = ring_frame>>1;
 
   uint8_t* frame = (uint8_t*) *buffer;
 
+  unsigned char station, d, offset, colour;
   for (station = 0; station < LED_COUNT; ++station) {
-    unsigned char d = station_distance(STATION_VECTOR[station], STATION_VECTOR[34]);
+    d = station_distance(STATION_VECTOR[station], STATION_VECTOR[34]);
+    offset = 4*station;
+    frame[offset] = DEFAULT_BRIGHTNESS;
+    ++offset;
+
     for (colour = 0; colour < 3; ++colour) {
       if (d+colour == radius) {
-        frame[3*station+colour] = 0x10;
+        frame[offset+colour] = 0x0F;
       }
       else {
-        frame[3*station+colour] = 0x00;
+        frame[offset+colour] = 0x00;
       }
     }
   }
