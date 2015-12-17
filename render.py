@@ -18,6 +18,10 @@ class DisplayCom:
     self.render_frame = True
     self.direction = 1
 
+    # Attempt to initialise port
+    self.port.write(b"\x00"*10)
+    time.sleep(2)
+
   # Render frames with decaying brightness
   def render_test(self):
     data = bytearray(4*LED_COUNT)
