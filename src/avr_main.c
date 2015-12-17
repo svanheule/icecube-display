@@ -40,7 +40,8 @@ enum UsartState_t {
 typedef enum UsartState_t UsartState;
 
 volatile UsartState usart_state;
-volatile unsigned int bytes_remaining;
+volatile uint8_t* write_ptr;
+volatile uint8_t* frame_end;
 
 ISR(USART_RX_vect) {
   // Check status before reading word
@@ -50,13 +51,13 @@ ISR(USART_RX_vect) {
   //if (status & (1<<UPE0)) Parity error
 
   unsigned char word = UDR0;
-/*  write_frame_byte(word);*/
 
   switch (usart_state) {
     case USART_WAIT:
       switch (word) {
         case COMMAND_FRAME:
-          bytes_remaining = FRAME_LENGTH;
+          write_ptr = (uint8_t*) *get_back_buffer();
+          frame_end = write_ptr + sizeof(frame_t);
           usart_state = USART_FRAME;
           break;
         case COMMAND_TEST:
@@ -69,7 +70,8 @@ ISR(USART_RX_vect) {
 
     case USART_FRAME:
       // TODO write_frame_byte(word);
-      if (!(--bytes_remaining)) {
+      if (++write_ptr == frame_end) {
+        flip_pages();
         usart_state = USART_WAIT;
       }
       break;
