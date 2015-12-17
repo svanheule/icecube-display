@@ -41,7 +41,7 @@ void display_frame(const frame_t* buffer) {
    * * led data: (111X:XXXX BBBB:BBBB GGGG:GGGG RRRR:RRRR)
    *   * '111' header + 5 bits global brightness
    *   * blue, green, red
-   * * frame end: 4 bytes 0xFF
+   * * frame end: ceil(n/2) '1' bits, or ceil(n/2/8) 0xFF bytes
    */
   const unsigned char FRAME_HEADER = 0x00;
   const unsigned char FRAME_FOOTER = 0xFF;
