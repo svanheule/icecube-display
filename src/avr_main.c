@@ -4,6 +4,7 @@
 
 #include "display_driver.h"
 #include "frame_buffer.h"
+#include "test_render.h"
 
 /**
  * Dual frame buffer APA-102C LED display driver.
