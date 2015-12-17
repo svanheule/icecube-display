@@ -54,12 +54,14 @@ void display_frame(const frame_t *const buffer) {
       write_byte(FRAME_HEADER);
     }
 
+    const struct led_t* leds = *buffer;
+
     // LED data
-    for (i = 0; i < FRAME_LENGTH; i+=3) {
-      write_byte(LED_HEADER);
-      write_byte((*buffer)[i].blue);
-      write_byte((*buffer)[i].green);
-      write_byte((*buffer)[i].red);
+    for (i = 0; i < LED_COUNT; ++i) {
+      write_byte(LED_HEADER | 0x08);
+      write_byte(leds[i].blue);
+      write_byte(leds[i].green);
+      write_byte(leds[i].red);
     }
 
     // End of frame
