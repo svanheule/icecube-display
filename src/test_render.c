@@ -1,24 +1,24 @@
 #include "test_render.h"
 
 // Render snaking pixel trail
-#define TAIL_LENGTH 1
+#define TAIL_LENGTH 3
 static unsigned char snake_frame;
 
-enum Direction_t {
+enum direction_t {
     COUNT_UP = 1
   , COUNT_DOWN = -1
 };
-typedef enum Direction_t Direction;
-static Direction direction;
+static enum direction_t direction = COUNT_UP;
 
 
 void render_snake(frame_t* buffer) {
   clear_frame(buffer);
   struct led_t* write_ptr = *buffer;
+
   unsigned char tail = TAIL_LENGTH;
-  do {
+  while(tail--) {
     write_ptr[snake_frame+tail] = (struct led_t) {0x10, 0x10, 0x10};
-  } while (--tail);
+  }
 
   if ((snake_frame == LED_COUNT-TAIL_LENGTH) && (direction == COUNT_UP)) {
     direction = COUNT_DOWN;
