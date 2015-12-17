@@ -45,7 +45,7 @@ void display_frame(const frame_t* buffer) {
    */
   const unsigned char FRAME_HEADER = 0x00;
   const unsigned char FRAME_FOOTER = 0xFF;
-  const unsigned char LED_HEADER = 0xE0 | 0x10;
+  const unsigned char LED_HEADER = 0xE0;
 
   if (buffer) {
     unsigned char i;
