@@ -2,6 +2,8 @@
 #include <avr/interrupt.h>
 #include <avr/sleep.h>
 
+#include <stdint.h>
+
 #include "display_driver.h"
 #include "frame_buffer.h"
 #include "test_render.h"
@@ -19,7 +21,7 @@
  */
 
 // CTC interrupt handling
-volatile unsigned char draw_frame;
+volatile uint8_t draw_frame;
 
 ISR(TIMER1_COMPA_vect) {
   // Trigger drawing of new frame
@@ -52,7 +54,7 @@ ISR(USART_RX_vect) {
   //if (status & (1<<DOR0)) Data overrun (FIFO full)
   //if (status & (1<<UPE0)) Parity error
 
-  unsigned char word = UDR0;
+  uint8_t word = UDR0;
 
   switch (usart_state) {
     case USART_WAIT:
@@ -110,9 +112,9 @@ int main () {
   // This implies that 115200 baud is the minimal usable transmission rate.
   // Set baud rate to 115.2k, using 16MHz system clock
   UCSR0A = (0<<U2X0);
-  const unsigned int baud_rate_register = 7; // floor(16000000/(16*115200)-1);
-  UBRR0H = (unsigned char) ((baud_rate_register >> 8) & 0x0F);
-  UBRR0L = (unsigned char) baud_rate_register;
+  const uint16_t baud_rate_register = 7; // floor(16000000/(16*115200)-1);
+  UBRR0H = (uint8_t) ((baud_rate_register >> 8) & 0x0F);
+  UBRR0L = (uint8_t) baud_rate_register;
   // Enable Rx, Tx, and Rx interrupts
   // Enable USART RX interrupts
   UCSR0B = (1<<RXCIE0) | (1<<RXEN0) | (1<<TXEN0);

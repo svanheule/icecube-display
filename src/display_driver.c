@@ -1,4 +1,5 @@
 #include <avr/io.h>
+#include <stdint.h>
 #include "display_driver.h"
 
 // TODO Define a look-up table for tank-number -> led-position conversion
@@ -16,11 +17,11 @@ static inline void wait_write_finish () {
   while ( !(SPSR & (1<<SPIF)) ) {}
 }
 
-static inline void write_byte_no_block(const unsigned char byte) {
+static inline void write_byte_no_block(const uint8_t byte) {
   SPDR = byte;
 }
 
-static inline void write_byte(const unsigned char byte) {
+static inline void write_byte(const uint8_t byte) {
   // Write next byte
   write_byte_no_block(byte);
   // Wait for write to finish
@@ -43,12 +44,12 @@ void display_frame(const frame_t* buffer) {
    *   * blue, green, red
    * * frame end: ceil(n/2) '1' bits, or ceil(n/2/8) 0xFF bytes
    */
-  const unsigned char FRAME_HEADER = 0x00;
-  const unsigned char FRAME_FOOTER = 0xFF;
-  const unsigned char LED_HEADER = 0xE0;
+  const uint8_t FRAME_HEADER = 0x00;
+  const uint8_t FRAME_FOOTER = 0xFF;
+  const uint8_t LED_HEADER = 0xE0;
 
   if (buffer) {
-    unsigned char i;
+    uint8_t i;
     // Start of frame
     for (i = 0; i < 4; ++i) {
       write_byte(FRAME_HEADER);
