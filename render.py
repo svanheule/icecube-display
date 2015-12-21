@@ -128,11 +128,9 @@ class Event:
   def led_data(self, rgb):
     # Factor out brightness from colour
     brightness = max(1/(self.MAX_BRIGHTNESS), max(rgb))
-#    brightness = 1
     scaling = brightness / self.MAX_BRIGHTNESS
     rgb = [int(round(255 * c/brightness)) for c in rgb]
     return [int(round(brightness*self.MAX_BRIGHTNESS)), rgb[0], rgb[1], rgb[2]]
-#    return [rgb[0], rgb[1], rgb[2]]
 
   def render_overview(self):
     data = bytearray(LED_COUNT*4)
