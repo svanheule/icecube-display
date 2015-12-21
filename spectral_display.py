@@ -9,9 +9,8 @@ from render import DisplayCom
 # Import GStreamer
 import gi
 gi.require_version('Gst', '1.0')
-gi.require_version('Gtk', '3.0')
 
-from gi.repository import GObject, Gst, Gtk
+from gi.repository import GObject, Gst
 
 GObject.threads_init()
 Gst.init(None)
@@ -227,10 +226,6 @@ if __name__ == "__main__":
 
   # Set state to PLAYING to start rendering
   pipeline.set_state(Gst.State.PLAYING)
-
-  # Enter main loop
-  GObject.threads_init()
-  Gst.init(None)
 
   # Wait for error or end-of-stream
   msg = bus.timed_pop_filtered(Gst.CLOCK_TIME_NONE, Gst.MessageType.ANY)
