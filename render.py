@@ -56,7 +56,7 @@ class DisplayCom:
       # Then send frame data
       self.port.write(data)
     else:
-      raise ValueError("Frame data is of incorrect length")
+      raise ValueError("Frame data is of incorrect length {}".format(len(data)))
 
   def toggle_test_mode(self):
     self.port.write(b"S")
