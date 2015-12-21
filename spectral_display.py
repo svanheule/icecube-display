@@ -18,9 +18,10 @@ Gst.init(None)
 
 # Setup display specifics
 AUDIO_RATE = 44100
-BANDS = 10
+BANDS = 100
 FPS = 25
 MIN_AMPLITUDE = -60
+MAX_AMPLITUDE = -15
 
 PIXEL_COORDINATES = [
     [5,0], [4,0], [3,0], [2,0], [1,0], [0,0]
@@ -81,20 +82,20 @@ HUE_START = 180/360 # blue
 HUE_END = 0 # red
 HUE_DELTA = HUE_END - HUE_START
 
-def set_colour_pos(data, band, amplitude, origin, lengths, direction):
-  col_led_count = lengths[band]
+def set_colour_pos(data, band, amplitude, origin, col_led_count, direction):
+  amplitude = min(amplitude, MAX_AMPLITUDE)
   db_shifted = amplitude-MIN_AMPLITUDE
-  distance = abs(db_shifted/MIN_AMPLITUDE)*col_led_count
+  distance = db_shifted/(MAX_AMPLITUDE-MIN_AMPLITUDE)*col_led_count
 
   top = min(col_led_count-1, numpy.floor(distance))
   offset = [direction[0]*top+band, direction[1]*top]
   position = numpy.add(origin, offset)
   pixel = lookup_pixel(position)
 
-  hue = db_shifted/(-MIN_AMPLITUDE)*HUE_DELTA + HUE_START
+  hue = db_shifted/(MAX_AMPLITUDE-MIN_AMPLITUDE)*HUE_DELTA + HUE_START
   saturation = 1.
 
-  db_interval = abs(MIN_AMPLITUDE/col_led_count)
+  db_interval = (MAX_AMPLITUDE-MIN_AMPLITUDE)/col_led_count
   db_interval_fill = (db_shifted - db_interval*top)/db_interval
   value = db_interval_fill
   colour = colorsys.hsv_to_rgb(hue, saturation, value)
@@ -122,11 +123,11 @@ def render_spectrum(left, right):
   # Render all the things!
   # Amplitude will range from MIN_AMPLITUDE to 0 dB, so divide this in led-count ranges per line
   # Use the hue range from 120 (green) to 0 deg (red).
-  for band, amplitude in enumerate(left):
-    set_colour_pos(data, band, amplitude, LEFT_ORIGIN, LEFT_LENGTHS, LEFT_DIRECTION)
+  for band, length in enumerate(LEFT_LENGTHS):
+    set_colour_pos(data, band, left[band], LEFT_ORIGIN, length, LEFT_DIRECTION)
 
-  for band, amplitude in enumerate(right):
-    set_colour_pos(data, band, amplitude, RIGHT_ORIGIN, RIGHT_LENGTHS, RIGHT_DIRECTION)
+  for band, length in enumerate(RIGHT_LENGTHS):
+    set_colour_pos(data, band, right[band], RIGHT_ORIGIN, length, RIGHT_DIRECTION)
 
   return data
 
