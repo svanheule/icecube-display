@@ -35,7 +35,11 @@ void render_snake(frame_t* buffer) {
 
 
 // Render expanding concentric rings around station 36 with coordinates (5,4) (pixel nr. 35)
-static const signed char STATION_VECTOR[LED_COUNT][2] = {
+struct station_t {
+  int8_t v;
+  int8_t w;
+};
+static const struct station_t STATION_VECTOR[LED_COUNT] = {
     {5,0}, {4,0}, {3,0}, {2,0}, {1,0}, {0,0}
   , {0,1}, {1,1}, {2,1}, {3,1}, {4,1}, {5,1}, {6,1}
   , {7,2}, {6,2}, {5,2}, {4,2}, {3,2}, {2,2}, {1,2}, {0,2}
@@ -48,11 +52,10 @@ static const signed char STATION_VECTOR[LED_COUNT][2] = {
   , {5,9}, {6,9}, {7,9}, {8,9}
 };
 static uint8_t ring_frame;
-typedef signed char Station[2];
 
-static unsigned char station_distance(Station s1, Station s2) {
-  signed char dv = s1[0]-s2[0];
-  signed char dw = s1[1]-s2[1];
+static uint8_t station_distance(const struct station_t s1, const struct station_t s2) {
+  int8_t dv = s1.v - s2.v;
+  int8_t dw = s1.w - s2.w;
   return (abs(dv) + abs(dw) + abs(dv-dw))>>1;
 }
 
