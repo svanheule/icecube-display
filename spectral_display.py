@@ -76,29 +76,36 @@ def led_data(rgb):
   rgb = [int(round(255 * c/brightness)) for c in rgb]
   return [int(round(brightness*MAX_BRIGHTNESS)), rgb[0], rgb[1], rgb[2]]
 
-def led_position(band, amplitude, origin, column_height, direction):
-  position = numpy.ceil(abs((amplitude-MIN_AMPLITUDE)/MIN_AMPLITUDE*(column_height-1)))
-  offset = [direction[0]*position+band, direction[1]*position]
-  return numpy.add(origin, offset)
+
+HUE_START = 120/360 # green
+HUE_END = 0 # red
+HUE_DELTA = HUE_END - HUE_START
 
 def set_colour_pos(data, band, amplitude, origin, lengths, direction):
   col_led_count = lengths[band]
-  position = led_position(band, amplitude, origin, col_led_count, direction)
+  db_shifted = amplitude-MIN_AMPLITUDE
+  distance = abs(db_shifted/MIN_AMPLITUDE)*col_led_count
+
+  top = min(col_led_count-1, numpy.floor(distance))
+  offset = [direction[0]*top+band, direction[1]*top]
+  position = numpy.add(origin, offset)
   pixel = lookup_pixel(position)
 
-  normalisation = 3*MIN_AMPLITUDE # 120/360 = 1/3
-  hue = abs(amplitude/normalisation)
+  hue = db_shifted/(-MIN_AMPLITUDE)*HUE_DELTA + HUE_START
   saturation = 1.
-  value = 1.
+
+  db_interval = abs(MIN_AMPLITUDE/col_led_count)
+  db_interval_fill = (db_shifted - db_interval*top)/db_interval
+  value = db_interval_fill
   colour = colorsys.hsv_to_rgb(hue, saturation, value)
   data[4*pixel:4*(pixel+1)] = led_data(colour)
 
   # Fill below top pixel
-  top = int(direction[1]*(position[1] - origin[1]))
-  for row in range(top):
+  for row in range(int(top)):
     position = numpy.add(origin, [direction[0]*row+band, direction[1]*row])
     pixel = lookup_pixel(position)
-    hue = (col_led_count-row)/(3*col_led_count)
+    hue = (row+1)/col_led_count*HUE_DELTA + HUE_START
+    value = 1.
     data[4*pixel:4*(pixel+1)] = led_data(colorsys.hsv_to_rgb(hue, saturation, value))
 
 
