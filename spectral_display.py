@@ -69,6 +69,8 @@ def lookup_pixel(location):
 
 def led_data(rgb):
   # Factor out brightness from colour
+  gamma = 2.2
+  rgb = numpy.power(rgb, gamma)
   brightness = max(1/(MAX_BRIGHTNESS), max(rgb))
   scaling = brightness / MAX_BRIGHTNESS
   rgb = [int(round(255 * c/brightness)) for c in rgb]
