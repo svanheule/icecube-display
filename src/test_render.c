@@ -1,5 +1,6 @@
 #include "test_render.h"
 #include <stdint.h>
+#include <stdlib.h>
 
 #define DEFAULT_BRIGHTNESS 0x10
 
