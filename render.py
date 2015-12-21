@@ -50,16 +50,13 @@ class DisplayCom:
     self.send_frame(b"\x00"*(LED_COUNT*4))
 
   def send_frame(self, data):
-    # Start with TYPE_FRAME
-    self.port.write(b"\x41")
-    # Then send frame data
-#    print(len(data))
-#    transmitted = 0
-#    while transmitted < len(data):
-#      self.port.write(data[transmitted:transmitted+60])
-#      transmitted += 60
-#      time.sleep(1./100)
-    self.port.write(data)
+    if len(data) == 4*LED_COUNT:
+      # Start with TYPE_FRAME
+      self.port.write(b"\x41")
+      # Then send frame data
+      self.port.write(data)
+    else:
+      raise ValueError("Frame data is of incorrect length")
 
   def toggle_test_mode(self):
     self.port.write(b"\x42")
