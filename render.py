@@ -59,7 +59,7 @@ class DisplayCom:
       raise ValueError("Frame data is of incorrect length")
 
   def toggle_test_mode(self):
-    self.port.write(b"\x42")
+    self.port.write(b"S")
 
   def interrupt_handler(self, signal, frame):
     self.render_frame = False
