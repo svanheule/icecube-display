@@ -164,9 +164,10 @@ def print_icetop(data):
 import json
 pipeline = None
 disp = DisplayCom()
+last_frame = bytearray(4*LED_COUNT)
 
 def message_handler(bus, message):
-  global pipeline, disp
+  global pipeline, disp, last_frame
   structure = message.get_structure()
   name = structure.get_name()
 
@@ -182,7 +183,8 @@ def message_handler(bus, message):
     magnitudes = json.loads(s[s.find(sep)+len(sep):].translate(bytes.maketrans(b'<>;',b'[] ')))
     data = render_spectrum(magnitudes[0], magnitudes[1])
 #    print_icetop(data)
-    disp.send_frame(data)
+    last_frame = bytearray(int((p/8 + d)/1.125) for p,d in zip(last_frame,data))
+    disp.send_frame(last_frame)
 #  except KeyError as e:
 #    key = int(str(e))
 #    print("Key error: {},{}".format(key>>4, key&0xf))
