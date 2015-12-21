@@ -77,7 +77,7 @@ def led_data(rgb):
   return [int(round(brightness*MAX_BRIGHTNESS)), rgb[0], rgb[1], rgb[2]]
 
 
-HUE_START = 120/360 # green
+HUE_START = 180/360 # blue
 HUE_END = 0 # red
 HUE_DELTA = HUE_END - HUE_START
 
