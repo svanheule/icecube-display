@@ -69,7 +69,7 @@ void render_ring(frame_t* buffer) {
   uint8_t led;
   for (led = 0; led < LED_COUNT; ++led) {
     uint8_t d = station_distance(STATION_VECTOR[led], STATION_VECTOR[34]);
-    uint8_t offset = 4*led;
+    uint16_t offset = 4*led;
     // Set global brightness
     frame[offset] = DEFAULT_BRIGHTNESS;
 
