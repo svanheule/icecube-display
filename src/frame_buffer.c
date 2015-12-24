@@ -1,5 +1,6 @@
 #include "frame_buffer.h"
 #include <math.h>
+#include <util/atomic.h>
 
 // Double frame buffer
 // Array of arrays of led_t objects
@@ -21,10 +22,11 @@ frame_t* get_back_buffer() {
 
 
 void flip_pages() {
-  // TODO Maybe make the pointer swap atomic
-  frame_t* tmp = front_ptr;
-  front_ptr = back_ptr;
-  back_ptr = tmp;
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    frame_t* tmp = front_ptr;
+    front_ptr = back_ptr;
+    back_ptr = tmp;
+  }
 }
 
 
