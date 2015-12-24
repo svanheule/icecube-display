@@ -5,7 +5,16 @@
 // TODO Define a look-up table for tank-number -> led-position conversion
 // {6..1}+{7..13}+{21..14}+{22..30}+{40..31}+{41..50}+{59..51}+{60..67}+{74..68}+{75..78}
 
-void init_driver() {
+void init_display_driver() {
+  // DDRB must be set before SPCR, so the internal pull-up doens't cause SPI to go into slave mode
+  /* Configure port B as SPI master:
+   * * B5: SCK (out)
+   * * B4: MISO (in, unused)
+   * * B3: MOSI (out)
+   * * B2: /SS (out, unused)
+   */
+  DDRB &= (1<<DDB7) | (1<<DDB6); // Clear all but the clock pins
+  DDRB |= (1<<DDB5) | (1<<DDB3) | (1<<DDB2);
   // Enable SPI, set as master
   // Transmit MSB first, idle low, transmit on first (rising) edge, SCK=fOSC/4
   SPCR = (1 << SPE)|(1 << MSTR) | (0 << DORD)|(0 << CPOL)|(0 << CPHA);
