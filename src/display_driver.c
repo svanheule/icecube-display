@@ -2,9 +2,6 @@
 #include <stdint.h>
 #include "display_driver.h"
 
-// TODO Define a look-up table for tank-number -> led-position conversion
-// {6..1}+{7..13}+{21..14}+{22..30}+{40..31}+{41..50}+{59..51}+{60..67}+{74..68}+{75..78}
-
 void init_display_driver() {
   // DDRB must be set before SPCR, so the internal pull-up doens't cause SPI to go into slave mode
   /* Configure port B as SPI master:

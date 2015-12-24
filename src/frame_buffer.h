@@ -4,7 +4,7 @@
 #include <stdint.h>
 
 // Frame buffer size and structure definitions
-// A frame consist of LED_COUNT 3-tuples of bytes: red, green, blue
+// A frame consist of LED_COUNT 4-tuples of bytes: brightness, red, green, blue
 #define LED_COUNT 78
 
 struct led_t {
