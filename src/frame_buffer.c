@@ -12,7 +12,7 @@ static frame_t* back_ptr = frame_buffers+1;
 
 
 const frame_t* get_front_buffer() {
-  return front_ptr;
+  return (const frame_t*) front_ptr;
 }
 
 
