@@ -7,6 +7,7 @@
 #include "display_driver.h"
 #include "frame_buffer.h"
 #include "test_render.h"
+#include "serial.h"
 
 /**
  * Dual frame buffer APA-102C LED display driver.
@@ -28,100 +29,9 @@ ISR(TIMER1_COMPA_vect) {
   draw_frame = 1;
 }
 
-
-// USART interrupt handling
-#define COMMAND_FRAME 'A'
-#define COMMAND_TEST_RING 'R'
-#define COMMAND_TEST_SNAKE 'S'
-
-enum UsartState_t {
-    USART_WAIT
-  , USART_FRAME
-  , USART_TEST_RING
-  , USART_TEST_SNAKE
-  // TODO Add diagnostics
-};
-typedef enum UsartState_t UsartState;
-
-volatile UsartState usart_state;
-volatile uint8_t* write_ptr;
-volatile uint8_t* frame_end;
-
-ISR(USART_RX_vect) {
-  // Check status before reading word
-  //const unsigned char status = UCSR0A;
-  //if (status & (1<<FE0)) Frame error
-  //if (status & (1<<DOR0)) Data overrun (FIFO full)
-  //if (status & (1<<UPE0)) Parity error
-
-  uint8_t word = UDR0;
-
-  switch (usart_state) {
-    case USART_WAIT:
-      switch (word) {
-        case COMMAND_FRAME:
-          write_ptr = (uint8_t*) *get_back_buffer();
-          frame_end = write_ptr + sizeof(frame_t);
-          usart_state = USART_FRAME;
-          break;
-        case COMMAND_TEST_RING:
-          usart_state = USART_TEST_RING;
-          break;
-        case COMMAND_TEST_SNAKE:
-          usart_state = USART_TEST_SNAKE;
-          break;
-        default:
-          break;
-        }
-      break;
-
-    case USART_FRAME:
-      *write_ptr = word;
-      if (++write_ptr == frame_end) {
-        flip_pages();
-        usart_state = USART_WAIT;
-      }
-      break;
-
-    case USART_TEST_RING:
-      if (word == COMMAND_TEST_RING) {
-        usart_state = USART_WAIT;
-      }
-      break;
-
-    case USART_TEST_SNAKE:
-      if (word == COMMAND_TEST_SNAKE) {
-        usart_state = USART_WAIT;
-      }
-      break;
-
-    default:
-      break;
-
-  }
-
-  // Return new state
-/*  UDR0 = (unsigned char) usart_state;*/
-
-}
-
-
 int main () {
   // Init USART configuration
-  // The minimal throughput for 25 FPS is 58500 baud.
-  // This implies that 115200 baud is the minimal usable transmission rate.
-  // Set baud rate to 115.2k, using 16MHz system clock
-  UCSR0A = (0<<U2X0);
-  const uint16_t baud_rate_register = 7; // floor(16000000/(16*115200)-1);
-  UBRR0H = (uint8_t) ((baud_rate_register >> 8) & 0x0F);
-  UBRR0L = (uint8_t) baud_rate_register;
-  // Enable Rx, Tx, and Rx interrupts
-  // Enable USART RX interrupts
-  UCSR0B = (1<<RXCIE0) | (1<<RXEN0) | (1<<TXEN0);
-  // Set mode to async, 8 bit, no parity, 1 stop bit
-  UCSR0C = (1<<UCSZ01) | (1<<UCSZ00);
-
-  usart_state = USART_WAIT;
+  init_serial_port();
 
   // Init pin configuration: USART, SPI
   init_display_driver();
@@ -156,7 +66,7 @@ int main () {
 
     display_frame(get_front_buffer());
 
-    switch (usart_state) {
+    switch (get_usart_state()) {
       case USART_TEST_RING:
         render_ring(get_back_buffer());
         flip_pages();
