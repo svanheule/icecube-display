@@ -29,15 +29,7 @@ ISR(TIMER1_COMPA_vect) {
   draw_frame = 1;
 }
 
-int main () {
-  // Init USART configuration
-  init_serial_port();
-
-  // Init pin configuration: USART, SPI
-  init_display_driver();
-  // USART port configuration is fixed by enabling USART Rx and Tx
-
-  // Init counter configuration
+void init_timer() {
   /* Clock is 16MHz
    * 25 FPS: 640000 counts; prescale 1024, compare (625-1)
    * 50 FPS: 320000 counts; prescale 256, compare (1250-1)
@@ -48,6 +40,18 @@ int main () {
   // Set compare mode, prescaler, and enable interrupt
   TCCR1B = (1<<WGM12) | (1<<CS12) | (1<<CS10);
   TIMSK1 = (1<<OCIE1A);
+}
+
+int main () {
+  // Init USART configuration
+  init_serial_port();
+
+  // Init pin configuration: USART, SPI
+  init_display_driver();
+  // USART port configuration is fixed by enabling USART Rx and Tx
+
+  // Init timer configuration
+  init_timer();
 
   draw_frame = 0;
 
