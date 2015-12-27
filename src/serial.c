@@ -6,19 +6,22 @@
 #include "serial.h"
 #include "frame_buffer.h"
 
+#define BAUD_RATE 115200UL
+
 void init_serial_port() {
   // The minimal throughput for 25 FPS is 58500 baud.
   // This implies that 115200 baud is the minimal usable transmission rate.
   // Set baud rate to 115.2k, using 16MHz system clock
-  UCSR0A = (0<<U2X0);
-  const uint16_t baud_rate_register = 7; // floor(16000000/(16*115200)-1);
+  const uint16_t baud_rate_register = ((F_CPU + 4*BAUD_RATE)/(8*BAUD_RATE) - 1);
   UBRR0H = (uint8_t) ((baud_rate_register >> 8) & 0x0F);
   UBRR0L = (uint8_t) baud_rate_register;
+
+  // Use double speed, just like the original Arduino firmware
+  UCSR0A = _BV(U2X0);
   // Enable Rx, Tx, and Rx interrupts
-  // Enable USART RX interrupts
-  UCSR0B = (1<<RXCIE0) | (1<<RXEN0) | (1<<TXEN0);
+  UCSR0B = _BV(RXCIE0) | _BV(RXEN0) | _BV(TXEN0);
   // Set mode to async, 8 bit, no parity, 1 stop bit
-  UCSR0C = (1<<UCSZ01) | (1<<UCSZ00);
+  UCSR0C = _BV(UCSZ01) | _BV(UCSZ00);
 }
 
 // Display global FSM
