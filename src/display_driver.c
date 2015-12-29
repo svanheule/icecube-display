@@ -10,12 +10,11 @@ void init_display_driver() {
    * * B3: MOSI (out)
    * * B2: /SS (out, unused)
    */
-  DDRB &= (1<<DDB7) | (1<<DDB6); // Clear all but the clock pins
-  DDRB |= (1<<DDB5) | (1<<DDB3) | (1<<DDB2);
+  DDRB = _BV(DDB5)|_BV(DDB3)|_BV(DDB2);
   // Enable SPI, set as master
   // Transmit MSB first, idle low, transmit on first (rising) edge, SCK=fOSC/4
-  SPCR = (1 << SPE)|(1 << MSTR) | (0 << DORD)|(0 << CPOL)|(0 << CPHA);
-//  SPSR = (1 << SPI2X); not necessary, now running at 16/4 MHz = 4 MHz (~times 0.5 idling overhead)
+  SPCR = _BV(SPE)|_BV(MSTR);
+  SPSR = _BV(SPI2X);
 }
 
 static inline void wait_write_finish () {
