@@ -1,107 +1,102 @@
 #!/usr/bin/python3
 
-import serial
-import signal
-import time
+import time, threading
+from icetopdisplay import DisplayCom
+from icetopdisplay.geometry import pixel_to_station, LED_COUNT
 
-LED_COUNT = 78
-BRIGHTNESS_1 = 0x80
-DECAY_LENGTH = 6
+class Renderer:
+  def __init__(self, displaycom, frame_rate=25):
+    self._timer = None
+    self.halt = True
+    self._com = displaycom
+    self.interval = 1/frame_rate
 
-TYPE_FRAME = 1
+  def start(self):
+    self._halt = False
+    self.frame_number = 0
+    self.display_time = 0
+    self._com.acquire()
+    self._start_time = time.time()
+    self._setup_next_frame()
 
+  def cancel(self):
+    self._halt = True
+    if self._timer is not None:
+      self._timer.cancel()
+      self._timer = None
+    self._com.release()
 
-class DisplayCom:
-  def __init__(self):
-    self.port = serial.Serial('/dev/ttyACM0', 115200, timeout=1)
-    self.test_frame_number = 0
-    self.render_frame = True
+  def _setup_next_frame(self):
+    next_time = self._start_time + self.display_time + self.interval
+    self._timer = threading.Timer(next_time - time.time(), self._send_next_frame)
+    self._timer.start()
+    self.display_time = self.frame_number*self.interval
+    self.frame_number += 1
+
+  def _send_next_frame(self):
+    try:
+      if not self._halt:
+        self._setup_next_frame()
+      data = self.next_frame()
+      self._com.send_frame(data)
+      # Set up next frame transmission
+    except StopIteration:
+      self.cancel()
+
+  def next_frame(self):
+    pass
+
+class TestRenderer(Renderer):
+  DECAY_LENGTH = 6
+
+  def __init__(self, displaycom, frame_rate=25):
+    super().__init__(displaycom, frame_rate)
+    self.position = 0
     self.direction = 1
 
-    # Attempt to initialise port
-    self.port.write(b"\x00"*10)
-    time.sleep(2)
-
   # Render frames with decaying brightness
-  def render_test(self):
-    data = bytearray(4*LED_COUNT)
+  def next_frame(self):
+    data = numpy.zeros((LED_COUNT, 3))
 
     # Calculate LED brightness
-    brightness = BRIGHTNESS_1
-    for tail in range(DECAY_LENGTH):
-      led = self.test_frame_number + self.direction*tail
-      if led in range(0,LED_COUNT):
-        data[4*led] = 0x10
-        for colour in range(1,4):
-          data[4*led+colour] = brightness
-      brightness >>= 2
+    brightness = 0.5
+    for tail in range(self.DECAY_LENGTH):
+      led = self.position - self.direction*tail
+      if led in range(LED_COUNT):
+        data[led] = [brightness]*3
+      brightness /= 2
 
     # Update frame number
-    if self.test_frame_number == LED_COUNT and self.direction == 1:
+    if self.position == LED_COUNT-1 and self.direction == 1:
       self.direction = -1
-    elif self.test_frame_number == 0 and self.direction == -1:
+    elif self.position == 0 and self.direction == -1:
       self.direction = 1
 
-    self.test_frame_number = self.test_frame_number + self.direction
+    self.position = self.position + self.direction
 
-    self.send_frame(data)
-
-  def flush_buffer(self):
-    self.send_frame(b"\x00"*(LED_COUNT*4))
-
-  def send_frame(self, data):
-    if len(data) == 4*LED_COUNT:
-      # Start with TYPE_FRAME
-      self.port.write(b"\x41")
-      # Then send frame data
-      self.port.write(data)
-    else:
-      raise ValueError("Frame data is of incorrect length {}".format(len(data)))
-
-  def toggle_test_mode(self):
-    self.port.write(b"S")
-
-  def interrupt_handler(self, signal, frame):
-    self.render_frame = False
-    self.flush_buffer()
-
+    return data
 
 import numpy
-
-# Determine mapping of pixels to station
-ROW_START = [1, 7, 14, 22, 31, 41, 51, 60, 68, 75, 79]
-STATION_PIXEL_MAP = numpy.empty(78, dtype=int)
-for row in range(len(ROW_START)-1):
-  direction = int((-1)**(row+1))
-  if direction == 1:
-    start = ROW_START[row]
-  else:
-    start = ROW_START[row+1]-1
-
-  pixel_start = ROW_START[row]
-  pixel_end = ROW_START[row+1]
-  station = start
-
-  for pixel in range(pixel_start-1, pixel_end-1):
-    STATION_PIXEL_MAP[pixel] = station
-    station += direction
-
-
 import colorsys
 
-class Event:
-  MAX_BRIGHTNESS = (2**5-1)*0.8
+class EventRenderer(Renderer):
+  TIME_STRETCH = 4e-3 # in s/ns
+  TIME_RISE = 0.5 # in s
+  TIME_DECAY = 3.5
 
-  def __init__(self, filename):
+  def __init__(self, displaycom, filename, frame_rate=25, overview_time=3):
+    super().__init__(displaycom, frame_rate)
     stations, charges, times = numpy.loadtxt(filename, skiprows=1, unpack=True)
+
+    charges = numpy.log10(charges+1)
 
     self.min_charge = min(charges)
     self.max_charge = max(charges)
-    # Normalise charges and gamma correct for displayability
-    charges = numpy.power(charges/self.max_charge, .44)
+    # Normalise charges and compress for displayability
+    charges = numpy.power(charges/self.max_charge, 2)
 
-    # Calculate time offset from first station and scale 1000ns real time to 0.5s display time
-    times = 5e-3*(times - min(times)) + 0.5
+    # Calculate time offset from first station and scale real time to display time
+    times = self.TIME_STRETCH*(times - min(times)) + self.TIME_RISE
     self.min_time = min(times)
     self.max_time = max(times)
 
@@ -109,99 +104,83 @@ class Event:
     for i,station in enumerate(stations):
       self.stations[station] = (charges[i], times[i])
 
-    self.decay_time = 2.5
-    self.stop_time = max(times) + self.decay_time
+    self.stop_time = max(times) + self.TIME_DECAY
+    self.overview_time = overview_time
+
+    self.tau = self.TIME_DECAY / numpy.log(2**9)
+    self.colours = self.render_overview()
 
   def led_value(self, q0, t0):
     # Hue from 0 (red) to 2/3 (blue)
-    hue = 2.*(t0-self.min_time)/(3*self.max_time)
+    hue = 2.*(t0-self.min_time)/(3*(self.max_time-self.min_time)) 
     # Fully saturated
     saturation = 1.
     # Value/brightness according to normalised charge
     value = q0
-    rgb = colorsys.hsv_to_rgb(hue, saturation, value)
-    return numpy.array(rgb)
-
-  def led_data(self, rgb):
-    # Factor out brightness from colour
-    brightness = max(1/(self.MAX_BRIGHTNESS), max(rgb))
-    scaling = brightness / self.MAX_BRIGHTNESS
-    rgb = [int(round(255 * c/brightness)) for c in rgb]
-    return [int(round(brightness*self.MAX_BRIGHTNESS)), rgb[0], rgb[1], rgb[2]]
+    return numpy.array(colorsys.hsv_to_rgb(hue, saturation, value))
 
   def render_overview(self):
-    data = bytearray(LED_COUNT*4)
+    data = numpy.zeros((LED_COUNT, 3))
     for led in range(LED_COUNT):
-      station = STATION_PIXEL_MAP[led]
+      station = pixel_to_station(led)
       if station in self.stations:
         q0, t0 = self.stations[station]
-        data[4*led:4*(led+1)] = self.led_data(self.led_value(q0, t0))
+        data[led] = self.led_value(q0, t0)
 
     return data
 
-  def render(self):
-    # Linear rise to max brightness in 0.5s
-    # Exponential decay from max brightness to 0 in 4s (tau = 0.722s)
+  def brightness_curve(self, t, t0):
+    # Linear rise to max brightness in TIME_RISE
+    # Exponential decay from max brightness to 0 in TIME_DECAY
+    t = t-t0
+    if t <= -self.TIME_RISE:
+      return 0
+    elif t <= 0:
+      return 1 + t/self.TIME_RISE
+    elif t <= self.TIME_DECAY:
+      return numpy.exp(-t/self.tau)
+    else:
+      return 0
 
-    start_time = 0.25
-    tau = self.decay_time / numpy.log(2**10)
-
-    def brightness_curve(t, t0):
-      t = t-t0
-      if t <= -start_time:
-        return 0
-      elif t <= 0:
-        return start_time * (t+start_time)
-      elif t <= self.decay_time:
-        return numpy.exp(-t/tau)
-      else:
-        return 0
-
-    time = 0.
-    while time < self.stop_time:
-      data = bytearray(LED_COUNT*4)
+  def next_frame(self):
+    if self.display_time < self.stop_time:
+      data = numpy.zeros((LED_COUNT, 3))
       for led in range(LED_COUNT):
-        station = STATION_PIXEL_MAP[led]
+        station = pixel_to_station(led)
         if station in self.stations:
           q0, t0 = self.stations[station]
-          rgb = brightness_curve(time, t0)*self.led_value(q0, t0)
-          data[4*led:4*(led+1)] = self.led_data(rgb)
-
-      time += 1./25
-      yield data
+          data[led] = self.brightness_curve(self.display_time, t0)*self.colours[led]
+      return data
+    elif self.display_time < self.stop_time+self.overview_time:
+      return self.colours
+    else:
+      raise StopIteration
 
 
 import sys
+import signal
+
+class RenderInterrupt:
+  def __init__(self, renderer):
+    self._renderer = renderer
+    signal.signal(signal.SIGINT, self._handler)
+
+  def _handler(self, signal, frame):
+    self._renderer.cancel()
+
+
 if __name__ == "__main__":
   disp = DisplayCom()
 
-  signal.signal(signal.SIGINT, disp.interrupt_handler)
-
-  frame_count = 0
-
   if len(sys.argv) == 2:
-    event = Event(sys.argv[1])
-
-    for frame in event.render():
-      disp.send_frame(frame)
-      frame_count += 1
-      time.sleep(1./25)
-
-    data = event.render_overview()
-    for i in range(1):
-      disp.send_frame(data)
-      frame_count += 1
-      time.sleep(1./25)
-    time.sleep(3)
-
-    disp.flush_buffer()
-
-
+    renderer = EventRenderer(disp, sys.argv[1])
   else:
-    while disp.render_frame:
-      disp.render_test()
-      frame_count += 1
-      time.sleep(1./25)
+    renderer = TestRenderer(disp)
 
-  print("displayed {} frames".format(frame_count))
+  RenderInterrupt(renderer)
+  renderer.start()
+
+  disp.acquire()
+  disp.flush_buffer()
+  disp.release()
 
