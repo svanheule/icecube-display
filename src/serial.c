@@ -55,7 +55,9 @@ static void transmit_string(const char* string, const size_t length) {
   // Enable buffer empty IRQ
   if (length) {
     transmit_buffer = (struct transmit_buffer_t) {string, 0, length};
+    cli();
     UCSR0B |= (1<<UDRIE0);
+    sei();
   }
 }
 
