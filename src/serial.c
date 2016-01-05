@@ -85,7 +85,7 @@ ISR(USART_RX_vect) {
           usart_state = USART_TEST_SNAKE;
           break;
         case COMMAND_GET_ID:
-          transmit_string("IT78:APA102:0", 13);
+          transmit_string("IT78:1:0", 8);
           break;
         default:
           break;
