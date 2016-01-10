@@ -37,6 +37,7 @@ set(SOURCES
   src/frame_buffer.c
   src/serial.c
   src/test_render.c
+  src/event.c
 )
 
 # Build program and generate associated hex file
