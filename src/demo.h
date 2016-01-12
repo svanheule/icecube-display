@@ -12,9 +12,13 @@ struct pulse_t {
   struct led_t led; //< LED brightness and colour
 };
 
-struct event {
+struct event_t {
   uint16_t length; //< Number of pulses in this event
-  struct pulse_t* pulses; //< Array of pulses
+  const struct pulse_t* pulses; //< Array of pulses
 };
+
+void init_demo();
+uint8_t demo_finished();
+void render_demo(frame_t* buffer);
 
 #endif //EVENT_H

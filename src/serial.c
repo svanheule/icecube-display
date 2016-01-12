@@ -5,6 +5,7 @@
 
 #include "serial.h"
 #include "frame_buffer.h"
+#include "demo.h"
 
 #define BAUD_RATE 115200UL
 
@@ -80,6 +81,10 @@ ISR(USART_RX_vect) {
           frame_end = write_ptr + sizeof(frame_t);
           usart_state = USART_FRAME;
           break;
+        case COMMAND_DEMO:
+          usart_state = USART_DEMO;
+          init_demo();
+          break;
         case COMMAND_TEST_RING:
           usart_state = USART_TEST_RING;
           break;
@@ -102,6 +107,11 @@ ISR(USART_RX_vect) {
       }
       break;
 
+    case USART_DEMO:
+      if (word == COMMAND_DEMO) {
+        usart_state = USART_WAIT;
+      }
+      break;
     case USART_TEST_RING:
       if (word == COMMAND_TEST_RING) {
         usart_state = USART_WAIT;

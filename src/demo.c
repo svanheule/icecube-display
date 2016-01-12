@@ -1,4 +1,4 @@
-#include "event.h"
+#include "demo.h"
 
 static const struct pulse_t* current_pulse;
 static const struct pulse_t* pulses_end;

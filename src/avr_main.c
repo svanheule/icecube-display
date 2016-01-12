@@ -6,6 +6,7 @@
 
 #include "display_driver.h"
 #include "frame_buffer.h"
+#include "demo.h"
 #include "test_render.h"
 #include "serial.h"
 
@@ -71,6 +72,14 @@ int main () {
     display_frame((const frame_t*) get_front_buffer());
 
     switch (get_usart_state()) {
+      case USART_DEMO:
+        // Render to the front buffer to reuse the current frame
+        render_demo(get_front_buffer());
+        // Restart if finished
+        if (demo_finished()) {
+          init_demo();
+        }
+        break;
       case USART_TEST_RING:
         render_ring(get_back_buffer());
         flip_pages();
