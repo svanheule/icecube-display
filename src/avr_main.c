@@ -68,7 +68,7 @@ int main () {
       sleep_cpu();
     }
 
-    display_frame(get_front_buffer());
+    display_frame((const frame_t*) get_front_buffer());
 
     switch (get_usart_state()) {
       case USART_TEST_RING:

@@ -25,7 +25,7 @@ typedef struct led_t frame_t[LED_COUNT];
  * new frame contents.
  */
 /// Get the (read-only) pointer to the front buffer
-const frame_t* get_front_buffer();
+frame_t* get_front_buffer();
 /// Get the pointer the back bufer for drawing.
 frame_t* get_back_buffer();
 /// Swap the front and back buffer after completing a frame draw.
