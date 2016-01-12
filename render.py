@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import time, threading
-from icetopdisplay import DisplayCom
+from icetopdisplay import DisplayCom, LedFormat
 from icetopdisplay.geometry import pixel_to_station, LED_COUNT
 
 class Renderer:
@@ -56,14 +56,14 @@ class TestRenderer(Renderer):
 
   # Render frames with decaying brightness
   def next_frame(self):
-    data = numpy.zeros((LED_COUNT, 3))
+    data = numpy.zeros((LED_COUNT, 4))
 
     # Calculate LED brightness
     brightness = 0.5
     for tail in range(self.DECAY_LENGTH):
       led = self.position - self.direction*tail
       if led in range(LED_COUNT):
-        data[led] = [brightness]*3
+        data[led] = LedFormat.float_to_led_data([brightness]*3)
       brightness /= 2
 
     # Update frame number
@@ -144,12 +144,12 @@ class EventRenderer(Renderer):
 
   def next_frame(self):
     if self.display_time < self.stop_time:
-      data = numpy.zeros((LED_COUNT, 3))
+      data = numpy.zeros((LED_COUNT, 4))
       for led in range(LED_COUNT):
         station = pixel_to_station(led)
         if station in self.stations:
           q0, t0 = self.stations[station]
-          data[led] = self.brightness_curve(self.display_time, t0)*self.colours[led]
+          data[led] = LedFormat.float_to_led_data(self.brightness_curve(self.display_time, t0)*self.colours[led])
       return data
     elif self.display_time < self.stop_time+self.overview_time:
       return self.colours
