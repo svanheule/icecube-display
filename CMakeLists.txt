@@ -1,5 +1,6 @@
 # Cross-compiling can only be done with v2.6 or later
 cmake_minimum_required(VERSION 2.6)
+project(POCKET_ICETOP)
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR avr)
@@ -50,7 +51,9 @@ target_compile_definitions(icetop_display
   PUBLIC F_CPU=${AVR_TARGET_F_CPU}UL
 )
 target_compile_options(icetop_display
-  PUBLIC -Wall -Wpedantic -std=gnu99 -Os -fshort-enums -ffunction-sections
+  PUBLIC -Wall -Wpedantic # Error messages
+  PUBLIC -std=gnu99 # Language standard C99
+  PUBLIC -Os -fshort-enums -ffunction-sections # Optimise for size
 )
 add_custom_command(
   TARGET icetop_display
