@@ -1,8 +1,8 @@
 #!/usr/bin/python3
 
-import time, threading
+import time, threading, struct
 from icetopdisplay import DisplayCom, LedFormat
-from icetopdisplay.geometry import pixel_to_station, LED_COUNT
+from icetopdisplay.geometry import pixel_to_station, station_to_pixel, LED_COUNT
 
 class Renderer:
   def __init__(self, displaycom, frame_rate=25):
@@ -143,6 +143,25 @@ class EventRenderer(Renderer):
       return numpy.exp(-t/self.tau)
     else:
       return 0
+
+  def pre_render_event(self):
+    pulse_format = "<HB4B"
+    pulse_size = struct.calcsize(pulse_format)
+    pulses = []
+    for index,station in enumerate(self.stations):
+      q0, t0 = self.stations[station]
+      frame = int(25*(t0-self.TIME_RISE))
+      led = station_to_pixel(station)
+      led_value = LedFormat.float_to_led_data(self.led_value(q0, t0))
+      pulse = struct.pack(pulse_format, frame, led, *led_value)
+      pulses.append(pulse)
+
+    pulses = sorted(pulses, key=lambda pulse: pulse[0])
+    result = bytearray()
+    for pulse in pulses:
+      print(struct.unpack(pulse_format, pulse))
+      result += pulse
+    return result
 
   def next_frame(self):
     if self.display_time < self.stop_time:
