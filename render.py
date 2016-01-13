@@ -114,7 +114,7 @@ class EventRenderer(Renderer):
 
   def led_value(self, q0, t0):
     # Hue from 0 (red) to 2/3 (blue)
-    hue = 2.*(t0-self.min_time)/(3*(self.max_time-self.min_time)) 
+    hue = 2.*(t0-self.min_time)/(3*(self.max_time-self.min_time))
     # Fully saturated
     saturation = 1.
     # Value/brightness according to normalised charge
