@@ -102,7 +102,9 @@ class EventRenderer(Renderer):
 
     self.stations = {}
     for i,station in enumerate(stations):
-      self.stations[station] = (charges[i], times[i])
+      # Discard infill stations
+      if station <= 78:
+        self.stations[station] = (charges[i], times[i])
 
     self.stop_time = max(times) + self.TIME_DECAY
     self.overview_time = overview_time
