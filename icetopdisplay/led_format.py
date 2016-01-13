@@ -1,3 +1,5 @@
+import numpy
+
 class LedFormat:
   MAX_BRIGHTNESS = 2**5-1
 
