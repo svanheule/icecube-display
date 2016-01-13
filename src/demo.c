@@ -1,30 +1,24 @@
 #include "demo.h"
 #include <avr/pgmspace.h>
 
-// Create forward linked list stored in PROGMEM
-#define LED_CYAN {0x03, 0, 255, 255}
-#define LED_MAGENTA {0x03, 255, 0, 255}
-#define LED_YELLOW {0x03, 255, 255, 0}
-
-static const struct pulse_t pulses_0[] PROGMEM = {
-    {0, 0, LED_CYAN}
-  , {25, 12, LED_MAGENTA}
-  , {50, 13, LED_YELLOW}
-};
-static const struct pulse_t pulses_1[] PROGMEM = {
-    {0, 74, LED_CYAN}
-  , {25, 73, LED_MAGENTA}
-  , {50, 59, LED_YELLOW}
-};
-
 struct item_t {
   struct event_t event;
   struct item_t* next_item;
 };
 
-static struct item_t event_0, event_1;
-static struct item_t event_0 = {{3, pulses_0}, &event_1};
-static struct item_t event_1 = {{3, pulses_1}, 0};
+// Macros to define external symbols
+#define BIN_START(name) _binary_## name ## _start
+#define BIN_END(name) _binary_ ## name ## _end
+#define BIN_SIZE(name) _binary_ ## name ## _size
+
+#define EXTERNAL_EVENT(name) \
+extern const struct pulse_t BIN_START(name) PROGMEM; \
+extern const struct pulse_t BIN_END(name) PROGMEM;
+
+EXTERNAL_EVENT(___event_bin)
+
+// Create forward linked list (stored in PROGMEM)
+static struct item_t event_0;
 
 // Module global variables
 static const struct item_t* current_item;
@@ -44,6 +38,9 @@ static void load_event(const struct item_t* item) {
 }
 
 void init_demo() {
+  event_0.event.pulses = &BIN_START(___event_bin);
+  event_0.event.length = &BIN_END(___event_bin) - &BIN_START(___event_bin);
+
   current_item = &event_0;
   load_event(&event_0);
   int i = LED_COUNT-1;
