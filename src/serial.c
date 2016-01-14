@@ -30,6 +30,8 @@ static volatile enum usart_state_t usart_state = USART_WAIT;
 static volatile uint8_t* write_ptr;
 static volatile uint8_t* frame_end;
 
+// Forward declaration
+static void advance_usart_state(uint8_t word);
 enum usart_state_t get_usart_state() {
   return usart_state;
 }
@@ -73,6 +75,10 @@ ISR(USART_RX_vect) {
   uint8_t word = UDR0;
 
   // Advance state machine
+  advance_usart_state(word);
+}
+
+static void advance_usart_state(uint8_t word) {
   switch (usart_state) {
     case USART_WAIT:
       switch (word) {
@@ -132,4 +138,3 @@ ISR(USART_RX_vect) {
 
   }
 }
-
