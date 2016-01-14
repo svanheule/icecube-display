@@ -4,8 +4,10 @@
 #include <stdint.h>
 #include "frame_buffer.h"
 
-#define PULSE_DURATION 33 // In number of frames (25 fps), must be smaller than 128 (int8_t)
-#define CLEAR_DURATION 50
+// In number of frames (25 fps), must be smaller than 256 (uint8_t)
+#define PULSE_DURATION 33
+#define CLEAR_DURATION 25
+#define OVERVIEW_DURATION 100
 
 struct pulse_t {
   uint16_t time; //< Turn-on time of led

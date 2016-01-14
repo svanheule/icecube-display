@@ -31,6 +31,14 @@ static uint16_t frame_number;
 static uint8_t led_remaining_on[LED_COUNT];
 static uint16_t last_frame_number;
 
+enum render_mode_t {
+    TIME_LAPSE
+  , OVERVIEW_LOAD
+  , OVERVIEW_SHOW
+};
+
+static enum render_mode_t render_mode = TIME_LAPSE;
+
 static void load_event(const struct item_t* item) {
   frame_number = 0;
   last_frame_number = 0;
@@ -76,27 +84,59 @@ void render_demo(frame_t* buffer) {
     // Set frame_number to its next value
     ++frame_number;
 
-    // Read newly fired pulses
-    while (current_pulse != pulses_end && pgm_read_word(&(current_pulse->time)) < frame_number) {
-      // Load pulse from PROGMEM
+    if (render_mode == TIME_LAPSE) {
+      // Read newly fired pulses
+      while (current_pulse != pulses_end && pgm_read_word(&(current_pulse->time)) < frame_number) {
+        // Load pulse from PROGMEM
+        struct pulse_t pulse;
+        memcpy_P(&pulse, current_pulse, sizeof(struct pulse_t));
+        // Set LED to its given colour and advance pointer
+        (*buffer)[pulse.led_index] = pulse.led;
+        led_remaining_on[pulse.led_index] = PULSE_DURATION;
+        last_frame_number = frame_number + PULSE_DURATION;
+        ++current_pulse;
+        if (current_pulse == pulses_end) {
+          last_frame_number += CLEAR_DURATION;
+        }
+      }
+    }
+    else if (render_mode == OVERVIEW_LOAD) {
+      current_pulse = current_item->event.pulses;
+      // Load als pulses from PROGMEM
       struct pulse_t pulse;
-      memcpy_P(&pulse, current_pulse, sizeof(struct pulse_t));
-      // Set LED to its given colour and advance pointer
-      (*buffer)[pulse.led_index] = pulse.led;
-      led_remaining_on[pulse.led_index] = PULSE_DURATION;
-      last_frame_number = frame_number + PULSE_DURATION;
-      ++current_pulse;
-      if (current_pulse == pulses_end) {
-        last_frame_number += CLEAR_DURATION;
+      while (current_pulse != pulses_end) {
+        memcpy_P(&pulse, current_pulse, sizeof(struct pulse_t));
+        // Set LED to its given colour and advance pointer
+        (*buffer)[pulse.led_index] = pulse.led;
+        led_remaining_on[pulse.led_index] = PULSE_DURATION;
+        ++current_pulse;
       }
     }
 
     // Determination of event display ending
-    if (frame_number == last_frame_number && current_pulse == pulses_end) {
-      // Proceed to next list item
-      current_item = current_item->next_item;
-      if (current_item) {
-        load_event(current_item);
+    if (
+          (frame_number == last_frame_number && current_pulse == pulses_end)
+       || render_mode == OVERVIEW_LOAD
+    ) {
+      // If in TIME_LAPSE mode, first proceed to OVERVIEW_MODE
+      switch (render_mode) {
+        case TIME_LAPSE:
+          last_frame_number += OVERVIEW_DURATION;
+          render_mode = OVERVIEW_LOAD;
+          break;
+
+        case OVERVIEW_LOAD:
+          render_mode = OVERVIEW_SHOW;
+          break;
+
+        case OVERVIEW_SHOW:
+          // Proceed to next list item
+          render_mode = TIME_LAPSE;
+          current_item = current_item->next_item;
+          if (current_item) {
+            load_event(current_item);
+          }
+          break;
       }
     }
   }
