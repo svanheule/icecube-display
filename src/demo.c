@@ -9,11 +9,13 @@ struct item_t {
 // Macros to define external symbols
 #define BIN_START(name) _binary_## name ## _start
 #define BIN_END(name) _binary_ ## name ## _end
-#define BIN_SIZE(name) _binary_ ## name ## _size
+#define BIN_SIZE_SYM(name) _binary_ ## name ## _size
+#define BIN_SIZE(name) ((uint16_t) BIN_SIZE_SYM(name))
 
 #define EXTERNAL_EVENT(name) \
-extern const struct pulse_t BIN_START(name) PROGMEM; \
-extern const struct pulse_t BIN_END(name) PROGMEM;
+extern const struct pulse_t BIN_START(name)[] PROGMEM;\
+extern const struct pulse_t BIN_END(name)[] PROGMEM;\
+extern const uint16_t BIN_SIZE_SYM(name)[];
 
 EXTERNAL_EVENT(___event_bin)
 
@@ -38,8 +40,8 @@ static void load_event(const struct item_t* item) {
 }
 
 void init_demo() {
-  event_0.event.pulses = &BIN_START(___event_bin);
-  event_0.event.length = &BIN_END(___event_bin) - &BIN_START(___event_bin);
+  event_0.event.pulses = BIN_START(___event_bin);
+  event_0.event.length = BIN_END(___event_bin) - BIN_START(___event_bin);
 
   current_item = &event_0;
   load_event(&event_0);
