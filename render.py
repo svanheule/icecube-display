@@ -90,12 +90,10 @@ class EventRenderer(Renderer):
     super().__init__(frame_rate)
     stations, charges, times = numpy.loadtxt(filename, skiprows=1, unpack=True)
 
-    charges = numpy.log10(charges+1)
-
     self.min_charge = min(charges)
     self.max_charge = max(charges)
     # Normalise charges and compress for displayability
-    charges = numpy.power(charges/self.max_charge, 2)
+    charges = numpy.power(charges/self.max_charge, .3)
 
     # Calculate time offset from first station and scale real time to display time
     times = self.TIME_STRETCH*(times - min(times)) + self.TIME_RISE
