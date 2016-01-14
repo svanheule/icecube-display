@@ -113,6 +113,7 @@ class EventRenderer(Renderer):
 
     self.tau = self.TIME_DECAY / numpy.log(2**9)
     self.colours = self.render_overview()
+    self.overview_frame = [LedFormat.float_to_led_data(rgb) for rgb in self.colours]
 
   def led_value(self, q0, t0):
     # Hue from 0 (red) to 2/3 (blue)
@@ -161,7 +162,6 @@ class EventRenderer(Renderer):
     pulses = sorted(pulses, key=lambda pulse: pulse[0])
     result = bytearray()
     for pulse in pulses:
-      print(struct.unpack(pulse_format, pulse))
       result += pulse
     return result
 
@@ -175,7 +175,7 @@ class EventRenderer(Renderer):
           data[led] = LedFormat.float_to_led_data(self.brightness_curve(self.display_time, t0)*self.colours[led])
       return data
     elif self.display_time < self.stop_time+self.overview_time:
-      return self.colours
+      return self.overview_frame
     else:
       raise StopIteration
 
