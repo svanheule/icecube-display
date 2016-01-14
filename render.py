@@ -5,16 +5,17 @@ from icetopdisplay import DisplayCom, LedFormat
 from icetopdisplay.geometry import pixel_to_station, station_to_pixel, LED_COUNT
 
 class Renderer:
-  def __init__(self, displaycom, frame_rate=25):
+  def __init__(self, frame_rate=25):
     self._timer = None
     self.halt = True
-    self._com = displaycom
+    self._com = None
     self.interval = 1/frame_rate
 
-  def start(self):
+  def start(self, displaycom):
     self._halt = False
     self.frame_number = 0
     self.display_time = 0
+    self._com = displaycom
     self._com.acquire()
     self._start_time = time.time()
     self._setup_next_frame()
@@ -25,6 +26,7 @@ class Renderer:
       self._timer.cancel()
       self._timer = None
     self._com.release()
+    self._com = None
 
   def _setup_next_frame(self):
     next_time = self._start_time + self.display_time + self.interval
@@ -84,8 +86,8 @@ class EventRenderer(Renderer):
   TIME_RISE = 0.5 # in s
   TIME_DECAY = 3.5
 
-  def __init__(self, displaycom, filename, frame_rate=25, overview_time=3):
-    super().__init__(displaycom, frame_rate)
+  def __init__(self, filename, frame_rate=25, overview_time=3):
+    super().__init__(frame_rate)
     stations, charges, times = numpy.loadtxt(filename, skiprows=1, unpack=True)
 
     charges = numpy.log10(charges+1)
@@ -189,19 +191,54 @@ class RenderInterrupt:
   def _handler(self, signal, frame):
     self._renderer.cancel()
 
+import argparse
 
 if __name__ == "__main__":
-  disp = DisplayCom()
+  parser = argparse.ArgumentParser(description="Render an IceTop event")
+  parser.add_argument("-t", "--test", action="store_true", help="Render test mode.")
+  parser.add_argument(
+      "-n", "--no-display"
+    , action="store_true"
+    , help="Don't display the rendered frames. Usefull in combination with `--output'"
+  )
+  parser.add_argument(
+      "-f", "--file"
+    , nargs=1
+    , type=argparse.FileType('r')
+    , help="Render the IceTop station information contained in FILE"
+  )
+  parser.add_argument(
+      "-o", "--output"
+    , nargs=1
+    , type=argparse.FileType('wb')
+    , help="Write a pre-rendered output to OUTPUT. See also `--no-display'."
+  )
 
-  if len(sys.argv) == 2:
-    renderer = EventRenderer(disp, sys.argv[1])
-  else:
+  args = parser.parse_args(sys.argv[1:])
+  renderer = None
+
+  if args.file is not None:
+    renderer = EventRenderer(args.file[0].name)
+    if args.output is not None:
+      pre_render = renderer.pre_render_event()
+      args.output[0].write(pre_render)
+
+  elif args.test:
+    print("test mode")
     renderer = TestRenderer(disp)
 
-  RenderInterrupt(renderer)
-  renderer.start()
 
-  disp.acquire()
-  disp.flush_buffer()
-  disp.release()
+  if not args.no_display:
+    disp = DisplayCom()
+
+    if renderer is not None:
+      RenderInterrupt(renderer)
+      renderer.start(disp)
+    else:
+      print("No renderer specified.")
+      sys.exit(-1)
+
+    disp.acquire()
+    disp.flush_buffer()
+    disp.release()
 
