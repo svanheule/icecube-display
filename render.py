@@ -1,7 +1,8 @@
 #!/usr/bin/python3
 
 import time, threading, struct
-from icetopdisplay import DisplayCom, LedFormat
+from icetopdisplay import DisplayCom
+from icetopdisplay import FormatAPA102 as LedFormat
 from icetopdisplay.geometry import pixel_to_station, station_to_pixel, LED_COUNT
 
 class Renderer:
