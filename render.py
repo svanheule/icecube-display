@@ -223,7 +223,6 @@ if __name__ == "__main__":
       args.output[0].write(pre_render)
 
   elif args.test:
-    print("test mode")
     renderer = TestRenderer(disp)
 
 
