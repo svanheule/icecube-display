@@ -88,6 +88,9 @@ int main () {
         render_snake(get_back_buffer());
         flip_pages();
         break;
+      case USART_WAIT:
+        clear_frame(get_front_buffer());
+        break;
       default:
         break;
     }
