@@ -1,4 +1,5 @@
 #include "test_render.h"
+#include <avr/pgmspace.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -40,7 +41,7 @@ struct station_t {
   int8_t v;
   int8_t w;
 };
-static const struct station_t STATION_VECTOR[LED_COUNT] = {
+static const struct station_t STATION_VECTOR[LED_COUNT] PROGMEM = {
     {5,0}, {4,0}, {3,0}, {2,0}, {1,0}, {0,0}
   , {0,1}, {1,1}, {2,1}, {3,1}, {4,1}, {5,1}, {6,1}
   , {7,2}, {6,2}, {5,2}, {4,2}, {3,2}, {2,2}, {1,2}, {0,2}
@@ -52,6 +53,8 @@ static const struct station_t STATION_VECTOR[LED_COUNT] = {
   , {10,8}, {9,8}, {8,8}, {7,8}, {6,8}, {5,8}, {4,8}
   , {5,9}, {6,9}, {7,9}, {8,9}
 };
+static const struct station_t CENTRE = {5,4}; //STATION_VECTOR[34]
+
 static uint8_t ring_frame;
 
 static uint8_t station_distance(const struct station_t s1, const struct station_t s2) {
@@ -66,9 +69,10 @@ void render_ring(frame_t* buffer) {
 
   uint8_t* frame = (uint8_t*) *buffer;
 
-  uint8_t led;
-  for (led = 0; led < LED_COUNT; ++led) {
-    uint8_t d = station_distance(STATION_VECTOR[led], STATION_VECTOR[34]);
+  for (uint8_t led = 0; led < LED_COUNT; ++led) {
+    struct station_t station;
+    memcpy_P(&station, STATION_VECTOR+led, sizeof(struct station_t));
+    uint8_t d = station_distance(station, CENTRE);
     uint16_t offset = 4*led;
     // Set global brightness
     frame[offset] = DEFAULT_BRIGHTNESS;
