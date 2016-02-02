@@ -3,8 +3,10 @@
 #include "display_driver.h"
 
 void init_display_driver() {
-  // DDRB must be set before SPCR, so the internal pull-up doens't cause SPI to go into slave mode
-  /* Configure port B as SPI master:
+#if defined(CONTROLLER_ARDUINO)
+  /* On the Arduino's ATmega328p the hardware SPI port is used, located on port B.
+   * DDRB must be set before SPCR, so the internal pull-up doens't cause SPI to go into slave mode
+   * Configure port B as SPI master:
    * * B5: SCK (out)
    * * B4: MISO (in, unused)
    * * B3: MOSI (out)
@@ -12,18 +14,44 @@ void init_display_driver() {
    */
   DDRB = _BV(DDB5)|_BV(DDB3)|_BV(DDB2);
   // Enable SPI, set as master
-  // Transmit MSB first, idle low, transmit on first (rising) edge, SCK=fOSC/4
+  // Transmit MSB first, idle low, transmit on first (rising) edge, SCK=fOSC/4 = 4MHz
   SPCR = _BV(SPE)|_BV(MSTR);
   SPSR = _BV(SPI2X);
+#elif defined(CONTROLLER_UGENT)
+  /* ATmega32U4 design uses the USART port in master SPI mode to drive the LED string.
+   * The USART pins are located on port D:
+   * * D2: RXD1 (MISO, in, unused)
+   * * D3: TXD1 (MOSI, out)
+   * * D5: XCK1 (SCK, out)
+   */
+#define SPI_BAUD_RATE 4000000UL
+  DDRD |= _BV(DDD5) | _BV(DDD3);
+  // USART as master SPI
+  UCSR1B = _BV(TXEN1);
+  UCSR1C = _BV(UMSEL11) | _BV(UMSEL10);
+  // Set baud rate to 4M, using 16MHz system clock
+  const uint16_t baud_rate_register = ((F_CPU + SPI_BAUD_RATE)/(2*SPI_BAUD_RATE) - 1);
+  UBRR1H = (uint8_t) ((baud_rate_register >> 8) & 0x0F);
+  UBRR1L = (uint8_t) baud_rate_register;
+#undef SPI_BAUD_RATE
+#endif
 }
 
 static inline void wait_write_finish () {
   // Check transmission finished bit
-  while ( !(SPSR & (1<<SPIF)) ) {}
+#if defined(CONTROLLER_ARDUINO)
+  while ( !(SPSR & _BV(SPIF)) ) {}
+#elif defined(CONTROLLER_UGENT)
+  while ( !(UCSR1A & _BV(UDRE1)) ) {}
+#endif
 }
 
 static inline void write_byte_no_block(const uint8_t byte) {
+#if defined(CONTROLLER_ARDUINO)
   SPDR = byte;
+#elif defined(CONTROLLER_UGENT)
+  UDR1 = byte;
+#endif
 }
 
 static inline void write_byte(const uint8_t byte) {
