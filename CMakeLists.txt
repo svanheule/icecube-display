@@ -97,7 +97,7 @@ target_compile_definitions(icetop_display
 )
 target_compile_options(icetop_display
   PUBLIC -Wall -Wpedantic # Error messages
-  PUBLIC -std=gnu99 # Language standard C99
+  PUBLIC -std=c99 # Language standard C99
   PUBLIC -Os -fshort-enums -ffunction-sections # Optimise for size
 )
 add_custom_command(
