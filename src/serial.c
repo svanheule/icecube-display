@@ -9,6 +9,11 @@
 
 #define BAUD_RATE 115200UL
 
+// Display global FSM
+static volatile enum usart_state_t usart_state = USART_LOCAL_MODE;
+static volatile uint8_t* write_ptr;
+static volatile uint8_t* frame_end;
+
 void init_serial_port() {
   // The minimal throughput for 25 FPS is 58500 baud.
   // This implies that 115200 baud is the minimal usable transmission rate.
@@ -23,12 +28,10 @@ void init_serial_port() {
   UCSR0B = _BV(RXCIE0) | _BV(RXEN0) | _BV(TXEN0);
   // Set mode to async, 8 bit, no parity, 1 stop bit
   UCSR0C = _BV(UCSZ01) | _BV(UCSZ00);
-}
 
-// Display global FSM
-static volatile enum usart_state_t usart_state = USART_WAIT;
-static volatile uint8_t* write_ptr;
-static volatile uint8_t* frame_end;
+  // Initialize into local mode
+  usart_state = USART_LOCAL_MODE;
+}
 
 // Forward declaration
 static void advance_usart_state(uint8_t word);
@@ -89,7 +92,6 @@ static void advance_usart_state(uint8_t word) {
           break;
         case COMMAND_DEMO:
           usart_state = USART_DEMO;
-          init_demo();
           break;
         case COMMAND_TEST_RING:
           usart_state = USART_TEST_RING;
@@ -99,6 +101,9 @@ static void advance_usart_state(uint8_t word) {
           break;
         case COMMAND_GET_ID:
           transmit_string("IT78:1:0", 8);
+          break;
+        case COMMAND_LOCAL_MODE:
+          usart_state = USART_LOCAL_MODE;
           break;
         default:
           break;
@@ -130,11 +135,22 @@ static void advance_usart_state(uint8_t word) {
       }
       break;
 
+    case USART_LOCAL_MODE:
+      if (word == COMMAND_LOCAL_MODE) {
+        usart_state = USART_WAIT;
+      }
+      break;
+
     // In case the state machine is in an undefined state, return to USART_WAIT.
     // This should not happen, but you never know...
     default:
       usart_state = USART_WAIT;
       break;
-
   }
+}
+
+
+uint8_t is_remote_connected() {
+  // Only return TRUE when the remote connection has been set to local mode.
+  return usart_state != USART_LOCAL_MODE;
 }

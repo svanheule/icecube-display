@@ -71,28 +71,38 @@ int main () {
 
     display_frame((const frame_t*) get_front_buffer());
 
-    switch (get_usart_state()) {
-      case USART_DEMO:
-        // Render to the front buffer to reuse the current frame
-        render_demo(get_front_buffer());
-        // Restart if finished
-        if (demo_finished()) {
-          init_demo();
-        }
-        break;
-      case USART_TEST_RING:
-        render_ring(get_back_buffer());
-        flip_pages();
-        break;
-      case USART_TEST_SNAKE:
-        render_snake(get_back_buffer());
-        flip_pages();
-        break;
-      case USART_WAIT:
-        clear_frame(get_front_buffer());
-        break;
-      default:
-        break;
+    enum usart_state_t state = get_usart_state();
+
+    if (state == USART_LOCAL_MODE) {
+      if (demo_finished()) {
+        init_demo();
+      }
+      render_demo(get_front_buffer());
+    }
+    else {
+      switch (state) {
+        case USART_DEMO:
+          // Restart if finished
+          if (demo_finished()) {
+            init_demo();
+          }
+          // Render to the front buffer to reuse the current frame
+          render_demo(get_front_buffer());
+          break;
+        case USART_TEST_RING:
+          render_ring(get_back_buffer());
+          flip_pages();
+          break;
+        case USART_TEST_SNAKE:
+          render_snake(get_back_buffer());
+          flip_pages();
+          break;
+        case USART_WAIT:
+          clear_frame(get_front_buffer());
+          break;
+        default:
+          break;
+      }
     }
 
     draw_frame = 0;

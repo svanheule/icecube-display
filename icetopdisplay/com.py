@@ -21,12 +21,13 @@ class DisplayCom:
 
   def _connect(self, waiting_time=2):
     # Ask for ID (command "I") and fail on timeout or incompatibility
-    self.port.write(b"I")
+    self.port.write(b"LI")
     waiting = 0
+    poll_time = 0.5
     while self.port.inWaiting() < 8 and waiting < waiting_time:
-      time.sleep(0.1)
-      waiting += 0.1
-      self.port.write(b"I")
+      time.sleep(poll_time)
+      waiting += poll_time
+      self.port.write(b"LI")
     if self.port.inWaiting() >= 8:
       result = self.port.read(8)
       if result != b"IT78:1:0":
