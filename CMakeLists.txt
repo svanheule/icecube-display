@@ -23,8 +23,15 @@ set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
 
+option(ARDUINO "Build image for Arduino development hardware" OFF)
+
 # Set the target AVR device
-set(AVR_TARGET_DEVICE atmega328p)
+if(ARDUINO)
+  set(AVR_TARGET_DEVICE atmega328p)
+else()
+  set(AVR_TARGET_DEVICE atmega32u4)
+endif()
+
 set(AVR_TARGET_F_CPU 16000000)
 
 # Set the GCC flags required
@@ -95,6 +102,12 @@ set_target_properties(icetop_display PROPERTIES
 target_compile_definitions(icetop_display
   PUBLIC F_CPU=${AVR_TARGET_F_CPU}UL
 )
+if(ARDUINO)
+  target_compile_definitions(icetop_display PUBLIC CONTROLLER_ARDUINO)
+else()
+  target_compile_definitions(icetop_display PUBLIC CONTROLLER_UGENT)
+endif()
+
 target_compile_options(icetop_display
   PUBLIC -Wall -Wpedantic # Error messages
   PUBLIC -std=c99 # Language standard C99
@@ -107,9 +120,12 @@ add_custom_command(
 )
 
 # Custom make target for uploading to Arduino
-add_custom_target(
-  upload
-  avrdude -c arduino -p ATMEGA328P -P /dev/ttyACM0 -b 115200 -U flash:w:icetop_display.hex
-  DEPENDS icetop_display
-  COMMENT "Upload new program file"
-)
+if(ARDUINO)
+  string(TOUPPER ${AVR_TARGET_DEVICE} target_upper)
+  add_custom_target(
+    upload
+    avrdude -c arduino -p ${target_upper} -P /dev/ttyACM0 -b 115200 -U flash:w:icetop_display.hex
+    DEPENDS icetop_display
+    COMMENT "Upload new program file"
+  )
+endif()
