@@ -52,8 +52,8 @@ class Renderer:
 class TestRenderer(Renderer):
   DECAY_LENGTH = 6
 
-  def __init__(self, displaycom, frame_rate=25):
-    super().__init__(displaycom, frame_rate)
+  def __init__(self, frame_rate=25):
+    super().__init__(frame_rate)
     self.position = 0
     self.direction = 1
 
@@ -221,10 +221,11 @@ if __name__ == "__main__":
     if args.output is not None:
       pre_render = renderer.pre_render_event()
       args.output[0].write(pre_render)
-
   elif args.test:
-    renderer = TestRenderer(disp)
-
+    renderer = TestRenderer()
+  else:
+    print("No renderer specified.")
+    sys.exit(-1)
 
   if not args.no_display:
     disp = DisplayCom()
@@ -232,9 +233,6 @@ if __name__ == "__main__":
     if renderer is not None:
       RenderInterrupt(renderer)
       renderer.start(disp)
-    else:
-      print("No renderer specified.")
-      sys.exit(-1)
 
     disp.acquire()
     disp.flush_buffer()
