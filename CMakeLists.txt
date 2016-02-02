@@ -1,5 +1,6 @@
 # Cross-compiling can only be done with v2.6 or later
-cmake_minimum_required(VERSION 2.6)
+# Generator expressions require v2.8
+cmake_minimum_required(VERSION 2.8)
 project(POCKET_ICETOP)
 
 set(CMAKE_SYSTEM_NAME Generic)
