@@ -1,6 +1,11 @@
 #include "demo.h"
 #include <avr/pgmspace.h>
 
+struct event_t {
+  const struct pulse_t* pulses_start; //< Array of pulses
+  const struct pulse_t* pulses_end; //< Past-the-end pointer
+};
+
 struct item_t {
   struct event_t event;
   struct item_t* next_item;
@@ -17,13 +22,36 @@ extern const struct pulse_t BIN_START(name)[] PROGMEM;\
 extern const struct pulse_t BIN_END(name)[] PROGMEM;\
 extern const uint16_t BIN_SIZE_SYM(name)[];
 
-EXTERNAL_EVENT(___event_bin)
+// Create list (stored in PROGMEM)
 
-// Create forward linked list (stored in PROGMEM)
-static struct item_t event_0;
+EXTERNAL_EVENT(event_s125_0_0_5_zen_0_0_1_bin)
+EXTERNAL_EVENT(event_s125_1_1_5_zen_0_0_1_bin)
+EXTERNAL_EVENT(event_s125_2_2_5_zen_0_0_1_bin)
+EXTERNAL_EVENT(event_s125_0_0_5_zen_0_2_0_25_bin)
+EXTERNAL_EVENT(event_s125_1_1_5_zen_0_2_0_25_bin)
+EXTERNAL_EVENT(event_s125_2_2_5_zen_0_2_0_25_bin)
+EXTERNAL_EVENT(event_s125_0_0_5_zen_0_3_0_35_bin)
+EXTERNAL_EVENT(event_s125_1_1_5_zen_0_3_0_35_bin)
+EXTERNAL_EVENT(event_s125_2_2_5_zen_0_3_0_35_bin)
+
+#define EVENT_ITEM(name) {BIN_START(name), BIN_END(name)}
+
+static const struct event_t events[] PROGMEM = {
+    EVENT_ITEM(event_s125_0_0_5_zen_0_0_1_bin)
+  , EVENT_ITEM(event_s125_1_1_5_zen_0_0_1_bin)
+  , EVENT_ITEM(event_s125_2_2_5_zen_0_0_1_bin)
+  , EVENT_ITEM(event_s125_0_0_5_zen_0_2_0_25_bin)
+  , EVENT_ITEM(event_s125_1_1_5_zen_0_2_0_25_bin)
+  , EVENT_ITEM(event_s125_2_2_5_zen_0_2_0_25_bin)
+  , EVENT_ITEM(event_s125_0_0_5_zen_0_3_0_35_bin)
+  , EVENT_ITEM(event_s125_1_1_5_zen_0_3_0_35_bin)
+  , EVENT_ITEM(event_s125_2_2_5_zen_0_3_0_35_bin)
+};
+static const struct event_t* events_end = events + sizeof(events)/sizeof(struct event_t);
+
 
 // Module global variables
-static const struct item_t* current_item;
+static const struct event_t* current_event;
 static const struct pulse_t* current_pulse;
 static const struct pulse_t* pulses_end;
 
@@ -33,26 +61,27 @@ static uint16_t last_frame_number;
 
 enum render_mode_t {
     TIME_LAPSE
-  , OVERVIEW_LOAD
-  , OVERVIEW_SHOW
+  , OVERVIEW_MODE
 };
 
-static enum render_mode_t render_mode = TIME_LAPSE;
+static enum render_mode_t render_mode;
 
-static void load_event(const struct item_t* item) {
+static void reset_event_P(const struct event_t* event) {
+  current_pulse = (struct pulse_t*) pgm_read_word(&(event->pulses_start));
+}
+
+static void load_event_P(const struct event_t* event) {
   frame_number = 0;
   last_frame_number = 0;
 
-  current_pulse = item->event.pulses;
-  pulses_end = current_pulse + item->event.length;
+  pulses_end = (struct pulse_t*) pgm_read_word(&(event->pulses_end));
+  reset_event_P(event);
 }
 
 void init_demo() {
-  event_0.event.pulses = BIN_START(___event_bin);
-  event_0.event.length = BIN_END(___event_bin) - BIN_START(___event_bin);
-
-  current_item = &event_0;
-  load_event(&event_0);
+  render_mode = TIME_LAPSE;
+  current_event = &events[0];
+  load_event_P(current_event);
   int i = LED_COUNT-1;
   do {
     led_remaining_on[i] = 0;
@@ -60,7 +89,7 @@ void init_demo() {
 }
 
 uint8_t demo_finished() {
-  return current_item ? 0 : 1;
+  return current_event ? 0 : 1;
 }
 
 void render_demo(frame_t* buffer) {
@@ -68,7 +97,7 @@ void render_demo(frame_t* buffer) {
     clear_frame(buffer);
   }
 
-  if (current_item) {
+  if (current_event) {
     // Decrement on-times and turn off timed out LEDs
     uint8_t i;
     for (i = 0; i < LED_COUNT; ++i) {
@@ -96,45 +125,42 @@ void render_demo(frame_t* buffer) {
         last_frame_number = frame_number + PULSE_DURATION;
         ++current_pulse;
         if (current_pulse == pulses_end) {
-          last_frame_number += CLEAR_DURATION;
+          last_frame_number += PULSE_CLEAR_DURATION;
         }
       }
     }
-    else if (render_mode == OVERVIEW_LOAD) {
-      current_pulse = current_item->event.pulses;
-      // Load als pulses from PROGMEM
+    else if (render_mode == OVERVIEW_MODE && current_pulse != pulses_end) {
+//      current_pulse = (struct pulse_t*) pgm_read_word(&(current_event->pulses_start));
+      // Load all pulses from PROGMEM
       struct pulse_t pulse;
       while (current_pulse != pulses_end) {
         memcpy_P(&pulse, current_pulse, sizeof(struct pulse_t));
         // Set LED to its given colour and advance pointer
         (*buffer)[pulse.led_index] = pulse.led;
-        led_remaining_on[pulse.led_index] = PULSE_DURATION;
+        led_remaining_on[pulse.led_index] = OVERVIEW_DURATION;
         ++current_pulse;
       }
     }
 
     // Determination of event display ending
-    if (
-          (frame_number == last_frame_number && current_pulse == pulses_end)
-       || render_mode == OVERVIEW_LOAD
-    ) {
+    if (frame_number == last_frame_number && current_pulse == pulses_end) {
       // If in TIME_LAPSE mode, first proceed to OVERVIEW_MODE
       switch (render_mode) {
         case TIME_LAPSE:
-          last_frame_number += OVERVIEW_DURATION;
-          render_mode = OVERVIEW_LOAD;
+          render_mode = OVERVIEW_MODE;
+          reset_event_P(current_event);
+          last_frame_number += OVERVIEW_DURATION + OVERVIEW_CLEAR_DURATION;
           break;
 
-        case OVERVIEW_LOAD:
-          render_mode = OVERVIEW_SHOW;
-          break;
-
-        case OVERVIEW_SHOW:
+        case OVERVIEW_MODE:
           // Proceed to next list item
           render_mode = TIME_LAPSE;
-          current_item = current_item->next_item;
-          if (current_item) {
-            load_event(current_item);
+          ++current_event;
+          if (current_event != events_end) {
+            load_event_P(current_event);
+          }
+          else {
+            current_event = 0;
           }
           break;
       }

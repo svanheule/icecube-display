@@ -32,6 +32,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmcu=${AVR_TARGET_DEVICE}")
 set(CMAKE_C_OUTPUT_EXTENSION ".o")
 #set(CMAKE_VERBOSE_MAKEFILE true)
 
+# Source files
 include_directories(src)
 set(SOURCES
   src/avr_main.c
@@ -42,8 +43,51 @@ set(SOURCES
   src/demo.c
 )
 
+set(EVENTS
+  event_s125_0_0.5_zen_0_0.1.txt
+  event_s125_0_0.5_zen_0.2_0.25.txt
+  event_s125_0_0.5_zen_0.3_0.35.txt
+  event_s125_1_1.5_zen_0_0.1.txt
+  event_s125_1_1.5_zen_0.2_0.25.txt
+  event_s125_1_1.5_zen_0.3_0.35.txt
+  event_s125_2_2.5_zen_0_0.1.txt
+  event_s125_2_2.5_zen_0.2_0.25.txt
+  event_s125_2_2.5_zen_0.3_0.35.txt
+)
+
+# Convert event TXT files to linkable object files
+foreach(event ${EVENTS})
+  set(event_bin_dir "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/events")
+  if(NOT EXISTS ${event_bin_dir})
+    file(MAKE_DIRECTORY ${event_bin_dir})
+  endif()
+
+  string(REPLACE ".txt" ".bin" bin_file_name ${event})
+  set(event_file "${PROJECT_SOURCE_DIR}/events/${event}")
+  set(bin_file "${event_bin_dir}/${bin_file_name}")
+  set(object_file "${event_bin_dir}/${bin_file_name}.o")
+
+  string(REGEX REPLACE "[^A-Za-z0-9]" "_" symbol_short ${bin_file_name})
+  string(REGEX REPLACE "[^A-Za-z0-9]" "_" symbol_long ${bin_file})
+
+  add_custom_command(
+    OUTPUT ${object_file}
+    DEPENDS ${event_file} render.py
+    COMMAND ./render.py -n -f ${event_file} -o ${bin_file}
+    COMMAND avr-objcopy -I binary -O elf32-avr
+      --redefine-sym _binary_${symbol_long}_start=_binary_${symbol_short}_start
+      --redefine-sym _binary_${symbol_long}_end=_binary_${symbol_short}_end
+      --redefine-sym _binary_${symbol_long}_size=_binary_${symbol_short}_size
+      --rename-section .data=.progmem.data,contents,alloc,load,readonly,data
+      "${bin_file}" "${object_file}"
+    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+  )
+
+  list(APPEND EVENT_OBJECTS ${object_file})
+endforeach()
+
 # Build program and generate associated hex file
-add_executable(icetop_display ${SOURCES})
+add_executable(icetop_display ${SOURCES} ${EVENT_OBJECTS})
 set_target_properties(icetop_display PROPERTIES
   LINK_FLAGS -Wl,-gc-sections
   SUFFIX ".elf"
