@@ -45,7 +45,7 @@ set(SOURCES
   src/avr_main.c
   src/display_driver.c
   src/frame_buffer.c
-  src/serial.c
+  src/remote.c
   src/test_render.c
   src/demo.c
 )

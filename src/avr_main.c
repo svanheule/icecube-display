@@ -8,7 +8,7 @@
 #include "frame_buffer.h"
 #include "demo.h"
 #include "test_render.h"
-#include "serial.h"
+#include "remote.h"
 
 /**
  * Dual frame buffer APA-102C LED display driver.

@@ -1,7 +1,8 @@
-#ifndef SERIAL_H
-#define SERIAL_H
+#ifndef REMOTE_H
+#define REMOTE_H
 
 #include <stdint.h>
+#include "frame_buffer.h"
 
 // USART interrupt handling
 #define COMMAND_FRAME 'A'
@@ -25,6 +26,8 @@ enum usart_state_t {
 };
 
 enum usart_state_t get_usart_state();
+
+const frame_t* get_remote_frame();
 
 uint8_t is_remote_connected();
 

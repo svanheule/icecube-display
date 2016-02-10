@@ -3,7 +3,7 @@
 #include <avr/interrupt.h>
 #include <stdlib.h>
 
-#include "serial.h"
+#include "remote.h"
 #include "frame_buffer.h"
 #include "demo.h"
 
