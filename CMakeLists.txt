@@ -34,8 +34,8 @@ if(ARDUINO)
   set(FUSE_HIGH 0xde)
   set(FUSE_EXTENDED 0x05)
   # Programmer: Arduino on port /dev/ttyACM0, baudrate 115200
-  set(PROGRAMMER_ID arduino)
-  set(PROGRAMMER_PORT_FLAGS -P /dev/ttyACM0 -b 115200)
+  set(DEFAULT_PROGRAMMER_ID arduino)
+  set(DEFAULT_PROGRAMMER_PORT_FLAGS -P /dev/ttyACM0 -b 115200)
 else()
   set(AVR_TARGET_DEVICE atmega32u4)
   # Fuse values
@@ -45,11 +45,19 @@ else()
   set(FUSE_HIGH 0xd9)
   # BOD level 4.3V, HWB/DFU enable
   set(FUSE_EXTENDED 0xf0)
-  set(PROGRAMMER_ID "")
-  set(PROGRAMMER_PORT_FLAGS "")
+#  set(DEFAULT_PROGRAMMER_ID "")
+#  set(DEFAULT_PROGRAMMER_PORT_FLAGS "")
 endif()
 
 set(AVR_TARGET_F_CPU 16000000)
+set(
+  PROGRAMMER_ID ${DEFAULT_PROGRAMMER_ID}
+  CACHE STRING "Programmer used to upload the application with avrdude"
+)
+set(
+  PROGRAMMER_PORT_FLAGS ${DEFAULT_PROGRAMMER_PORT_FLAGS}
+  CACHE STRING "avrdude options to specify the programmer settings"
+)
 
 # Set the GCC flags required
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmcu=${AVR_TARGET_DEVICE}")
@@ -136,8 +144,8 @@ add_custom_command(
   COMMAND avr-objcopy -O ihex -R .eeprom $<TARGET_FILE:icetop_display> icetop_display.hex
 )
 
-# Custom make target for uploading to Arduino
-if(ARDUINO)
+# Custom make target for uploading to microcontroller
+if(NOT ("${PROGRAMMER_ID}" STREQUAL "" OR "${PROGRAMMER_PORT_FLAGS}" STREQUAL ""))
   add_custom_target(
     upload
     avrdude -p $<UPPER_CASE:${AVR_TARGET_DEVICE}>
