@@ -1,6 +1,6 @@
 # Cross-compiling can only be done with v2.6 or later
-# Generator expressions require v2.8
-cmake_minimum_required(VERSION 2.8)
+# Used generator expressions require v3.0
+cmake_minimum_required(VERSION 3.0)
 project(POCKET_ICETOP)
 
 set(CMAKE_SYSTEM_NAME Generic)
@@ -24,12 +24,29 @@ set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
 
 option(ARDUINO "Build image for Arduino development hardware" OFF)
+option(FUSES "Enable setting of fuses (advanced feature, may brick your device)" OFF)
 
 # Set the target AVR device
 if(ARDUINO)
   set(AVR_TARGET_DEVICE atmega328p)
+  # Fuse values, default Arduino values
+  set(FUSE_LOW 0xff)
+  set(FUSE_HIGH 0xde)
+  set(FUSE_EXTENDED 0x05)
+  # Programmer: Arduino on port /dev/ttyACM0, baudrate 115200
+  set(PROGRAMMER_ID arduino)
+  set(PROGRAMMER_PORT_FLAGS -P /dev/ttyACM0 -b 115200)
 else()
   set(AVR_TARGET_DEVICE atmega32u4)
+  # Fuse values
+  # >8MHz crystal, low rise VCC, no clock-out, no clock divide by 8
+  set(FUSE_LOW 0xff)
+  # no on-chip debug, no JTAG, enable SPI, no WDT, no EEPROM save, bootsize 2k, boot to application
+  set(FUSE_HIGH 0xd9)
+  # BOD level 4.3V, HWB/DFU enable
+  set(FUSE_EXTENDED 0xf0)
+  set(PROGRAMMER_ID "")
+  set(PROGRAMMER_PORT_FLAGS "")
 endif()
 
 set(AVR_TARGET_F_CPU 16000000)
@@ -121,11 +138,25 @@ add_custom_command(
 
 # Custom make target for uploading to Arduino
 if(ARDUINO)
-  string(TOUPPER ${AVR_TARGET_DEVICE} target_upper)
   add_custom_target(
     upload
-    avrdude -c arduino -p ${target_upper} -P /dev/ttyACM0 -b 115200 -U flash:w:icetop_display.hex
+    avrdude -p $<UPPER_CASE:${AVR_TARGET_DEVICE}>
+      -c ${PROGRAMMER_ID} ${PROGRAMMER_PORT_FLAGS}
+      -U flash:w:icetop_display.hex
     DEPENDS icetop_display
     COMMENT "Upload new program file"
+  )
+endif()
+
+# Custom target for setting the fuses
+if(FUSES)
+  add_custom_target(
+    fuses
+    avrdude -p $<UPPER_CASE:${AVR_TARGET_DEVICE}>
+      -c ${PROGRAMMER_ID} ${PROGRAMMER_PORT_FLAGS}
+      -U lfuse:w:${FUSE_LOW}:m
+      -U hfuse:w:${FUSE_HIGH}:m
+      -U efuse:w:${FUSE_EXTENDED}:m
+    COMMENT "Setting microcontroller fuses..."
   )
 endif()
