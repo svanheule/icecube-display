@@ -18,6 +18,6 @@ struct pulse_t {
 
 void init_demo();
 uint8_t demo_finished();
-void render_demo(frame_t* buffer);
+void render_demo();
 
 #endif //EVENT_H

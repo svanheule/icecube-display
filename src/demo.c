@@ -51,6 +51,8 @@ static const struct event_t* events_end = events + sizeof(events)/sizeof(struct 
 
 
 // Module global variables
+static struct frame_buffer_t* frame;
+
 static const struct event_t* current_event;
 static const struct pulse_t* current_pulse;
 static const struct pulse_t* pulses_end;
@@ -79,6 +81,8 @@ static void load_event_P(const struct event_t* event) {
 }
 
 void init_demo() {
+  // TODO free frame memory when stopping demo mode
+  frame = create_frame();
   render_mode = TIME_LAPSE;
   current_event = &events[0];
   load_event_P(current_event);
@@ -88,11 +92,15 @@ void init_demo() {
   } while(i--);
 }
 
+// TODO stop_demo()
+
 uint8_t demo_finished() {
   return current_event ? 0 : 1;
 }
 
-void render_demo(frame_t* buffer) {
+void render_demo() {
+  frame_t* buffer = &(frame->buffer);
+
   if (frame_number == 0) {
     clear_frame(buffer);
   }
