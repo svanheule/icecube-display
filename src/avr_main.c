@@ -3,6 +3,7 @@
 #include <avr/sleep.h>
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "display_driver.h"
 #include "frame_buffer.h"
@@ -69,7 +70,15 @@ int main () {
       sleep_cpu();
     }
 
-    display_frame((const frame_t*) get_front_buffer());
+    struct frame_buffer_t* frame = pop_frame();
+    if (frame->buffer) {
+      frame->flags |= FRAME_DRAW_IN_PROGRESS;
+      display_frame((const frame_t*) frame->buffer);
+      frame->flags &= ~FRAME_DRAW_IN_PROGRESS;
+      if (frame->flags & FRAME_FREE_AFTER_DRAW) {
+        free(frame);
+      }
+    }
 
     enum usart_state_t state = get_usart_state();
 
