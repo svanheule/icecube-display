@@ -11,6 +11,7 @@
 
 // Display global FSM
 static volatile enum usart_state_t usart_state = USART_LOCAL_MODE;
+static struct frame_buffer_t* frame;
 static volatile uint8_t* write_ptr;
 static volatile uint8_t* frame_end;
 
@@ -86,7 +87,9 @@ static void advance_usart_state(uint8_t word) {
     case USART_WAIT:
       switch (word) {
         case COMMAND_FRAME:
-          write_ptr = (uint8_t*) *get_back_buffer();
+          frame = create_frame();
+          frame->flags = FRAME_FREE_AFTER_DRAW;
+          write_ptr = (uint8_t*) frame->buffer;
           frame_end = write_ptr + sizeof(frame_t);
           usart_state = USART_FRAME;
           break;
@@ -113,7 +116,14 @@ static void advance_usart_state(uint8_t word) {
     case USART_FRAME:
       *write_ptr = word;
       if (++write_ptr == frame_end) {
-        flip_pages();
+        // Frame transfer is completed, push to queue or drop if there is no room
+        if (!frame_queue_full()) {
+          push_frame(frame);
+        }
+        else {
+          free(frame);
+        }
+        frame = 0;
         usart_state = USART_WAIT;
       }
       break;
