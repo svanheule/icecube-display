@@ -2,6 +2,7 @@
 #define FRAME_BUFFER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 // Frame buffer size and structure definitions
 // A frame consist of LED_COUNT 4-tuples of bytes: brightness, red, green, blue
@@ -19,19 +20,31 @@ typedef struct led_t frame_t[LED_COUNT];
 // Total frame size
 #define FRAME_LENGTH sizeof(frame_t)
 
-/**
- * The display driver uses double buffering with a front and back buffer.
- * The front buffer is used for displaying a frame, while the back buffer may be used to draw
- * new frame contents.
- */
-/// Get the (read-only) pointer to the front buffer
-frame_t* get_front_buffer();
-/// Get the pointer the back bufer for drawing.
-frame_t* get_back_buffer();
-/// Swap the front and back buffer after completing a frame draw.
-void flip_pages();
-
 /// Clear the frame contents, i.e. set all values to zero.
 void clear_frame(frame_t* frame);
+
+// Frame queue
+/// Flag to indicate a frame buffer may be deallocated after drawing
+#define FRAME_FREE_AFTER_DRAW 1
+
+/// Flag to indicate if the frame is currently being drawn.
+/// A renderer may choose to abstain from drawing to the buffer to avoid rendering artifacts.
+#define FRAME_DRAW_IN_PROGRESS (1<<1)
+
+/// Object constisting of a frame buffer and a number of associated (bit)flags.
+/// * flags(0): FRAME_FREE_AFTER_DRAW
+/// * flags(1): FRAME_DRAW_IN_PROGRESS
+struct frame_buffer_t {
+  frame_t buffer;
+  uint8_t flags;
+};
+
+struct frame_buffer_t* create_frame();
+
+bool frame_queue_full();
+bool frame_queue_empty();
+
+bool push_frame(struct frame_buffer_t* frame);
+struct frame_buffer_t* pop_frame();
 
 #endif
