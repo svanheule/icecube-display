@@ -19,12 +19,6 @@ enum display_command_t {
   , DISPLAY_GOTO_TEST_SNAKE
 };
 
-struct renderer_t {
-  void (*start)();
-  void (*stop)();
-  struct frame_buffer_t (*render_frame)();
-};
-
 enum display_state_t get_display_state();
 
 void advance_display_state(enum display_command_t command);

@@ -47,4 +47,10 @@ bool frame_queue_empty();
 bool push_frame(struct frame_buffer_t* frame);
 struct frame_buffer_t* pop_frame();
 
+/// A renderer is an object that, once initialised/started, must return frames indefinitely.
+struct renderer_t {
+  void (*start)();
+  void (*stop)();
+  struct frame_buffer_t* (*render_frame)();
+};
 #endif
