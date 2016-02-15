@@ -41,6 +41,7 @@ set(SOURCES
   src/serial.c
   src/test_render.c
   src/demo.c
+  src/display_state.c
 )
 
 set(EVENTS
