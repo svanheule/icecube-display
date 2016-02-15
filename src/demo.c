@@ -1,4 +1,5 @@
 #include "demo.h"
+#include "stdlib.h"
 #include <avr/pgmspace.h>
 
 struct event_t {
@@ -81,7 +82,6 @@ static void load_event_P(const struct event_t* event) {
 }
 
 void init_demo() {
-  // TODO free frame memory when stopping demo mode
   frame = create_frame();
   render_mode = TIME_LAPSE;
   current_event = &events[0];
@@ -92,7 +92,12 @@ void init_demo() {
   } while(i--);
 }
 
-// TODO stop_demo()
+void stop_demo() {
+  if (frame) {
+    free(frame);
+  }
+  current_event = 0;
+}
 
 uint8_t demo_finished() {
   return current_event ? 0 : 1;
