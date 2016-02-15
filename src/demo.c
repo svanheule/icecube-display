@@ -2,6 +2,16 @@
 #include "stdlib.h"
 #include <avr/pgmspace.h>
 
+static void init_demo();
+static void stop_demo();
+static struct frame_buffer_t* render_demo();
+
+static const struct renderer_t DEMO_RENDERER = {
+    init_demo
+  , stop_demo
+  , render_demo
+};
+
 struct event_t {
   const struct pulse_t* pulses_start; //< Array of pulses
   const struct pulse_t* pulses_end; //< Past-the-end pointer
@@ -81,7 +91,7 @@ static void load_event_P(const struct event_t* event) {
   reset_event_P(event);
 }
 
-void init_demo() {
+static void init_demo() {
   frame = create_frame();
   render_mode = TIME_LAPSE;
   current_event = &events[0];
@@ -99,11 +109,11 @@ void stop_demo() {
   current_event = 0;
 }
 
-uint8_t demo_finished() {
+static bool demo_finished() {
   return current_event ? 0 : 1;
 }
 
-void render_demo() {
+static struct frame_buffer_t* render_demo() {
   frame_t* buffer = &(frame->buffer);
 
   if (frame_number == 0) {
@@ -182,4 +192,6 @@ void render_demo() {
   else {
     clear_frame(buffer);
   }
+
+  return frame;
 }
