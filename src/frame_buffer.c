@@ -19,7 +19,7 @@ static volatile bool head_wrapped;
 static volatile uint8_t tail;
 static volatile bool tail_wrapped;
 
-struct frame_buffer_t* init_frame() {
+struct frame_buffer_t* create_frame() {
   return (struct frame_buffer_t*) malloc(sizeof(struct frame_buffer_t));
 }
 
