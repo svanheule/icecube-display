@@ -13,28 +13,49 @@ enum direction_t {
     COUNT_UP = 1
   , COUNT_DOWN = -1
 };
-static enum direction_t direction = COUNT_UP;
+static enum direction_t direction;
 
+static void init_snake() {
+  direction = COUNT_UP;
+  snake_frame = 0;
+}
 
-void render_snake(frame_t* buffer) {
-  clear_frame(buffer);
-  struct led_t* write_ptr = *buffer;
+static void stop_snake() {}
 
-  uint8_t tail = TAIL_LENGTH;
-  while(tail--) {
-    write_ptr[snake_frame+tail] = (struct led_t) {DEFAULT_BRIGHTNESS, 0x10, 0x10, 0x10};
-  }
+struct frame_buffer_t* render_snake() {
+  struct frame_buffer_t* frame = create_frame();
 
-  if ((snake_frame == LED_COUNT-TAIL_LENGTH) && (direction == COUNT_UP)) {
-    direction = COUNT_DOWN;
-  }
-  else if ((snake_frame == 0) && (direction == COUNT_DOWN)) {
-    direction = COUNT_UP;
+  if (frame) {
+    clear_frame(frame);
+    struct led_t* write_ptr = &frame->buffer[0];
+
+    uint8_t tail = TAIL_LENGTH;
+    while(tail--) {
+      write_ptr[snake_frame+tail] = (struct led_t) {DEFAULT_BRIGHTNESS, 0x10, 0x10, 0x10};
+    }
+
+    if ((snake_frame == LED_COUNT-TAIL_LENGTH) && (direction == COUNT_UP)) {
+      direction = COUNT_DOWN;
+    }
+    else if ((snake_frame == 0) && (direction == COUNT_DOWN)) {
+      direction = COUNT_UP;
+    }
   }
 
   snake_frame = snake_frame + direction;
+
+  return frame;
 }
 
+static const struct renderer_t SNAKE_RENDERER = {
+    init_snake
+  , stop_snake
+  , render_snake
+};
+
+const struct renderer_t* get_snake_renderer() {
+  return &SNAKE_RENDERER;
+}
 
 // Render expanding concentric rings around station 36 with coordinates (5,4) (pixel nr. 35)
 struct station_t {
