@@ -45,6 +45,25 @@ void init_timer() {
   TIMSK1 = (1<<OCIE1A);
 }
 
+const struct renderer_t* get_renderer(const enum display_state_t display_state) {
+  switch (display_state) {
+    case DISPLAY_DEMO:
+      return get_demo_renderer();
+      break;
+    case DISPLAY_TEST_RING:
+      return get_ring_renderer();
+      break;
+    case DISPLAY_TEST_SNAKE:
+      return get_snake_renderer();
+      break;
+    case DISPLAY_IDLE:
+    case DISPLAY_EXTERNAL:
+    default:
+      return 0;
+      break;
+  }
+}
+
 int main () {
   // Init USART configuration
   init_serial_port();
@@ -65,8 +84,8 @@ int main () {
   // Enable interrupts
   sei();
 
-  const struct renderer_t* renderer = 0;
   enum display_state_t state = DISPLAY_IDLE;
+  const struct renderer_t* renderer = get_renderer(state);
 
   for (;;) {
     while (!draw_frame) {
@@ -93,22 +112,7 @@ int main () {
         renderer->stop();
       }
       // Select new renderer
-      switch (state) {
-        case DISPLAY_DEMO:
-          renderer = get_demo_renderer();
-          break;
-        case DISPLAY_TEST_RING:
-          renderer = get_ring_renderer();
-          break;
-        case DISPLAY_TEST_SNAKE:
-          renderer = get_snake_renderer();
-          break;
-        case DISPLAY_IDLE:
-        case DISPLAY_EXTERNAL:
-        default:
-          renderer = 0;
-          break;
-      }
+      renderer = get_renderer(state);
       // Init new renderer
       if (renderer) {
         renderer->start();
