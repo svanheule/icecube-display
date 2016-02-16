@@ -151,7 +151,7 @@ add_custom_command(
 )
 
 # Custom make target for uploading to microcontroller
-if(NOT ("${PROGRAMMER_ID}" STREQUAL "" OR "${PROGRAMMER_PORT_FLAGS}" STREQUAL ""))
+if(NOT ("${PROGRAMMER_ID}" STREQUAL ""))
   add_custom_target(
     upload
     avrdude -p $<UPPER_CASE:${AVR_TARGET_DEVICE}>
