@@ -3,8 +3,10 @@
 #include <avr/sleep.h>
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #include "display_driver.h"
+#include "display_state.h"
 #include "frame_buffer.h"
 #include "demo.h"
 #include "test_render.h"
@@ -63,46 +65,58 @@ int main () {
   // Enable interrupts
   sei();
 
+  const struct renderer_t* renderer = 0;
+  enum display_state_t state = DISPLAY_IDLE;
+
   for (;;) {
     while (!draw_frame) {
       // Idle CPU until next interrupt
       sleep_cpu();
     }
 
-    display_frame((const frame_t*) get_front_buffer());
-
-    enum usart_state_t state = get_usart_state();
-
-    if (state == USART_LOCAL_MODE) {
-      if (demo_finished()) {
-        init_demo();
+    struct frame_buffer_t* frame = pop_frame();
+    if (frame) {
+      frame->flags |= FRAME_DRAW_IN_PROGRESS;
+      display_frame((const frame_t*) frame->buffer);
+      frame->flags &= ~FRAME_DRAW_IN_PROGRESS;
+      if (frame->flags & FRAME_FREE_AFTER_DRAW) {
+        free(frame);
       }
-      render_demo(get_front_buffer());
     }
-    else {
+
+    // Detect display state changes and switch renderers accordingly
+    enum display_state_t new_state = get_display_state();
+    if (state != new_state) {
+      state = new_state;
+      // Stop current renderer
+      if (renderer) {
+        renderer->stop();
+      }
+      // Select new renderer
       switch (state) {
-        case USART_DEMO:
-          // Restart if finished
-          if (demo_finished()) {
-            init_demo();
-          }
-          // Render to the front buffer to reuse the current frame
-          render_demo(get_front_buffer());
+        case DISPLAY_DEMO:
+          renderer = get_demo_renderer();
           break;
-        case USART_TEST_RING:
-          render_ring(get_back_buffer());
-          flip_pages();
+        case DISPLAY_TEST_RING:
+          renderer = get_ring_renderer();
           break;
-        case USART_TEST_SNAKE:
-          render_snake(get_back_buffer());
-          flip_pages();
+        case DISPLAY_TEST_SNAKE:
+          renderer = get_snake_renderer();
           break;
-        case USART_WAIT:
-          clear_frame(get_front_buffer());
-          break;
+        case DISPLAY_IDLE:
+        case DISPLAY_EXTERNAL:
         default:
+          renderer = 0;
           break;
       }
+      // Init new renderer
+      if (renderer) {
+        renderer->start();
+      }
+    }
+
+    if (renderer) {
+      push_frame(renderer->render_frame());
     }
 
     draw_frame = 0;

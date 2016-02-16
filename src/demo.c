@@ -1,5 +1,20 @@
 #include "demo.h"
+#include "stdlib.h"
 #include <avr/pgmspace.h>
+
+static void init_demo();
+static void stop_demo();
+static struct frame_buffer_t* render_demo();
+
+static const struct renderer_t DEMO_RENDERER = {
+    init_demo
+  , stop_demo
+  , render_demo
+};
+
+const struct renderer_t* get_demo_renderer(){
+  return &DEMO_RENDERER;
+}
 
 struct event_t {
   const struct pulse_t* pulses_start; //< Array of pulses
@@ -51,6 +66,8 @@ static const struct event_t* events_end = events + sizeof(events)/sizeof(struct 
 
 
 // Module global variables
+static struct frame_buffer_t* frame;
+
 static const struct event_t* current_event;
 static const struct pulse_t* current_pulse;
 static const struct pulse_t* pulses_end;
@@ -78,23 +95,35 @@ static void load_event_P(const struct event_t* event) {
   reset_event_P(event);
 }
 
-void init_demo() {
+static void init_demo() {
+  frame = create_frame();
   render_mode = TIME_LAPSE;
-  current_event = &events[0];
-  load_event_P(current_event);
+  if (frame) {
+    current_event = &events[0];
+    load_event_P(current_event);
+  }
+  else {
+    current_event = 0;
+  }
+
   int i = LED_COUNT-1;
   do {
     led_remaining_on[i] = 0;
   } while(i--);
 }
 
-uint8_t demo_finished() {
-  return current_event ? 0 : 1;
+void stop_demo() {
+  if (frame) {
+    free(frame);
+  }
+  current_event = 0;
 }
 
-void render_demo(frame_t* buffer) {
+static struct frame_buffer_t* render_demo() {
+  frame_t* buffer = &(frame->buffer);
+
   if (frame_number == 0) {
-    clear_frame(buffer);
+    clear_frame(frame);
   }
 
   if (current_event) {
@@ -156,17 +185,17 @@ void render_demo(frame_t* buffer) {
           // Proceed to next list item
           render_mode = TIME_LAPSE;
           ++current_event;
-          if (current_event != events_end) {
-            load_event_P(current_event);
+          if (current_event == events_end) {
+            current_event = &events[0];
           }
-          else {
-            current_event = 0;
-          }
+          load_event_P(current_event);
           break;
       }
     }
   }
   else {
-    clear_frame(buffer);
+    clear_frame(frame);
   }
+
+  return frame;
 }

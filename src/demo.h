@@ -16,8 +16,6 @@ struct pulse_t {
   struct led_t led; //< LED brightness and colour
 };
 
-void init_demo();
-uint8_t demo_finished();
-void render_demo(frame_t* buffer);
+const struct renderer_t* get_demo_renderer();
 
 #endif //EVENT_H

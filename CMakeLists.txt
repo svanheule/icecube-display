@@ -73,6 +73,7 @@ set(SOURCES
   src/remote.c
   src/test_render.c
   src/demo.c
+  src/display_state.c
 )
 
 set(EVENTS
