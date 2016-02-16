@@ -1,10 +1,10 @@
 #ifndef REMOTE_H
 #define REMOTE_H
 
-#include <stdint.h>
+#include <stdbool.h>
 
 void init_remote();
 
-uint8_t is_remote_connected();
+bool is_remote_connected();
 
 #endif

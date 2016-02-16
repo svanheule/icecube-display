@@ -178,7 +178,7 @@ static void advance_usart_state(uint8_t word) {
 }
 
 
-uint8_t is_remote_connected() {
+bool is_remote_connected() {
   // Only return TRUE when the remote connection has been set to local mode.
   return usart_state != USART_LOCAL_MODE;
 }

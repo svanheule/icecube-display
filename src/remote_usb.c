@@ -2,6 +2,6 @@
 
 void init_remote() {}
 
-uint8_t is_remote_connected() {
+bool is_remote_connected() {
   return false;
 }
