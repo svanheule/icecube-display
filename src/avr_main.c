@@ -65,8 +65,8 @@ const struct renderer_t* get_renderer(const enum display_state_t display_state) 
 }
 
 int main () {
-  // Init USART configuration
-  init_serial_port();
+  // Init remote communications module
+  init_remote();
 
   // Init pin configuration: USART, SPI
   init_display_driver();

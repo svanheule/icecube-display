@@ -9,13 +9,31 @@
 
 #define BAUD_RATE 115200UL
 
+// USART commands
+#define COMMAND_FRAME 'A'
+#define COMMAND_DEMO 'D'
+#define COMMAND_TEST_RING 'R'
+#define COMMAND_TEST_SNAKE 'S'
+#define COMMAND_GET_ID 'I'
+#define COMMAND_LOCAL_MODE 'L'
+
+enum usart_state_t {
+    USART_LOCAL_MODE
+  , USART_WAIT
+  , USART_FRAME
+  , USART_DEMO
+  , USART_TEST_RING
+  , USART_TEST_SNAKE
+  // TODO Add diagnostics
+};
+
 // Display global FSM
 static volatile enum usart_state_t usart_state = USART_LOCAL_MODE;
 static struct frame_buffer_t* frame;
 static volatile uint8_t* write_ptr;
 static volatile uint8_t* frame_end;
 
-void init_serial_port() {
+void init_remote() {
   // The minimal throughput for 25 FPS is 58500 baud.
   // This implies that 115200 baud is the minimal usable transmission rate.
   // Set baud rate to 115.2k, using 16MHz system clock
