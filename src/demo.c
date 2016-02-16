@@ -12,6 +12,10 @@ static const struct renderer_t DEMO_RENDERER = {
   , render_demo
 };
 
+const struct renderer_t* get_demo_renderer(){
+  return &DEMO_RENDERER;
+}
+
 struct event_t {
   const struct pulse_t* pulses_start; //< Array of pulses
   const struct pulse_t* pulses_end; //< Past-the-end pointer
