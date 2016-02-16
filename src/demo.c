@@ -109,10 +109,6 @@ void stop_demo() {
   current_event = 0;
 }
 
-static bool demo_finished() {
-  return current_event ? 0 : 1;
-}
-
 static struct frame_buffer_t* render_demo() {
   frame_t* buffer = &(frame->buffer);
 
@@ -179,12 +175,10 @@ static struct frame_buffer_t* render_demo() {
           // Proceed to next list item
           render_mode = TIME_LAPSE;
           ++current_event;
-          if (current_event != events_end) {
-            load_event_P(current_event);
+          if (current_event == events_end) {
+            current_event = &events[0];
           }
-          else {
-            current_event = 0;
-          }
+          load_event_P(current_event);
           break;
       }
     }
