@@ -113,7 +113,7 @@ static struct frame_buffer_t* render_demo() {
   frame_t* buffer = &(frame->buffer);
 
   if (frame_number == 0) {
-    clear_frame(buffer);
+    clear_frame(frame);
   }
 
   if (current_event) {
@@ -184,7 +184,7 @@ static struct frame_buffer_t* render_demo() {
     }
   }
   else {
-    clear_frame(buffer);
+    clear_frame(frame);
   }
 
   return frame;

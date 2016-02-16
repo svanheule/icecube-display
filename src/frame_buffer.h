@@ -20,9 +20,6 @@ typedef struct led_t frame_t[LED_COUNT];
 // Total frame size
 #define FRAME_LENGTH sizeof(frame_t)
 
-/// Clear the frame contents, i.e. set all values to zero.
-void clear_frame(frame_t* frame);
-
 // Frame queue
 /// Flag to indicate a frame buffer may be deallocated after drawing
 #define FRAME_FREE_AFTER_DRAW 1
@@ -40,6 +37,9 @@ struct frame_buffer_t {
 };
 
 struct frame_buffer_t* create_frame();
+
+/// Clear the frame contents, i.e. set all values to zero.
+void clear_frame(struct frame_buffer_t* frame);
 
 bool frame_queue_full();
 bool frame_queue_empty();
