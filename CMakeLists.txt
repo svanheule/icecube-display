@@ -70,11 +70,16 @@ set(SOURCES
   src/avr_main.c
   src/display_driver.c
   src/frame_buffer.c
-  src/remote.c
   src/test_render.c
   src/demo.c
   src/display_state.c
 )
+
+if(ARDUINO)
+  list(APPEND SOURCES src/remote_serial.c)
+else()
+  list(APPEND SOURCES src/remote_usb.c)
+endif()
 
 set(EVENTS
   event_s125_0_0.5_zen_0_0.1.txt
