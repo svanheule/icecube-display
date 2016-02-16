@@ -78,35 +78,47 @@ static const struct station_t CENTRE = {5,4}; //STATION_VECTOR[34]
 
 static uint8_t ring_frame;
 
+static void init_ring() {
+  ring_frame = 0;
+}
+
+static void stop_ring() {}
+
 static uint8_t station_distance(const struct station_t s1, const struct station_t s2) {
   int8_t dv = s1.v - s2.v;
   int8_t dw = s1.w - s2.w;
   return (abs(dv) + abs(dw) + abs(dv-dw))>>1;
 }
 
-void render_ring(frame_t* buffer) {
-  // Only expand every second frame
-  uint8_t radius = ring_frame>>1;
+struct frame_buffer_t* render_ring() {
+  struct frame_buffer_t* frame = create_frame();
 
-  uint8_t* frame = (uint8_t*) *buffer;
+  if (frame) {
+    clear_frame(frame);
 
-  for (uint8_t led = 0; led < LED_COUNT; ++led) {
-    struct station_t station;
-    memcpy_P(&station, STATION_VECTOR+led, sizeof(struct station_t));
-    uint8_t d = station_distance(station, CENTRE);
-    uint16_t offset = 4*led;
-    // Set global brightness
-    frame[offset] = DEFAULT_BRIGHTNESS;
+    // Only expand every second frame
+    uint8_t radius = ring_frame>>1;
 
-    // Set colour
-    ++offset;
-    uint8_t colour;
-    for (colour = 0; colour < 3; ++colour) {
-      if (d+colour == radius) {
-        frame[offset+colour] = 0x0F;
-      }
-      else {
-        frame[offset+colour] = 0x00;
+    uint8_t* buffer = (uint8_t*) frame->buffer;
+
+    for (uint8_t led = 0; led < LED_COUNT; ++led) {
+      struct station_t station;
+      memcpy_P(&station, STATION_VECTOR+led, sizeof(struct station_t));
+      uint8_t d = station_distance(station, CENTRE);
+      uint16_t offset = 4*led;
+      // Set global brightness
+      buffer[offset] = DEFAULT_BRIGHTNESS;
+
+      // Set colour
+      ++offset;
+      uint8_t colour;
+      for (colour = 0; colour < 3; ++colour) {
+        if (d+colour == radius) {
+          buffer[offset+colour] = 0x0F;
+        }
+        else {
+          buffer[offset+colour] = 0x00;
+        }
       }
     }
   }
@@ -114,4 +126,16 @@ void render_ring(frame_t* buffer) {
   // There are 6 rings available, but since there are two smaller circles 2 extra frames are needed
   // Count up 16 to halve the frame rate
   ring_frame = (ring_frame+1)%16;
+
+  return frame;
+}
+
+static const struct renderer_t RING_RENDERER = {
+    init_ring
+  , stop_ring
+  , render_ring
+};
+
+const struct renderer_t* get_ring_renderer() {
+  return &RING_RENDERER;
 }
