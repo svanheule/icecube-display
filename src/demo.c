@@ -94,8 +94,14 @@ static void load_event_P(const struct event_t* event) {
 static void init_demo() {
   frame = create_frame();
   render_mode = TIME_LAPSE;
-  current_event = &events[0];
-  load_event_P(current_event);
+  if (frame) {
+    current_event = &events[0];
+    load_event_P(current_event);
+  }
+  else {
+    current_event = 0;
+  }
+
   int i = LED_COUNT-1;
   do {
     led_remaining_on[i] = 0;
