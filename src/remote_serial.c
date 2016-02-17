@@ -5,8 +5,10 @@
 
 #include "remote.h"
 #include "frame_buffer.h"
-#include "demo.h"
+#include "display_state.h"
 
+// The minimal throughput for 25 FPS is 58500 baud.
+// This implies that 115200 baud is the minimal usable transmission rate.
 #define BAUD_RATE 115200UL
 
 // USART commands
@@ -21,9 +23,6 @@ enum usart_state_t {
     USART_LOCAL_MODE
   , USART_WAIT
   , USART_FRAME
-  , USART_DEMO
-  , USART_TEST_RING
-  , USART_TEST_SNAKE
   // TODO Add diagnostics
 };
 
@@ -34,8 +33,6 @@ static volatile uint8_t* write_ptr;
 static volatile uint8_t* frame_end;
 
 void init_remote() {
-  // The minimal throughput for 25 FPS is 58500 baud.
-  // This implies that 115200 baud is the minimal usable transmission rate.
   // Set baud rate to 115.2k, using 16MHz system clock
   const uint16_t baud_rate_register = ((F_CPU + 4*BAUD_RATE)/(8*BAUD_RATE) - 1);
   UBRR0H = (uint8_t) ((baud_rate_register >> 8) & 0x0F);
@@ -52,8 +49,6 @@ void init_remote() {
   usart_state = USART_LOCAL_MODE;
 }
 
-// Forward declaration
-static void advance_usart_state(uint8_t word);
 enum usart_state_t get_usart_state() {
   return usart_state;
 }
@@ -97,10 +92,6 @@ ISR(USART_RX_vect) {
   uint8_t word = UDR0;
 
   // Advance state machine
-  advance_usart_state(word);
-}
-
-static void advance_usart_state(uint8_t word) {
   switch (usart_state) {
     case USART_WAIT:
       switch (word) {
@@ -112,13 +103,13 @@ static void advance_usart_state(uint8_t word) {
           usart_state = USART_FRAME;
           break;
         case COMMAND_DEMO:
-          usart_state = USART_DEMO;
+          advance_display_state(DISPLAY_GOTO_DEMO);
           break;
         case COMMAND_TEST_RING:
-          usart_state = USART_TEST_RING;
+          advance_display_state(DISPLAY_GOTO_TEST_RING);
           break;
         case COMMAND_TEST_SNAKE:
-          usart_state = USART_TEST_SNAKE;
+          advance_display_state(DISPLAY_GOTO_TEST_SNAKE);
           break;
         case COMMAND_GET_ID:
           transmit_string("IT78:1:0", 8);
@@ -142,23 +133,6 @@ static void advance_usart_state(uint8_t word) {
           free(frame);
         }
         frame = 0;
-        usart_state = USART_WAIT;
-      }
-      break;
-
-    case USART_DEMO:
-      if (word == COMMAND_DEMO) {
-        usart_state = USART_WAIT;
-      }
-      break;
-    case USART_TEST_RING:
-      if (word == COMMAND_TEST_RING) {
-        usart_state = USART_WAIT;
-      }
-      break;
-
-    case USART_TEST_SNAKE:
-      if (word == COMMAND_TEST_SNAKE) {
         usart_state = USART_WAIT;
       }
       break;
