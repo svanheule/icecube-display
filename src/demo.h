@@ -10,12 +10,6 @@
 #define OVERVIEW_DURATION 75
 #define OVERVIEW_CLEAR_DURATION 50
 
-struct pulse_t {
-  uint16_t time; //< Turn-on time of led
-  uint8_t led_index;
-  struct led_t led; //< LED brightness and colour
-};
-
 const struct renderer_t* get_demo_renderer();
 
 #endif //EVENT_H

@@ -16,14 +16,15 @@ const struct renderer_t* get_demo_renderer(){
   return &DEMO_RENDERER;
 }
 
+struct pulse_t {
+  uint16_t time; //< Turn-on time of led
+  uint8_t led_index;
+  struct led_t led; //< LED brightness and colour
+};
+
 struct event_t {
   const struct pulse_t* pulses_start; //< Array of pulses
   const struct pulse_t* pulses_end; //< Past-the-end pointer
-};
-
-struct item_t {
-  struct event_t event;
-  struct item_t* next_item;
 };
 
 // Macros to define external symbols
@@ -65,137 +66,112 @@ static const struct event_t events[] PROGMEM = {
 static const struct event_t* events_end = events + sizeof(events)/sizeof(struct event_t);
 
 
-// Module global variables
-static struct frame_buffer_t* frame;
-
+// Module variables
 static const struct event_t* current_event;
 static const struct pulse_t* current_pulse;
 static const struct pulse_t* pulses_end;
 
 static uint16_t frame_number;
-static uint8_t led_remaining_on[LED_COUNT];
-static uint16_t last_frame_number;
+static uint16_t mode_end;
 
 enum render_mode_t {
     TIME_LAPSE
-  , OVERVIEW_MODE
+  , TIME_LAPSE_CLEAR
+  , OVERVIEW
+  , OVERVIEW_CLEAR
 };
 
 static enum render_mode_t render_mode;
 
 static void reset_event_P(const struct event_t* event) {
-  current_pulse = (struct pulse_t*) pgm_read_word(&(event->pulses_start));
+  current_pulse = (const struct pulse_t*) pgm_read_word(&(event->pulses_start));
 }
 
 static void load_event_P(const struct event_t* event) {
   frame_number = 0;
-  last_frame_number = 0;
+  mode_end = 0;
 
-  pulses_end = (struct pulse_t*) pgm_read_word(&(event->pulses_end));
+  pulses_end = (const struct pulse_t*) pgm_read_word(&(event->pulses_end));
   reset_event_P(event);
 }
 
 static void init_demo() {
-  frame = create_frame();
   render_mode = TIME_LAPSE;
-  if (frame) {
-    current_event = &events[0];
-    load_event_P(current_event);
-  }
-  else {
-    current_event = 0;
-  }
-
-  int i = LED_COUNT-1;
-  do {
-    led_remaining_on[i] = 0;
-  } while(i--);
+  current_event = &events[0];
+  load_event_P(current_event);
 }
 
 void stop_demo() {
-  if (frame) {
-    free(frame);
-  }
   current_event = 0;
 }
 
 static struct frame_buffer_t* render_demo() {
-  frame_t* buffer = &(frame->buffer);
-
-  if (frame_number == 0) {
-    clear_frame(frame);
+  struct frame_buffer_t* frame = 0;
+  // Only allocate a frame if there's something to be rendered
+  if (current_event) {
+    frame = create_frame();
   }
 
-  if (current_event) {
-    // Decrement on-times and turn off timed out LEDs
-    uint8_t i;
-    for (i = 0; i < LED_COUNT; ++i) {
-      if (led_remaining_on[i] > 0) {
-        // Decrease remaining on-time
-        --led_remaining_on[i];
-        if (led_remaining_on[i] == 0) {
-          (*buffer)[i] = (struct led_t) {0, 0, 0, 0};
+  if (frame) {
+    // Allow frame to be released
+    frame->flags = FRAME_FREE_AFTER_DRAW;
+    clear_frame(frame);
+
+    // Loop over currently shown pulses
+    const struct pulse_t* pulse = current_pulse;
+    while (pulse != pulses_end && pgm_read_word(&(pulse->time)) <= frame_number) {
+      uint8_t index = pgm_read_byte(&(pulse->led_index));
+      memcpy_P(&(frame->buffer[index]), &(pulse->led), sizeof(struct led_t));
+      ++pulse;
+    }
+
+    // Check if current starting pulse or rendering mode should be changed
+    switch (render_mode) {
+      case TIME_LAPSE:
+        if ( current_pulse != pulses_end
+          && pgm_read_word(&(current_pulse->time))+PULSE_DURATION <= frame_number
+        ) {
+          ++current_pulse;
+          // If last pulse was reached, set display clear time-out and change mode
+          if (current_pulse == pulses_end) {
+            render_mode = TIME_LAPSE_CLEAR;
+            mode_end = frame_number + PULSE_CLEAR_DURATION;
+          }
         }
-      }
-    }
-
-    // Set frame_number to its next value
-    ++frame_number;
-
-    if (render_mode == TIME_LAPSE) {
-      // Read newly fired pulses
-      while (current_pulse != pulses_end && pgm_read_word(&(current_pulse->time)) < frame_number) {
-        // Load pulse from PROGMEM
-        struct pulse_t pulse;
-        memcpy_P(&pulse, current_pulse, sizeof(struct pulse_t));
-        // Set LED to its given colour and advance pointer
-        (*buffer)[pulse.led_index] = pulse.led;
-        led_remaining_on[pulse.led_index] = PULSE_DURATION;
-        last_frame_number = frame_number + PULSE_DURATION;
-        ++current_pulse;
-        if (current_pulse == pulses_end) {
-          last_frame_number += PULSE_CLEAR_DURATION;
-        }
-      }
-    }
-    else if (render_mode == OVERVIEW_MODE && current_pulse != pulses_end) {
-//      current_pulse = (struct pulse_t*) pgm_read_word(&(current_event->pulses_start));
-      // Load all pulses from PROGMEM
-      struct pulse_t pulse;
-      while (current_pulse != pulses_end) {
-        memcpy_P(&pulse, current_pulse, sizeof(struct pulse_t));
-        // Set LED to its given colour and advance pointer
-        (*buffer)[pulse.led_index] = pulse.led;
-        led_remaining_on[pulse.led_index] = OVERVIEW_DURATION;
-        ++current_pulse;
-      }
-    }
-
-    // Determination of event display ending
-    if (frame_number == last_frame_number && current_pulse == pulses_end) {
-      // If in TIME_LAPSE mode, first proceed to OVERVIEW_MODE
-      switch (render_mode) {
-        case TIME_LAPSE:
-          render_mode = OVERVIEW_MODE;
+        break;
+      case TIME_LAPSE_CLEAR:
+        if (frame_number == mode_end) {
+          render_mode = OVERVIEW;
+          mode_end = frame_number + OVERVIEW_DURATION;
+          // Reset pulse pointer to first pulse
+          // This will cause the renderer to show all pulses in next frame
           reset_event_P(current_event);
-          last_frame_number += OVERVIEW_DURATION + OVERVIEW_CLEAR_DURATION;
-          break;
-
-        case OVERVIEW_MODE:
-          // Proceed to next list item
+        }
+        break;
+      case OVERVIEW:
+        if (frame_number == mode_end) {
+          render_mode = OVERVIEW_CLEAR;
+          // Set pulse pointer to point past the end so no pulses are shown in the next frame
+          current_pulse = pulses_end;
+          mode_end = frame_number + OVERVIEW_CLEAR_DURATION;
+        }
+        break;
+      case OVERVIEW_CLEAR:
+        if (frame_number == mode_end) {
           render_mode = TIME_LAPSE;
+          // Go to next event if the current isn't the last, otherwise reset
           ++current_event;
           if (current_event == events_end) {
-            current_event = &events[0];
+            current_event = &(events[0]);
           }
           load_event_P(current_event);
-          break;
-      }
+        }
+        break;
     }
+
+    ++frame_number;
   }
-  else {
-    clear_frame(frame);
-  }
+
 
   return frame;
 }
