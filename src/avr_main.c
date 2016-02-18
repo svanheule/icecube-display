@@ -84,8 +84,13 @@ int main () {
   // Enable interrupts
   sei();
 
-  enum display_state_t state = DISPLAY_IDLE;
+  advance_display_state(DISPLAY_GOTO_DEMO);
+
+  enum display_state_t state = get_display_state();
   const struct renderer_t* renderer = get_renderer(state);
+  if (renderer) {
+    renderer->start();
+  }
 
   for (;;) {
     while (!draw_frame) {
