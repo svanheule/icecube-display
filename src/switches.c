@@ -6,11 +6,15 @@
 // Based on http://www.ganssle.com/debouncing.htm
 
 // Currently assume all switches are on the same port
-#define SWITCH_PORT DDRB
-#define SWITCH_0_PIN DDB0
+#define SWITCH_PORT_DIRECTION DDRD
+#define SWITCH_PORT_OUTPUT PORTD
+#define SWITCH_PORT_INPUT PIND
+#define SWITCH_0_PIN DDD0
+#define SWITCH_1_PIN DDD1
 
 static const uint8_t switch_pins[SWITCH_COUNT] = {
     SWITCH_0_PIN
+  , SWITCH_1_PIN
 };
 
 // Launch pin read every ~5ms (200Hz)
@@ -31,7 +35,9 @@ static volatile uint8_t switch_edge_detected;
 void init_switches() {
   for (int i = 0; i < SWITCH_COUNT; ++i) {
     // Set port connected to push button to input
-    SWITCH_PORT &= ~(_BV(switch_pins[i]));
+    SWITCH_PORT_DIRECTION &= ~(_BV(switch_pins[i]));
+    // Disable internal pull-up since an external pull-up is provided
+    SWITCH_PORT_OUTPUT &= ~(_BV(switch_pins[i]));
     // Init countdown timers
     switch_timer[i] = SWITCH_TO_PRESSED_MS / SWITCH_CHECK_MS;
   }
@@ -62,7 +68,7 @@ void disable_switches() {
 /// A switch depressed switch will read '1' (pull-up), a pressed switch '0'
 static enum switch_state_t get_switch_signal(uint8_t switch_index) {
   uint8_t pin = switch_pins[switch_index];
-  if (SWITCH_PORT & _BV(pin)) {
+  if (SWITCH_PORT_INPUT & _BV(pin)) {
     return DEPRESSED;
   }
   else {
@@ -114,7 +120,7 @@ ISR(TIMER0_COMPA_vect) {
   }
 }
 
-uint8_t switch_pressed(uint8_t switch_index) {
+bool switch_pressed(uint8_t switch_index) {
   return switch_edge_detected &= _BV(switch_index);
 }
 

@@ -2,10 +2,11 @@
 #define SWITCHES_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
-#define SWITCH_COUNT 1
+#define SWITCH_COUNT 2
 #define SWITCH_DEMO_1 0
-//#define SWITCH_DEMO_2 1
+#define SWITCH_DEMO_2 1
 
 enum switch_state_t {
     PRESSED
@@ -16,7 +17,7 @@ enum switch_state_t {
 void init_switches();
 
 /// Read whether a switch press (down-going) edge has occured
-uint8_t switch_pressed(uint8_t switch_index);
+bool switch_pressed(uint8_t switch_index);
 
 /// Clear the switch-pressed flag
 void clear_switch_pressed(uint8_t switch_index);
