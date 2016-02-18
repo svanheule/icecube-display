@@ -73,6 +73,7 @@ set(SOURCES
   src/test_render.c
   src/demo.c
   src/display_state.c
+  src/switches.c
 )
 
 if(ARDUINO)
