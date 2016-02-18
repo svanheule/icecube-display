@@ -26,6 +26,7 @@ struct frame_buffer_t* render_snake() {
   struct frame_buffer_t* frame = create_frame();
 
   if (frame) {
+    frame->flags = FRAME_FREE_AFTER_DRAW;
     clear_frame(frame);
     struct led_t* write_ptr = &frame->buffer[0];
 
@@ -94,6 +95,7 @@ struct frame_buffer_t* render_ring() {
   struct frame_buffer_t* frame = create_frame();
 
   if (frame) {
+    frame->flags = FRAME_FREE_AFTER_DRAW;
     clear_frame(frame);
 
     // Only expand every second frame
