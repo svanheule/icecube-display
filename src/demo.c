@@ -1,5 +1,6 @@
 #include "demo.h"
 #include "stdlib.h"
+#include "switches.h"
 #include <avr/pgmspace.h>
 
 static void init_demo();
@@ -81,6 +82,8 @@ enum render_mode_t {
   , OVERVIEW_CLEAR
 };
 
+static bool paused;
+
 static enum render_mode_t render_mode;
 
 static void reset_event_P(const struct event_t* event) {
@@ -88,6 +91,7 @@ static void reset_event_P(const struct event_t* event) {
 }
 
 static void load_event_P(const struct event_t* event) {
+  render_mode = TIME_LAPSE;
   frame_number = 0;
   mode_end = 0;
 
@@ -95,8 +99,17 @@ static void load_event_P(const struct event_t* event) {
   reset_event_P(event);
 }
 
+static void load_next_event() {
+  // Go to next event if the current isn't the last, otherwise reset
+  ++current_event;
+  if (current_event == events_end) {
+    current_event = &(events[0]);
+  }
+  load_event_P(current_event);
+}
+
 static void init_demo() {
-  render_mode = TIME_LAPSE;
+  paused = false;
   current_event = &events[0];
   load_event_P(current_event);
 }
@@ -119,54 +132,65 @@ static struct frame_buffer_t* render_demo() {
 
     // Loop over currently shown pulses
     const struct pulse_t* pulse = current_pulse;
-    while (pulse != pulses_end && pgm_read_word(&(pulse->time)) <= frame_number) {
+    while ( pulse != pulses_end
+        && (paused || pgm_read_word(&(pulse->time)) <= frame_number)
+    ) {
       uint8_t index = pgm_read_byte(&(pulse->led_index));
       memcpy_P(&(frame->buffer[index]), &(pulse->led), sizeof(struct led_t));
       ++pulse;
     }
 
+    // Check if the pause switch was pressed
+    if (switch_pressed(SWITCH_DEMO_1)) {
+      clear_switch_pressed(SWITCH_DEMO_1);
+      paused = !paused;
+      load_event_P(current_event);
+    }
+
     // Check if current starting pulse or rendering mode should be changed
-    switch (render_mode) {
-      case TIME_LAPSE:
-        if ( current_pulse != pulses_end
-          && pgm_read_word(&(current_pulse->time))+PULSE_DURATION <= frame_number
-        ) {
-          ++current_pulse;
-          // If last pulse was reached, set display clear time-out and change mode
-          if (current_pulse == pulses_end) {
-            render_mode = TIME_LAPSE_CLEAR;
-            mode_end = frame_number + PULSE_CLEAR_DURATION;
+    if (switch_pressed(SWITCH_DEMO_2)) {
+      clear_switch_pressed(SWITCH_DEMO_2);
+      load_next_event();
+    }
+    else if (!paused) {
+      switch (render_mode) {
+        case TIME_LAPSE:
+          if ( current_pulse != pulses_end
+            && pgm_read_word(&(current_pulse->time))+PULSE_DURATION <= frame_number
+          ) {
+            ++current_pulse;
+            // If last pulse was reached, set display clear time-out and change mode
+            if (current_pulse == pulses_end) {
+              render_mode = TIME_LAPSE_CLEAR;
+              mode_end = frame_number + PULSE_CLEAR_DURATION;
+            }
           }
-        }
-        break;
-      case TIME_LAPSE_CLEAR:
-        if (frame_number == mode_end) {
-          render_mode = OVERVIEW;
-          mode_end = frame_number + OVERVIEW_DURATION;
-          // Reset pulse pointer to first pulse
-          // This will cause the renderer to show all pulses in next frame
-          reset_event_P(current_event);
-        }
-        break;
-      case OVERVIEW:
-        if (frame_number == mode_end) {
-          render_mode = OVERVIEW_CLEAR;
-          // Set pulse pointer to point past the end so no pulses are shown in the next frame
-          current_pulse = pulses_end;
-          mode_end = frame_number + OVERVIEW_CLEAR_DURATION;
-        }
-        break;
-      case OVERVIEW_CLEAR:
-        if (frame_number == mode_end) {
-          render_mode = TIME_LAPSE;
-          // Go to next event if the current isn't the last, otherwise reset
-          ++current_event;
-          if (current_event == events_end) {
-            current_event = &(events[0]);
+          break;
+        case TIME_LAPSE_CLEAR:
+          if (frame_number == mode_end) {
+            render_mode = OVERVIEW;
+            mode_end = frame_number + OVERVIEW_DURATION;
+            // Reset pulse pointer to first pulse
+            // This will cause the renderer to show all pulses in next frame
+            reset_event_P(current_event);
           }
-          load_event_P(current_event);
-        }
-        break;
+          break;
+        case OVERVIEW:
+          if (frame_number == mode_end) {
+            render_mode = OVERVIEW_CLEAR;
+            // Set pulse pointer to point past the end so no pulses are shown in the next frame
+            current_pulse = pulses_end;
+            mode_end = frame_number + OVERVIEW_CLEAR_DURATION;
+          }
+          break;
+        case OVERVIEW_CLEAR:
+          if (frame_number == mode_end) {
+            load_next_event();
+          }
+          break;
+        default:
+          break;
+      }
     }
 
     ++frame_number;
