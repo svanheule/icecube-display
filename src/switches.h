@@ -8,11 +8,6 @@
 #define SWITCH_DEMO_1 0
 #define SWITCH_DEMO_2 1
 
-enum switch_state_t {
-    PRESSED
-  , DEPRESSED
-};
-
 /// Initialise hardware related to switches
 void init_switches();
 

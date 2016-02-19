@@ -12,6 +12,11 @@
 #define SWITCH_0_PIN DDD0
 #define SWITCH_1_PIN DDD1
 
+enum switch_state_t {
+    PRESSED
+  , DEPRESSED
+};
+
 static const uint8_t switch_pins[SWITCH_COUNT] = {
     SWITCH_0_PIN
   , SWITCH_1_PIN
@@ -39,7 +44,7 @@ void init_switches() {
     // Disable internal pull-up since an external pull-up is provided
     SWITCH_PORT_OUTPUT &= ~(_BV(switch_pins[i]));
     // Init countdown timers
-    switch_timer[i] = SWITCH_TO_PRESSED_MS / SWITCH_CHECK_MS;
+    switch_timer[i] = SWITCH_PRESS_COUNTS;
   }
 
   // Reset switch state
@@ -52,7 +57,7 @@ void init_switches() {
   TCCR0B = _BV(CS02) | _BV(CS00);
   OCR0A = (uint8_t) (F_CPU/1024 / SWITCH_POLLING_RATE) - 1;
   // Enable compare match interrupt
-  TIFR0 = _BV(OCF0A);
+  TIMSK0 = _BV(OCIE0A);
 }
 
 void disable_switches() {
@@ -79,10 +84,10 @@ static enum switch_state_t get_switch_signal(uint8_t switch_index) {
 /// Get the debounced state for the given switch
 static enum switch_state_t get_switch_state(uint8_t switch_index) {
   if (switch_state & _BV(switch_index)) {
-    return DEPRESSED;
+    return PRESSED;
   }
   else {
-    return PRESSED;
+    return DEPRESSED;
   }
 }
 
@@ -121,7 +126,7 @@ ISR(TIMER0_COMPA_vect) {
 }
 
 bool switch_pressed(uint8_t switch_index) {
-  return switch_edge_detected &= _BV(switch_index);
+  return switch_edge_detected & _BV(switch_index);
 }
 
 void clear_switch_pressed(uint8_t switch_index) {
