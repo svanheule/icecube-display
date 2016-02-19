@@ -11,6 +11,7 @@
 #include "demo.h"
 #include "test_render.h"
 #include "remote.h"
+#include "switches.h"
 
 /**
  * Dual frame buffer APA-102C LED display driver.
@@ -45,6 +46,22 @@ void init_timer() {
   TIMSK1 = (1<<OCIE1A);
 }
 
+void pass() {}
+struct frame_buffer_t* empty_frame() {
+  struct frame_buffer_t* frame = create_frame();
+  if (frame) {
+    clear_frame(frame);
+    frame->flags = FRAME_FREE_AFTER_DRAW;
+  }
+  return frame;
+}
+
+struct renderer_t display_idle = {
+    pass
+  , pass
+  , empty_frame
+};
+
 const struct renderer_t* get_renderer(const enum display_state_t display_state) {
   switch (display_state) {
     case DISPLAY_DEMO:
@@ -57,6 +74,8 @@ const struct renderer_t* get_renderer(const enum display_state_t display_state) 
       return get_snake_renderer();
       break;
     case DISPLAY_IDLE:
+      return &display_idle;
+      break;
     case DISPLAY_EXTERNAL:
     default:
       return 0;
@@ -74,6 +93,7 @@ int main () {
 
   // Init timer configuration
   init_timer();
+  init_switches();
 
   draw_frame = 0;
 
@@ -84,7 +104,7 @@ int main () {
   // Enable interrupts
   sei();
 
-  advance_display_state(DISPLAY_GOTO_DEMO);
+  advance_display_state(DISPLAY_GOTO_IDLE);
 
   enum display_state_t state = get_display_state();
   const struct renderer_t* renderer = get_renderer(state);
@@ -106,6 +126,14 @@ int main () {
       if (frame->flags & FRAME_FREE_AFTER_DRAW) {
         free(frame);
       }
+    }
+
+    if ( get_display_state() == DISPLAY_IDLE
+      && (switch_pressed(SWITCH_DEMO_1) || switch_pressed(SWITCH_DEMO_2))
+    ) {
+      clear_switch_pressed(SWITCH_DEMO_1);
+      clear_switch_pressed(SWITCH_DEMO_2);
+      advance_display_state(DISPLAY_GOTO_DEMO);
     }
 
     // Detect display state changes and switch renderers accordingly
