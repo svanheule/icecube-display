@@ -142,7 +142,7 @@ endif()
 
 target_compile_options(icetop_display
   PUBLIC -Wall -Wpedantic # Error messages
-  PUBLIC -std=c99 # Language standard C99
+  PUBLIC -std=gnu11 # Language standard C11
   PUBLIC -Os -fshort-enums -ffunction-sections # Optimise for size
 )
 add_custom_command(

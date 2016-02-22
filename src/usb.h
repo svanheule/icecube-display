@@ -131,14 +131,14 @@ typedef struct UsbEndpointDescriptor_t {
   uint8_t bInterval;
 } UsbEndpointDescriptor;
 
-typedef struct UsbStringDescriptorList_t {
-  UsbDescriptorHeader header;
-  uint16_t* wLangId;
-} UsbStringDescriptorList;
+typedef __CHAR16_TYPE__ char16_t;
 
 typedef struct UsbStringDescriptor_t {
   UsbDescriptorHeader header;
-  uint16_t* bString;
+  union {
+    char16_t* bString;
+    uint16_t* wLangId;
+  };
 } UsbStringDescriptor;
 
 #endif // USB_H
