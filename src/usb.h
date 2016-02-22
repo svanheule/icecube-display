@@ -4,8 +4,8 @@
 #include <stdint.h>
 
 #define BCD_USB_VERSION 0x0200
-#define ID_VENDOR 0x0000 // FIXME Set correct VID/PID
-#define ID_PRODUCT 0x0000
+#define ID_VENDOR 0x1CE3 // FIXME Set correct VID/PID
+#define ID_PRODUCT 0x0101
 
 typedef enum PacketId_t {
     OUT = 0x1
