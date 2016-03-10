@@ -77,9 +77,13 @@ set(SOURCES
 )
 
 if(ARDUINO)
-  list(APPEND SOURCES src/remote_serial.c)
+  list(APPEND SOURCES
+    src/remote_serial.c
+  )
 else()
-  list(APPEND SOURCES src/remote_usb.c)
+  list(APPEND SOURCES
+    src/usb/descriptor.c
+  )
 endif()
 
 set(EVENTS
