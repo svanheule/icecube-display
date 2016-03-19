@@ -5,8 +5,8 @@
 #include <stdbool.h>
 
 #define SWITCH_COUNT 2
-#define SWITCH_DEMO_1 0
-#define SWITCH_DEMO_2 1
+#define SWITCH_PLAY_PAUSE 0
+#define SWITCH_FORWARD 1
 
 /// Initialise hardware related to switches
 void init_switches();
