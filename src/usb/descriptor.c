@@ -5,7 +5,7 @@
 typedef __CHAR16_TYPE__ char16_t;
 
 // Return the number of 16b words in str.
-// Codepoints that are split over two UTF16 char16_t values, add 2 the returned length.
+// Codepoints that are split over two UTF16 char16_t values, add 2 to the returned length.
 static size_t strlen16(const char16_t* str) {
   const char16_t* end = str;
   while (*end != 0) {
@@ -22,17 +22,12 @@ static size_t strlen16_P(const char16_t* str) {
   return end-str;
 }
 
-typedef struct usb_descriptor_header_t header;
-typedef struct usb_descriptor_body_device_t body_device;
-typedef struct usb_descriptor_body_configuration_t body_configuration;
-typedef struct usb_descriptor_body_interface_t body_interface;
-typedef struct usb_descriptor_body_endpoint_t body_endpoint;
-
 uint8_t usb_descriptor_size(
     const enum usb_descriptor_type_t type
   , const void* body
   , const bool body_in_flash
 ) {
+  typedef struct usb_descriptor_header_t header;
   return usb_descriptor_body_size(type, body, body_in_flash) + sizeof(header);
 }
 
@@ -41,6 +36,11 @@ uint8_t usb_descriptor_body_size(
   , const void* body
   , const bool body_in_flash
 ) {
+  typedef struct usb_descriptor_body_device_t body_device;
+  typedef struct usb_descriptor_body_configuration_t body_configuration;
+  typedef struct usb_descriptor_body_interface_t body_interface;
+  typedef struct usb_descriptor_body_endpoint_t body_endpoint;
+
   switch (type) {
     case DESC_TYPE_CONFIGURATION:
       return sizeof(body_configuration);
@@ -85,6 +85,24 @@ static struct descriptor_list_t* create_list_item(
   return item;
 }
 
+uint16_t get_list_total_length(const struct descriptor_list_t* head) {
+  uint16_t total = 0;
+  while (head && head->next != head) {
+    total += head->header.bLength;
+    head = head->next;
+  }
+  return total;
+}
+
+static void descriptor_list_append(
+    struct descriptor_list_t* head
+  , struct descriptor_list_t* item
+) {
+  while (head->next) {
+    head = head->next;
+  }
+  head->next = item;
+}
 
 // Descriptor transaction definitions
 static const struct usb_descriptor_body_device_t BODY_DEVICE PROGMEM = {
@@ -102,17 +120,54 @@ static const struct usb_descriptor_body_device_t BODY_DEVICE PROGMEM = {
   , 1
 };
 
+static const struct usb_descriptor_body_configuration_t BODY_CONFIG PROGMEM = {
+    0 // to be filled in at runtime
+  , 1
+  , 1
+  , 0
+  , _BV(7) | _BV(6)
+  , 25
+};
+
+static const struct usb_descriptor_body_interface_t BODY_INTERFACE PROGMEM = {
+    0
+  , 0
+  , 0
+  , 0xFF
+  , 0
+  , 0
+  , 4
+};
+
+#define EP_NUM_MASK 0xF
+#define EP_DIR_IN (0<<7)
+#define EP_DIR_OUT (1<<7)
+
+
+/*static const struct usb_descriptor_body_endpoint_t BODY_ENDPOINT_1 PROGMEM = {*/
+/*    (1 & EP_NUM_MASK) | EP_DIR_OUT*/
+/*  , 2*/
+/*  , 256*/
+/*  , 0*/
+/*};*/
+
 static const char16_t STR_MANUFACTURER[] PROGMEM = u"Ghent University";
 static const char16_t STR_PRODUCT[] PROGMEM = u"IceTop event display";
 static const char16_t STR_SERIAL_NUMBER[] PROGMEM = u"ICD-IT-001-0001";
+static const char16_t STR_IFACE_DESCR[] PROGMEM = u"Steamshovel display";
 
-static const uint16_t LANG_IDS[] PROGMEM = {0x0409, 0x0000};
-static const char16_t* STR_LIST[] = {
+#define LANG_ID_EN_US 0x0409
+#define STRING_COUNT 4
+
+static const uint16_t LANG_IDS[] PROGMEM = {LANG_ID_EN_US, 0x0000};
+static const char16_t* const STR_EN_US[STRING_COUNT] = {
     STR_MANUFACTURER
   , STR_PRODUCT
   , STR_SERIAL_NUMBER
+  , STR_IFACE_DESCR
 };
 
+static struct usb_descriptor_body_configuration_t descriptor_config;
 
 struct descriptor_list_t* generate_descriptor_list(const UsbSetupPacket* req) {
   struct descriptor_list_t* head = 0;
@@ -128,8 +183,21 @@ struct descriptor_list_t* generate_descriptor_list(const UsbSetupPacket* req) {
       if (index == 0) {
         head = create_list_item(DESC_TYPE_STRING, LANG_IDS, true);
       }
-      else if (index-1 < sizeof(STR_LIST)/sizeof(char16_t)) {
-        head = create_list_item(DESC_TYPE_STRING, STR_LIST[index-1], true);
+      else if (index-1 < STRING_COUNT) {
+        if (req->wIndex == LANG_ID_EN_US) {
+          head = create_list_item(DESC_TYPE_STRING, STR_EN_US[index-1], true);
+        }
+      }
+      break;
+    case DESC_TYPE_CONFIGURATION:
+      // Create appropriate configuration descriptor
+      if (index == 0) {
+        memcpy_P(&descriptor_config, &BODY_CONFIG, sizeof(BODY_CONFIG));
+        head = create_list_item(DESC_TYPE_CONFIGURATION, &descriptor_config, false);
+        descriptor_list_append(head, create_list_item(DESC_TYPE_INTERFACE, &BODY_INTERFACE, true));
+/*        descriptor_list_append(head, create_list_item(DESC_TYPE_ENDPOINT, &BODY_ENDPOINT_1, true));*/
+        // Calculate and fill in total configuration length
+        descriptor_config.wTotalLength = get_list_total_length(head);
       }
       break;
     default:

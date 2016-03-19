@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "usb.h"
+#include "usb/std.h"
 
 enum usb_descriptor_type_t {
     DESC_TYPE_DEVICE = 1
@@ -41,6 +41,7 @@ struct descriptor_list_t {
 };
 
 struct descriptor_list_t* generate_descriptor_list(const UsbSetupPacket* req);
+uint16_t get_list_total_length(const struct descriptor_list_t* head);
 
 // Device descriptor definitions
 struct usb_descriptor_body_device_t {
@@ -73,7 +74,7 @@ struct usb_descriptor_body_configuration_t {
   uint8_t bMaxPower;
 };
 
-struct usb_decriptor_configuration_t {
+struct usb_descriptor_configuration_t {
   struct usb_descriptor_header_t header;
   struct usb_descriptor_body_configuration_t body;
 };
