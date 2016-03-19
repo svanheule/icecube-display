@@ -1,5 +1,9 @@
 # Back-up files
 *~
+*.old
+*.bak
+*.swp
 
 # Python cache
 __pycache__/
+*.pyc
