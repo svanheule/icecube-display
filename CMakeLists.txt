@@ -184,3 +184,10 @@ if(FUSES)
     COMMENT "Setting microcontroller fuses..."
   )
 endif()
+
+# Custom target to get size
+add_custom_target(
+  size
+  avr-size -C --mcu=${AVR_TARGET_DEVICE} $<TARGET_FILE:icetop_display>
+  DEPENDS icetop_display
+)
