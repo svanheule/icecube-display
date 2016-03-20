@@ -129,10 +129,10 @@ int main () {
     }
 
     if ( get_display_state() == DISPLAY_IDLE
-      && (switch_pressed(SWITCH_DEMO_1) || switch_pressed(SWITCH_DEMO_2))
+      && (switch_pressed(SWITCH_PLAY_PAUSE) || switch_pressed(SWITCH_FORWARD))
     ) {
-      clear_switch_pressed(SWITCH_DEMO_1);
-      clear_switch_pressed(SWITCH_DEMO_2);
+      clear_switch_pressed(SWITCH_PLAY_PAUSE);
+      clear_switch_pressed(SWITCH_FORWARD);
       advance_display_state(DISPLAY_GOTO_DEMO);
     }
 

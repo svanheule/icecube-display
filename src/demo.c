@@ -141,15 +141,15 @@ static struct frame_buffer_t* render_demo() {
     }
 
     // Check if the pause switch was pressed
-    if (switch_pressed(SWITCH_DEMO_1)) {
-      clear_switch_pressed(SWITCH_DEMO_1);
+    if (switch_pressed(SWITCH_PLAY_PAUSE)) {
+      clear_switch_pressed(SWITCH_PLAY_PAUSE);
       paused = !paused;
       load_event_P(current_event);
     }
 
     // Check if current starting pulse or rendering mode should be changed
-    if (switch_pressed(SWITCH_DEMO_2)) {
-      clear_switch_pressed(SWITCH_DEMO_2);
+    if (switch_pressed(SWITCH_FORWARD)) {
+      clear_switch_pressed(SWITCH_FORWARD);
       load_next_event();
     }
     else if (!paused) {
