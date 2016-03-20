@@ -1,12 +1,14 @@
 #include "remote.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include <stdlib.h>
 
 #include "usb/std.h"
 #include "usb/device.h"
 #include "usb/configuration.h"
 #include "usb/endpoint.h"
 #include "usb/fifo.h"
+#include "usb/descriptor.h"
 #include "frame_buffer.h"
 #include "usb/led.h"
 
