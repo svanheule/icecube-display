@@ -83,6 +83,7 @@ if(ARDUINO)
 else()
   list(APPEND SOURCES
     src/remote_usb.c
+    src/usb/led.c
     src/usb/device.c
     src/usb/endpoint.c
     src/usb/fifo.c

@@ -43,6 +43,8 @@ void init_remote() {
   // TODO Decide which interrupts to enable
 //  UDIEN = _BV(EORSTE) | _BV(WAKEUPE);
 
+  // Initialise USB activity LED
+  init_led();
   // Prepare to enter ATTACHED state
 
   // Attach pull-up
@@ -325,6 +327,7 @@ static void process_setup(const struct UsbSetupPacket_t* req) {
 }
 
 ISR(USB_COM_vect) {
+  trip_led();
   struct UsbSetupPacket_t request;
   uint8_t prev_ep = UENUM;
 
