@@ -1,35 +1,58 @@
-#include "led.h"
+#include "usb/led.h"
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <stdbool.h>
 #include <stdint.h>
 
 // USB_ACT LED control
+static enum led_mode_t led_mode;
 static bool led_tripped;
-static void set_led_state(bool on);
 
-static void init_timer() {
+static inline void set_led_on() {
+  PORTB &= ~_BV(PB0);
+}
+
+static inline void set_led_off() {
+  PORTB |= _BV(PB0);
+}
+
+static void enable_timer(uint8_t interval_100ms_count) {
   // Two interrupts: reg A determines timer period, reg B intermediate interrupt
-  OCR3A = F_CPU/256/20-1;
-  OCR3B = F_CPU/256/40-1;
+  OCR3A = (F_CPU/256/10)*interval_100ms_count-1;
+  OCR3B = (F_CPU/256/20)*interval_100ms_count-1;
+  TCNT3 = 0;
   // Set compare mode, prescaler, and enable interrupt
   TCCR3B = _BV(WGM32) | _BV(CS32) | _BV(CS30);
   TIMSK3 = _BV(OCIE3A) | _BV(OCIE3B);
 }
 
+static void disable_timer() {
+  // Disable timer clock and interrupts
+  TCCR3B = 0;
+  TIMSK3 = 0;
+}
+
 void init_led() {
   DDRB = _BV(DDB0);
   led_tripped = false;
-  set_led_state(false);
-  init_timer();
+  set_led_state(LED_OFF);
 }
 
-void set_led_state(bool on) {
-  if (on) {
-    PORTB &= ~_BV(PB0);
-  }
-  else {
-    PORTB |= _BV(PB0);
+void set_led_state(const enum led_mode_t mode) {
+  led_mode = mode;
+  switch (mode) {
+    case LED_OFF:
+      disable_timer();
+      set_led_on(false);
+      break;
+    case LED_BLINK_SLOW:
+      set_led_on(true);
+      enable_timer(10);
+      break;
+    case LED_TRIP_FAST:
+      set_led_on(true);
+      enable_timer(1);
+      break;
   }
 }
 
@@ -40,14 +63,13 @@ void trip_led() {
 // LED blinking timer interrupts
 ISR(TIMER3_COMPA_vect) {
   // Reset LED at end of cycle
-  set_led_state(true);
+  set_led_on(true);
 }
 
 ISR(TIMER3_COMPB_vect) {
   // Toggle LED if it was tripped
-  if (led_tripped) {
-    set_led_state(false);
+  if (led_mode == LED_BLINK_SLOW || led_tripped) {
+    set_led_on(false);
     led_tripped = false;
   }
 }
-
