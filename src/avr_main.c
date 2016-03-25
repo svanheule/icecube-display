@@ -84,14 +84,10 @@ const struct renderer_t* get_renderer(const enum display_state_t display_state) 
 }
 
 int main () {
-  // Init remote communications module
-  init_remote();
-
-  // Init pin configuration: USART, SPI
+  // Init display pin configuration
   init_display_driver();
-  // USART port configuration is fixed by enabling USART Rx and Tx
 
-  // Init timer configuration
+  // Init display timer and switches
   init_timer();
   init_switches();
 
@@ -100,6 +96,9 @@ int main () {
   // Enable idle mode sleep
   set_sleep_mode(SLEEP_MODE_IDLE);
   sleep_enable();
+
+  // Init remote communications module
+  init_remote();
 
   // Enable interrupts
   sei();
