@@ -186,6 +186,12 @@ static void process_standard_request(const struct UsbSetupPacket_t* req) {
         while (!(UEINTX & _BV(TXINI))) {}
         // Set configuration *after* handshake
         set_configuration_index(req->wValue);
+        if (req->wValue == 0) {
+          set_device_state(DEFAULT);
+        }
+        else {
+          set_device_state(CONFIGURED);
+        }
       }
       break;
     case GET_DESCRIPTOR:
