@@ -127,16 +127,29 @@ int main () {
       }
     }
 
-    if ( get_display_state() == DISPLAY_IDLE
-      && (switch_pressed(SWITCH_PLAY_PAUSE) || switch_pressed(SWITCH_FORWARD))
-    ) {
-      clear_switch_pressed(SWITCH_PLAY_PAUSE);
-      clear_switch_pressed(SWITCH_FORWARD);
-      advance_display_state(DISPLAY_GOTO_DEMO);
+    enum display_state_t new_state = get_display_state();
+    if (!is_remote_connected()) {
+      if ( state == DISPLAY_IDLE
+        && (switch_pressed(SWITCH_PLAY_PAUSE) || switch_pressed(SWITCH_FORWARD))
+      ) {
+        clear_switch_pressed(SWITCH_PLAY_PAUSE);
+        clear_switch_pressed(SWITCH_FORWARD);
+        advance_display_state(DISPLAY_GOTO_DEMO);
+      }
+      else if (state == DISPLAY_EXTERNAL) {
+        // Clear any switch presses on going to IDLE
+        clear_switch_pressed(SWITCH_PLAY_PAUSE);
+        clear_switch_pressed(SWITCH_FORWARD);
+        advance_display_state(DISPLAY_GOTO_IDLE);
+      }
+    }
+    else if (state != DISPLAY_EXTERNAL) {
+      advance_display_state(DISPLAY_GOTO_IDLE);
+      // TODO push cleared frame
+      advance_display_state(DISPLAY_GOTO_EXTERNAL);
     }
 
     // Detect display state changes and switch renderers accordingly
-    enum display_state_t new_state = get_display_state();
     if (state != new_state) {
       state = new_state;
       // Stop current renderer
