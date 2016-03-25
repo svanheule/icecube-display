@@ -16,13 +16,15 @@ static inline void set_led_off() {
   PORTB |= _BV(PB0);
 }
 
-static void enable_timer(uint8_t interval_100ms_count) {
+#define INTERVALS_PER_SECOND 15
+
+static void enable_timer(uint8_t interval_count) {
   // Two interrupts: reg A determines timer period, reg B intermediate interrupt
-  OCR3A = (F_CPU/256/10)*interval_100ms_count-1;
-  OCR3B = (F_CPU/256/20)*interval_100ms_count-1;
+  OCR3A = (F_CPU/256/INTERVALS_PER_SECOND)*interval_count-1;
+  OCR3B = (F_CPU/256/(2*INTERVALS_PER_SECOND))*interval_count-1;
   TCNT3 = 0;
   // Set compare mode, prescaler, and enable interrupt
-  TCCR3B = _BV(WGM32) | _BV(CS32) | _BV(CS30);
+  TCCR3B = _BV(WGM32) | _BV(CS32);
   TIMSK3 = _BV(OCIE3A) | _BV(OCIE3B);
 }
 
@@ -43,14 +45,14 @@ void set_led_state(const enum led_mode_t mode) {
   switch (mode) {
     case LED_OFF:
       disable_timer();
-      set_led_on(false);
+      set_led_off();
       break;
     case LED_BLINK_SLOW:
-      set_led_on(true);
-      enable_timer(10);
+      set_led_on();
+      enable_timer(INTERVALS_PER_SECOND);
       break;
     case LED_TRIP_FAST:
-      set_led_on(true);
+      set_led_on();
       enable_timer(1);
       break;
   }
@@ -63,13 +65,13 @@ void trip_led() {
 // LED blinking timer interrupts
 ISR(TIMER3_COMPA_vect) {
   // Reset LED at end of cycle
-  set_led_on(true);
+  set_led_on();
 }
 
 ISR(TIMER3_COMPB_vect) {
   // Toggle LED if it was tripped
   if (led_mode == LED_BLINK_SLOW || led_tripped) {
-    set_led_on(false);
+    set_led_off();
     led_tripped = false;
   }
 }

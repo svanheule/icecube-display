@@ -34,8 +34,8 @@ void set_device_state(enum usb_device_state_t state) {
       set_led_state(LED_TRIP_FAST);
       break;
     case SUSPENDED:
-      // TODO slow blink
-//      break;
+      set_led_state(LED_BLINK_SLOW);
+      break;
     case ATTACHED:
     default:
       set_led_state(LED_OFF);
