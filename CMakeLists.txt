@@ -193,3 +193,42 @@ add_custom_target(
   avr-size -C --mcu=${AVR_TARGET_DEVICE} $<TARGET_FILE:icetop_display>
   DEPENDS icetop_display
 )
+
+# Custom target to flash, and download if needed, the Atmel DFU bootloader
+if(NOT ARDUINO)
+  set(bootloader_dir "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/bootloader")
+  set(bootloader_zip_filename "megaUSB_DFU_Bootloaders.zip")
+  set(bootloader_hex_filename "ATMega32U4-usbdevice_dfu-1_0_0.hex")
+  set(bootloader_url "http://www.atmel.com/Images/${bootloader_zip_filename}")
+  set(bootloader_zip "${bootloader_dir}/${bootloader_zip_filename}")
+  set(bootloader_hex "${bootloader_dir}/${bootloader_hex_filename}")
+
+  if(NOT EXISTS ${bootloader_dir})
+    file(MAKE_DIRECTORY ${bootloader_dir})
+  endif()
+
+  if(NOT EXISTS ${bootloader_zip})
+    file(
+      DOWNLOAD ${bootloader_url} ${bootloader_zip}
+      EXPECTED_HASH SHA256=252947050b9f6623001cc3d0c8d4b2a14398ed22bebc249cb9c1abc8d0db1608
+    )
+  endif()
+
+  add_custom_command(
+    OUTPUT ${bootloader_hex}
+    COMMAND ${CMAKE_COMMAND} -E tar xf ${bootloader_zip_filename}
+    DEPENDS ${bootloader_zip}
+    WORKING_DIRECTORY ${bootloader_dir}
+  )
+
+  add_custom_target(
+    bootloader
+    avrdude -p $<UPPER_CASE:${AVR_TARGET_DEVICE}>
+      -c ${PROGRAMMER_ID} ${PROGRAMMER_PORT_FLAGS}
+      -U flash:w:${bootloader_hex_filename}
+    DEPENDS ${bootloader_hex}
+    WORKING_DIRECTORY ${bootloader_dir}
+    COMMENT "Upload DFU bootloader"
+    VERBATIM
+  )
+endif()
