@@ -74,8 +74,6 @@ const struct renderer_t* get_renderer(const enum display_state_t display_state) 
       return get_snake_renderer();
       break;
     case DISPLAY_IDLE:
-      return &display_idle;
-      break;
     case DISPLAY_EXTERNAL:
     default:
       return 0;
@@ -105,10 +103,16 @@ int main () {
 
   advance_display_state(DISPLAY_GOTO_IDLE);
 
+  // If the current state already has an associated renderer, render and push first frame.
+  // Otherwise clear the display.
   enum display_state_t state = get_display_state();
   const struct renderer_t* renderer = get_renderer(state);
   if (renderer) {
     renderer->start();
+    push_frame(renderer->render_frame());
+  }
+  else {
+    push_frame(empty_frame());
   }
 
   for (;;) {
@@ -127,7 +131,6 @@ int main () {
       }
     }
 
-    enum display_state_t new_state = get_display_state();
     if (!is_remote_connected()) {
       if ( state == DISPLAY_IDLE
         && (switch_pressed(SWITCH_PLAY_PAUSE) || switch_pressed(SWITCH_FORWARD))
@@ -149,9 +152,10 @@ int main () {
       advance_display_state(DISPLAY_GOTO_EXTERNAL);
     }
 
+    enum display_state_t current_state = get_display_state();
     // Detect display state changes and switch renderers accordingly
-    if (state != new_state) {
-      state = new_state;
+    if (state != current_state) {
+      state = current_state;
       // Stop current renderer
       if (renderer) {
         renderer->stop();
@@ -161,6 +165,9 @@ int main () {
       // Init new renderer
       if (renderer) {
         renderer->start();
+      }
+      else {
+        push_frame(empty_frame());
       }
     }
 
