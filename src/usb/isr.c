@@ -117,7 +117,7 @@ static void process_standard_request(const struct UsbSetupPacket_t* req) {
       switch (req->bmRequestType) {
         case (REQ_DIR_IN | REQ_TYPE_STANDARD | REQ_REC_DEVICE):
           clear_setup();
-          fifo_write_byte(_BV(DEVICE_STATUS_SELF_POWERED));
+          fifo_write_byte(DEVICE_STATUS_SELF_POWERED);
           fifo_write_byte(0);
           valid_request = true;
           break;
