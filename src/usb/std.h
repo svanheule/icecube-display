@@ -20,7 +20,7 @@ typedef enum UsbRequestCode_t {
 #define REQ_DIR_MASK (0x1<<7)
 #define REQ_DIR_OUT (0<<7)
 #define REQ_DIR_IN (1<<7)
-#define GET_REQUEST_DIRECTION(bmRequestType) (bm_RequestType & REQ_DIR_MASK)
+#define GET_REQUEST_DIRECTION(bmRequestType) (bmRequestType & REQ_DIR_MASK)
 
 #define REQ_TYPE_MASK (0x3<<5)
 #define REQ_TYPE_STANDARD (0<<5)
