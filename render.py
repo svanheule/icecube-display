@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import time, threading, struct
-from icetopdisplay import DisplayCom
+from icetopdisplay import DisplayComUsb
 from icetopdisplay import FormatAPA102 as LedFormat
 from icetopdisplay.geometry import pixel_to_station, station_to_pixel, LED_COUNT
 
@@ -228,12 +228,13 @@ if __name__ == "__main__":
     sys.exit(-1)
 
   if not args.no_display:
-    disp = DisplayCom()
+    disp = DisplayComUsb()
 
     if renderer is not None:
       RenderInterrupt(renderer)
       renderer.start(disp)
 
+    # Acquire and clear display
     disp.acquire()
     disp.flush_buffer()
     disp.release()
