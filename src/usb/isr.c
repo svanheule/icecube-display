@@ -12,6 +12,7 @@
 // Descriptor transaction definitions
 #include "usb/descriptor.h"
 #include <stdlib.h>
+#include <string.h>
 
 
 #define FLAG_IS_SET(reg, flag) (reg & (1<<flag))
@@ -105,6 +106,48 @@ static inline void clear_out() {
   CLEAR_INTERRUPT(UEINTX, RXOUTI);
 }
 
+enum control_stage_t {
+    CTRL_IDLE
+  , CTRL_SETUP
+  , CTRL_DATA_IN
+  , CTRL_DATA_OUT
+  , CTRL_HANDSHAKE_IN
+  , CTRL_HANDSHAKE_OUT
+  , CTRL_POST_HANDSHAKE
+};
+
+struct control_transfer_t {
+  enum control_stage_t stage;
+  struct UsbSetupPacket_t req;
+  void* data_in;
+  uint16_t data_in_length;
+  uint16_t data_in_done;
+//  void (*callback_data_out)(const struct UsbSetupPacket_t* req);
+  void (*callback_handshake)(const struct UsbSetupPacket_t* req);
+};
+
+static struct control_transfer_t control_transfer;
+
+static void callback_set_address(const struct UsbSetupPacket_t* req);
+static void callback_set_configuration(const struct UsbSetupPacket_t* req);
+
+static void* init_data_in(struct control_transfer_t* transfer, size_t length) {
+  transfer->data_in = malloc(length);
+  if (transfer->data_in) {
+    transfer->stage = CTRL_DATA_IN;
+    transfer->data_in_length = length;
+    transfer->data_in_done = 0;
+  }
+  return transfer->data_in;
+}
+
+static void cancel_control_transfer(struct control_transfer_t* transfer) {
+  transfer->stage = CTRL_STALL;
+  if (transfer->data_in) {
+    free(transfer->data_in);
+    transfer->data_in = 0;
+  }
+}
 
 static void process_standard_request(const struct UsbSetupPacket_t* req) {
   bool valid_request = false;
@@ -200,32 +243,37 @@ static void process_standard_request(const struct UsbSetupPacket_t* req) {
         struct descriptor_list_t* head = generate_descriptor_list(req);
         struct descriptor_list_t* old_head;
         if (head) {
-          clear_setup();
+          // Send until requested size is reached OR all data is sent
+          uint16_t list_length = get_list_total_length(head);
+          uint16_t bytes_left = req->wLength < list_length ? req->wLength : list_length;
 
-          while (!FLAG_IS_SET(UEINTX, TXINI)) {}
-          // Send until requested size is reached
-          // TODO Check if buffer is full and split transaction if needed
-          uint16_t bytes_left = req->wLength;
-          uint8_t body_length, header_bytes, body_bytes;
-          while (head && bytes_left) {
-            body_length = head->header.bLength - HEADER_SIZE;
-            // Send header (if possible)
-            header_bytes = bytes_left < HEADER_SIZE ? bytes_left : HEADER_SIZE;
-            bytes_left -= fifo_write(&head->header, header_bytes);
-            // Send body (if possible)
-            body_bytes = bytes_left < body_length ? bytes_left : body_length;
-            if (!head->body_in_flash) {
-              bytes_left -= fifo_write(head->body, body_bytes);
+          if (init_data_in(&control_transfer, bytes_left)) {
+            uint8_t body_length, len;
+            uint8_t* write_ptr = (uint8_t*) control_transfer.data_in;
+            while (head && bytes_left) {
+              // Copy header
+              len = bytes_left < HEADER_SIZE ? bytes_left : HEADER_SIZE;
+              memcpy(write_ptr, &head->header, len);
+              write_ptr += len;
+              bytes_left -= len;
+              // Copy body
+              body_length = head->header.bLength - HEADER_SIZE;
+              len = bytes_left < body_length ? bytes_left : body_length;
+              if (!head->body_in_flash) {
+                memcpy(write_ptr, head->body, len);
+              }
+              else {
+                memcpy_P(write_ptr, head->body, len);
+              }
+              write_ptr += len;
+              bytes_left -= len;
+
+              // Proceed to next item and free current
+              old_head = head;
+              head = head->next;
+              free(old_head);
             }
-            else {
-              bytes_left -= fifo_write_P(head->body, body_bytes);
-            }
-            // Proceed to next item and free current
-            old_head = head;
-            head = head->next;
-            free(old_head);
           }
-          clear_in();
 
           // Free any remaining descriptors
           while (head) {
@@ -233,9 +281,6 @@ static void process_standard_request(const struct UsbSetupPacket_t* req) {
             head = head->next;
             free(old_head);
           }
-
-          // Wait for and clear handshake
-          SET_FLAG(UEIENX, RXOUTE);
         }
       }
       break;
@@ -287,37 +332,108 @@ static void process_setup(const struct UsbSetupPacket_t* req) {
   }
 }
 
+
 ISR(USB_COM_vect) {
   trip_led();
-  struct UsbSetupPacket_t request;
   uint8_t prev_ep = UENUM;
 
   // Process USB transfers
   if (FLAG_IS_SET(UEINT, 0)) {
     UENUM = 0;
     if (FLAG_IS_SET(UEIENX, RXSTPE) && FLAG_IS_SET(UEINTX, RXSTPI)) {
+      CLEAR_FLAG(UEIENX, TXINE);
       CLEAR_FLAG(UEIENX, RXOUTE);
-      size_t read = fifo_read(&request, sizeof(struct UsbSetupPacket_t));
+
+      cancel_control_transfer(&control_transfer);
+      control_transfer.callback_handshake = 0;
+      control_transfer.stage = CTRL_SETUP;
+
+      size_t read = fifo_read(&control_transfer.req, sizeof(struct UsbSetupPacket_t));
       if (read == sizeof(struct UsbSetupPacket_t)) {
-        process_setup(&request);
+        process_setup(&control_transfer.req);
       }
 
+      if (control_transfer.stage != CTRL_SETUP) {
+        clear_setup();
+      }
+
+      if (
+           (control_transfer.stage == CTRL_DATA_IN)
+        || (control_transfer.stage == CTRL_HANDSHAKE_OUT)
+      ) {
+        SET_FLAG(UEIENX, TXINE);
+      }
+      else if (
+           (control_transfer.stage == CTRL_DATA_OUT)
+        || (control_transfer.stage == CTRL_HANDSHAKE_IN)
+      ) {
+        SET_FLAG(UEIENX, RXOUTE);
+      }
+
+      // backwards compatiblity STALL
       if (FLAG_IS_SET(UEINTX, RXSTPI)) {
         SET_FLAG(UECONX, STALLRQ);
-        CLEAR_INTERRUPT(UEINTX, RXSTPI);
+        clear_setup();
       }
     }
 
     if (FLAG_IS_SET(UEIENX, TXINE) && FLAG_IS_SET(UEINTX, TXINI)) {
-      // TODO Send remaining transaction data
-      CLEAR_FLAG(UEIENX, TXINE);
-      CLEAR_INTERRUPT(UEINTX, TXINI);
+      if (control_transfer.stage == CTRL_DATA_IN) {
+        // Send remaining transaction data
+        uint16_t fifo_free = fifo_size() - fifo_byte_count();
+        uint16_t transfer_left = control_transfer.data_in_length - control_transfer.data_in_done;
+        uint16_t length = transfer_left < fifo_free ? transfer_left : fifo_free;
+        uint8_t* data = (uint8_t*) control_transfer.data_in + control_transfer.data_in_done;
+        control_transfer.data_in_done += fifo_write(data, length);
+        clear_in();
+        if (control_transfer.data_in_done == control_transfer.data_in_length) {
+          free(control_transfer.data_in);
+          control_transfer.data_in = 0;
+          control_transfer.stage = CTRL_HANDSHAKE_IN;
+          CLEAR_FLAG(UEIENX, TXINE);
+        }
+      }
+      else if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
+        // Send ZLP handshake
+        clear_in();
+        if (control_transfer.callback_handshake) {
+          control_transfer.stage = CTRL_POST_HANDSHAKE;
+        }
+        else {
+          control_transfer.stage = CTRL_IDLE;
+          CLEAR_FLAG(UEIENX, TXINE);
+        }
+      }
+      else if (control_transfer.stage == CTRL_POST_HANDSHAKE) {
+        control_transfer.callback_handshake(&control_transfer.req);
+        control_transfer.stage = CTRL_IDLE;
+        CLEAR_FLAG(UEIENX, TXINE);
+      }
+      else {
+        CLEAR_FLAG(UEIENX, TXINE);
+      }
     }
 
     if (FLAG_IS_SET(UEIENX, RXOUTE) && FLAG_IS_SET(UEINTX, RXOUTI)) {
-      // Acknowledge ZLP status handshake
-      CLEAR_FLAG(UEIENX, RXOUTE);
-      CLEAR_INTERRUPT(UEINTX, RXOUTI);
+      if (control_transfer.stage == CTRL_DATA_OUT) {
+        // TODO Process incoming data
+      }
+      else if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
+        // Acknowledge ZLP handshake
+        clear_out();
+        // Since acknowledging the handshake doesn't require waiting for the host, perform
+        // any callback immediately
+        if (control_transfer.callback_handshake) {
+          control_transfer.callback_handshake(&control_transfer.req);
+        }
+        control_transfer.stage = CTRL_IDLE;
+        CLEAR_FLAG(UEIENX, RXOUTE);
+      }
+      else {
+        // Ignore data
+        clear_out();
+        CLEAR_FLAG(UEIENX, RXOUTE);
+      }
     }
   }
 
