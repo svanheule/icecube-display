@@ -163,6 +163,13 @@ add_custom_command(
   COMMAND avr-objcopy -O ihex -R .eeprom $<TARGET_FILE:icetop_display> icetop_display.hex
 )
 
+# Custom target to get size
+add_custom_target(
+  size
+  avr-size -C --mcu=${AVR_TARGET_DEVICE} $<TARGET_FILE:icetop_display>
+  DEPENDS icetop_display
+)
+
 # Custom make target for uploading to microcontroller
 if(NOT ("${PROGRAMMER_ID}" STREQUAL ""))
   add_custom_target(
@@ -173,63 +180,55 @@ if(NOT ("${PROGRAMMER_ID}" STREQUAL ""))
     DEPENDS icetop_display
     COMMENT "Upload new program file"
   )
-endif()
 
-# Custom target for setting the fuses
-if(FUSES)
-  add_custom_target(
-    fuses
-    avrdude -p $<UPPER_CASE:${AVR_TARGET_DEVICE}>
-      -c ${PROGRAMMER_ID} ${PROGRAMMER_PORT_FLAGS}
-      -U lfuse:w:${FUSE_LOW}:m
-      -U hfuse:w:${FUSE_HIGH}:m
-      -U efuse:w:${FUSE_EXTENDED}:m
-    COMMENT "Setting microcontroller fuses..."
-  )
-endif()
-
-# Custom target to get size
-add_custom_target(
-  size
-  avr-size -C --mcu=${AVR_TARGET_DEVICE} $<TARGET_FILE:icetop_display>
-  DEPENDS icetop_display
-)
-
-# Custom target to flash, and download if needed, the Atmel DFU bootloader
-if(NOT ARDUINO)
-  set(bootloader_dir "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/bootloader")
-  set(bootloader_zip_filename "megaUSB_DFU_Bootloaders.zip")
-  set(bootloader_hex_filename "ATMega32U4-usbdevice_dfu-1_0_0.hex")
-  set(bootloader_url "http://www.atmel.com/Images/${bootloader_zip_filename}")
-  set(bootloader_zip "${bootloader_dir}/${bootloader_zip_filename}")
-  set(bootloader_hex "${bootloader_dir}/${bootloader_hex_filename}")
-
-  if(NOT EXISTS ${bootloader_dir})
-    file(MAKE_DIRECTORY ${bootloader_dir})
-  endif()
-
-  if(NOT EXISTS ${bootloader_zip})
-    file(
-      DOWNLOAD ${bootloader_url} ${bootloader_zip}
-      EXPECTED_HASH SHA256=252947050b9f6623001cc3d0c8d4b2a14398ed22bebc249cb9c1abc8d0db1608
+  # Custom target for setting the fuses
+  if(FUSES)
+    add_custom_target(
+      fuses
+      avrdude -p $<UPPER_CASE:${AVR_TARGET_DEVICE}>
+        -c ${PROGRAMMER_ID} ${PROGRAMMER_PORT_FLAGS}
+        -U lfuse:w:${FUSE_LOW}:m
+        -U hfuse:w:${FUSE_HIGH}:m
+        -U efuse:w:${FUSE_EXTENDED}:m
+      COMMENT "Setting microcontroller fuses..."
     )
   endif()
 
-  add_custom_command(
-    OUTPUT ${bootloader_hex}
-    COMMAND ${CMAKE_COMMAND} -E tar xf ${bootloader_zip_filename}
-    DEPENDS ${bootloader_zip}
-    WORKING_DIRECTORY ${bootloader_dir}
-  )
+  # Custom target to flash, and download if needed, the Atmel DFU bootloader
+  if(NOT ARDUINO)
+    set(bootloader_dir "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/bootloader")
+    set(bootloader_zip_filename "megaUSB_DFU_Bootloaders.zip")
+    set(bootloader_hex_filename "ATMega32U4-usbdevice_dfu-1_0_0.hex")
+    set(bootloader_url "http://www.atmel.com/Images/${bootloader_zip_filename}")
+    set(bootloader_zip "${bootloader_dir}/${bootloader_zip_filename}")
+    set(bootloader_hex "${bootloader_dir}/${bootloader_hex_filename}")
 
-  add_custom_target(
-    bootloader
-    avrdude -p $<UPPER_CASE:${AVR_TARGET_DEVICE}>
-      -c ${PROGRAMMER_ID} ${PROGRAMMER_PORT_FLAGS}
-      -U flash:w:${bootloader_hex_filename}
-    DEPENDS ${bootloader_hex}
-    WORKING_DIRECTORY ${bootloader_dir}
-    COMMENT "Upload DFU bootloader"
-    VERBATIM
-  )
+    if(NOT EXISTS ${bootloader_dir})
+      file(MAKE_DIRECTORY ${bootloader_dir})
+    endif()
+
+    if(NOT EXISTS ${bootloader_zip})
+      file(
+        DOWNLOAD ${bootloader_url} ${bootloader_zip}
+        EXPECTED_HASH SHA256=252947050b9f6623001cc3d0c8d4b2a14398ed22bebc249cb9c1abc8d0db1608
+      )
+    endif()
+
+    add_custom_target(
+      bootloader_images
+      ${CMAKE_COMMAND} -E tar xf ${bootloader_zip_filename}
+      DEPENDS ${bootloader_zip}
+      WORKING_DIRECTORY ${bootloader_dir}
+    )
+
+    add_custom_target(
+      bootloader
+      avrdude -p $<UPPER_CASE:${AVR_TARGET_DEVICE}>
+        -c ${PROGRAMMER_ID} ${PROGRAMMER_PORT_FLAGS}
+        -U flash:w:${bootloader_hex}
+      DEPENDS bootloader_images
+      COMMENT "Upload DFU bootloader"
+    )
+  endif()
+
 endif()
