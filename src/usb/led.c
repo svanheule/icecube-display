@@ -16,7 +16,7 @@ static inline void set_led_off() {
   PORTB |= _BV(PB0);
 }
 
-#define INTERVALS_PER_SECOND 15
+#define INTERVALS_PER_SECOND 10
 
 static void enable_timer(uint8_t interval_count) {
   // Two interrupts: reg A determines timer period, reg B intermediate interrupt
