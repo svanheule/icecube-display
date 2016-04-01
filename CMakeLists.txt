@@ -134,6 +134,7 @@ foreach(event ${EVENTS})
   )
 
   list(APPEND EVENT_OBJECTS ${object_file})
+  set_property(SOURCE ${object_file} PROPERTY EXTERNAL_OBJECT TRUE)
 endforeach()
 
 # Build program and generate associated hex file
@@ -152,7 +153,7 @@ else()
 endif()
 
 target_compile_options(icetop_display
-  PUBLIC -Wall -Wpedantic # Error messages
+  PUBLIC -Wall -Wpedantic -Wshadow # Error messages
   PUBLIC -std=gnu11 # Language standard C11
   PUBLIC -Os -fshort-enums -ffunction-sections # Optimise for size
 )
