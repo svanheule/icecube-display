@@ -179,18 +179,10 @@ static void process_standard_request(const struct UsbSetupPacket_t* req) {
       // get address from SETUP, handshake, enable new address
       if (req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_STANDARD | REQ_REC_DEVICE)) {
         if (req->wIndex == 0 && req->wLength == 0) {
-          clear_setup();
-          // Set address
-          uint8_t address = (uint8_t) (req->wValue & 0x7F);
-          UDADDR = address;
-          while (!(UEINTX & _BV(TXINI))) {}
-          clear_in();
-          // Wait until ZLP has been sent
-          while (!(UEINTX & (_BV(TXINI)))) {}
-          UDADDR |= _BV(ADDEN);
-          if (address) {
-            set_device_state(ADDRESSED);
-          }
+          // Set new address, but only enable *after* ZLP handshake
+          UDADDR = (uint8_t) (req->wValue & 0x7F);
+          control_transfer.stage = CTRL_HANDSHAKE_OUT;
+          control_transfer.callback_handshake = callback_set_address;
         }
       }
       break;
@@ -206,18 +198,8 @@ static void process_standard_request(const struct UsbSetupPacket_t* req) {
       // if not addressed yet, consider this command invalid
       // reconfigure after handshake
       if (valid_configuration_index(req->wValue)) {
-        clear_setup();
-        while (!(UEINTX & _BV(TXINI))) {}
-        clear_in();
-        while (!(UEINTX & _BV(TXINI))) {}
-        // Set configuration *after* handshake
-        set_configuration_index(req->wValue);
-        if (req->wValue == 0) {
-          set_device_state(DEFAULT);
-        }
-        else {
-          set_device_state(CONFIGURED);
-        }
+        control_transfer.stage = CTRL_HANDSHAKE_OUT;
+        control_transfer.callback_handshake = callback_set_configuration;
       }
       break;
     case GET_DESCRIPTOR:
@@ -272,6 +254,24 @@ static void process_standard_request(const struct UsbSetupPacket_t* req) {
   }
 }
 
+static void callback_set_address(const struct UsbSetupPacket_t* req) {
+  // Enable new address
+  const uint8_t address = (uint8_t) (req->wValue & 0x7F);
+  UDADDR |= _BV(ADDEN);
+  if (address) {
+    set_device_state(ADDRESSED);
+  }
+}
+
+static void callback_set_configuration(const struct UsbSetupPacket_t* req) {
+  set_configuration_index(req->wValue);
+  if (req->wValue == 0) {
+    set_device_state(DEFAULT);
+  }
+  else {
+    set_device_state(CONFIGURED);
+  }
+}
 #define VENDOR_REQUEST_PUSH_FRAME 1
 
 static void process_vendor_request(const struct UsbSetupPacket_t* req) {
