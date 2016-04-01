@@ -150,41 +150,29 @@ static void cancel_control_transfer(struct control_transfer_t* transfer) {
 }
 
 static void process_standard_request(const struct UsbSetupPacket_t* req) {
-  bool valid_request = false;
   switch (req->bRequest) {
     case GET_STATUS:
       // default state fail; address state fail if EP!=0; config state fail if non-existant
       // Device: self-powered, configured for remote wake-up
       // Interface: zeros
       // Endpoint: halted (interrupt and bulk required, other optional)
-      switch (req->bmRequestType) {
-        case (REQ_DIR_IN | REQ_TYPE_STANDARD | REQ_REC_DEVICE):
-          clear_setup();
-          fifo_write_byte(DEVICE_STATUS_SELF_POWERED);
-          fifo_write_byte(0);
-          valid_request = true;
-          break;
-        case (REQ_DIR_IN | REQ_TYPE_STANDARD | REQ_REC_INTERFACE):
-          clear_setup();
-          fifo_write_byte(0);
-          fifo_write_byte(0);
-          valid_request = true;
-          break;
-        case (REQ_DIR_IN | REQ_TYPE_STANDARD | REQ_REC_ENDPOINT):
-          clear_setup();
-          // TODO Select the requested EP and return halted status
-          // Currently no EP supports being halted, so always return 0
-          fifo_write_byte(0);
-          fifo_write_byte(0);
-          valid_request = true;
-          break;
-        default:
-          break;
-      }
-      if (valid_request) {
-        clear_in();
-        while (!(UEINTX & _BV(RXOUTI))) {}
-        clear_out();
+      if (init_data_in(&control_transfer, 2)) {
+        switch (req->bmRequestType) {
+          case (REQ_DIR_IN | REQ_TYPE_STANDARD | REQ_REC_DEVICE):
+            *((uint16_t*) control_transfer.data_in) = DEVICE_STATUS_SELF_POWERED;
+            break;
+          case (REQ_DIR_IN | REQ_TYPE_STANDARD | REQ_REC_INTERFACE):
+            *((uint16_t*) control_transfer.data_in) = 0;
+            break;
+          case (REQ_DIR_IN | REQ_TYPE_STANDARD | REQ_REC_ENDPOINT):
+            // TODO Select the requested EP and return halted status
+            // Currently no EP supports being halted, so always return 0
+            *((uint16_t*) control_transfer.data_in) = 0;
+            break;
+          default:
+            cancel_control_transfer(&control_transfer);
+            break;
+        }
       }
       break;
     case SET_ADDRESS:
@@ -208,14 +196,9 @@ static void process_standard_request(const struct UsbSetupPacket_t* req) {
       break;
     case GET_CONFIGURATION:
       if (req->bmRequestType == (REQ_DIR_IN| REQ_TYPE_STANDARD | REQ_REC_DEVICE)) {
-        // Acknowledge SETUP
-        clear_setup();
-        // Push current configuration number into FIFO and mark ready
-        fifo_write_byte(get_configuration_index());
-        clear_in();
-        // Enable OUT interrupt to handshake transaction
-        while (!(UEINTX & _BV(RXOUTI))) {}
-        clear_out();
+        if(init_data_in(&control_transfer, 1)) {
+          *((uint8_t*) control_transfer.data_in) = get_configuration_index();
+        }
       }
       break;
     case SET_CONFIGURATION:
