@@ -109,6 +109,7 @@ static inline void clear_out() {
 enum control_stage_t {
     CTRL_IDLE
   , CTRL_SETUP
+  , CTRL_STALL
   , CTRL_DATA_IN
   , CTRL_DATA_OUT
   , CTRL_HANDSHAKE_IN
