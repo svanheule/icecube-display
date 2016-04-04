@@ -122,7 +122,7 @@ struct control_transfer_t {
   void* data_in;
   uint16_t data_in_length;
   uint16_t data_in_done;
-//  void (*callback_data_out)(const struct UsbSetupPacket_t* req);
+  void (*callback_data_out)(struct control_transfer_t* transfer);
   void (*callback_handshake)(const struct UsbSetupPacket_t* req);
 };
 
@@ -273,32 +273,33 @@ static void callback_set_configuration(const struct UsbSetupPacket_t* req) {
   }
 }
 #define VENDOR_REQUEST_PUSH_FRAME 1
+static struct frame_buffer_t* usb_frame;
+static uint8_t* usb_frame_buffer_ptr;
+static void callback_data_usb_frame(struct control_transfer_t* transfer);
 
 static void process_vendor_request(const struct UsbSetupPacket_t* req) {
   if (req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_VENDOR | REQ_REC_INTERFACE)) {
     // If correct request and request length
     if (req->bRequest == VENDOR_REQUEST_PUSH_FRAME && req->wLength == FRAME_LENGTH) {
-      struct frame_buffer_t* usb_frame = create_frame();
+      usb_frame = create_frame();
       if (usb_frame) {
-        clear_setup();
-
         usb_frame->flags = FRAME_FREE_AFTER_DRAW;
-
-        // Get frame data
-        uint8_t* write_ptr = (uint8_t*) usb_frame->buffer;
-        uint8_t* end_ptr = write_ptr + FRAME_LENGTH;
-        while (write_ptr != end_ptr) {
-          while (!(UEINTX & _BV(RXOUTI))) {}
-          write_ptr += fifo_read(write_ptr, fifo_size());
-          clear_out();
-        }
-        push_frame(usb_frame);
-
-        // Handshake request
-        while (!(UEINTX & _BV(TXINI))) {}
-        clear_in();
+        usb_frame_buffer_ptr = (uint8_t*) usb_frame->buffer;
+        control_transfer.stage = CTRL_DATA_OUT;
+        control_transfer.callback_data_out = callback_data_usb_frame;
       }
     }
+  }
+}
+
+static void callback_data_usb_frame(struct control_transfer_t* transfer) {
+  // Get frame data
+  usb_frame_buffer_ptr += fifo_read(usb_frame_buffer_ptr, fifo_size());
+  // Push if all data was received
+  uint8_t* end_ptr = (uint8_t*) usb_frame->buffer + FRAME_LENGTH;
+  if (usb_frame_buffer_ptr == end_ptr) {
+    push_frame(usb_frame);
+    transfer->stage = CTRL_HANDSHAKE_OUT;
   }
 }
 
@@ -399,7 +400,15 @@ ISR(USB_COM_vect) {
 
     if (FLAG_IS_SET(UEIENX, RXOUTE) && FLAG_IS_SET(UEINTX, RXOUTI)) {
       if (control_transfer.stage == CTRL_DATA_OUT) {
-        // TODO Process incoming data
+        // Process incoming data
+        if (control_transfer.callback_data_out) {
+          control_transfer.callback_data_out(&control_transfer);
+        }
+        clear_out();
+        if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
+          SET_FLAG(UEIENX, TXINE);
+          CLEAR_FLAG(UEIENX, RXOUTE);
+        }
       }
       else if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
         // Acknowledge ZLP handshake
