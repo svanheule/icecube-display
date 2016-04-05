@@ -173,7 +173,7 @@ int main () {
     }
 
     if (renderer && !frame_queue_full()) {
-      push_frame(empty_frame());
+      push_frame(renderer->render_frame());
     }
 
     draw_frame = 0;
