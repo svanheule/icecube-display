@@ -1,4 +1,5 @@
 #include <avr/io.h>
+#include <avr/pgmspace.h>
 #include <stdint.h>
 #include "display_driver.h"
 
@@ -61,6 +62,19 @@ static inline void write_byte(const uint8_t byte) {
   wait_write_finish();
 }
 
+static const uint8_t LED_TO_BUFFER[LED_COUNT] PROGMEM = {
+              5,  4,  3,  2,  1,  0
+          ,  6,  7,  8,  9, 10, 11, 12
+        , 20, 19, 18, 17, 16, 15, 14, 13
+      , 21, 22, 23, 24, 25, 26, 27, 28, 29
+    , 39, 38, 37, 36, 35, 34, 33, 32, 31, 30
+  , 40, 41, 42, 43, 44, 45, 46, 47, 48, 49
+    , 58, 57, 56, 55, 54, 53, 52, 51, 50
+      , 59, 60, 61, 62, 63, 64, 65, 66
+        , 73, 72, 71, 70, 69, 68, 67
+          , 74, 75, 76, 77
+};
+
 /**
  * display_frame should be able to handle interruptions and be performed in the main loop.
  * The CTC compare interrupt should just wake the main loop, and then return.
@@ -91,11 +105,13 @@ void display_frame(const frame_t* buffer) {
     const struct led_t* leds = *buffer;
 
     // LED data
+    uint8_t index;
     for (i = 0; i < LED_COUNT; ++i) {
-      write_byte(LED_HEADER | leds[i].brightness);
-      write_byte(leds[i].blue);
-      write_byte(leds[i].green);
-      write_byte(leds[i].red);
+      index = pgm_read_byte(&LED_TO_BUFFER[i]);
+      write_byte(LED_HEADER | leds[index].brightness);
+      write_byte(leds[index].blue);
+      write_byte(leds[index].green);
+      write_byte(leds[index].red);
     }
 
     // End of frame

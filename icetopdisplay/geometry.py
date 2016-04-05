@@ -15,22 +15,16 @@ _pixel_station_map = numpy.empty(LED_COUNT, dtype=int)
 _pixel_coordinates = numpy.empty((LED_COUNT, 2), dtype=int)
 
 for row in range(len(_ROW_START)-1):
-  direction = int((-1)**(row+1))
-
-  if direction == 1:
-    start = _ROW_START[row]
-  else:
-    start = _ROW_START[row+1]-1
-
   pixel_start = _ROW_START[row]-1
   pixel_end = _ROW_START[row+1]-1
-  station = start
+
+  station = _ROW_START[row]
   offset = _ROW_OFFSET[row]-_ROW_START[row]
 
   for pixel in range(pixel_start, pixel_end):
     _pixel_station_map[pixel] = station
     _pixel_coordinates[pixel] = [station+offset, row]
-    station += direction
+    station += 1
 
 _coordinates_pixel_map = {}
 for i,location in enumerate(_pixel_coordinates):
