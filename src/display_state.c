@@ -17,7 +17,7 @@ void advance_display_state(enum display_command_t command) {
         case DISPLAY_GOTO_TEST_RING:
           display_state = DISPLAY_TEST_RING;
           break;
-        case DISPLAY_TEST_SNAKE:
+        case DISPLAY_GOTO_TEST_SNAKE:
           display_state = DISPLAY_TEST_SNAKE;
           break;
         default:
