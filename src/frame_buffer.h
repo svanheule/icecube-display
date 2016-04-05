@@ -38,6 +38,8 @@ struct frame_buffer_t {
 
 struct frame_buffer_t* create_frame();
 
+void destroy_frame(struct frame_buffer_t* frame);
+
 /// Clear the frame contents, i.e. set all values to zero.
 void clear_frame(struct frame_buffer_t* frame);
 

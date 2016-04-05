@@ -107,12 +107,17 @@ int main () {
   // Otherwise clear the display.
   enum display_state_t state = get_display_state();
   const struct renderer_t* renderer = get_renderer(state);
+  struct frame_buffer_t* frame;
   if (renderer) {
     renderer->start();
-    push_frame(renderer->render_frame());
+    frame = renderer->render_frame();
   }
   else {
-    push_frame(empty_frame());
+    frame = empty_frame();
+  }
+
+  if (!push_frame(frame)) {
+    destroy_frame(frame);
   }
 
   for (;;) {
@@ -121,14 +126,12 @@ int main () {
       sleep_cpu();
     }
 
-    struct frame_buffer_t* frame = pop_frame();
+    frame = pop_frame();
     if (frame) {
       frame->flags |= FRAME_DRAW_IN_PROGRESS;
       display_frame((const frame_t*) frame->buffer);
       frame->flags &= ~FRAME_DRAW_IN_PROGRESS;
-      if (frame->flags & FRAME_FREE_AFTER_DRAW) {
-        free(frame);
-      }
+      destroy_frame(frame);
     }
 
     if (!is_remote_connected()) {
@@ -164,13 +167,13 @@ int main () {
       if (renderer) {
         renderer->start();
       }
-      else {
+      else if (!frame_queue_full()) {
         push_frame(empty_frame());
       }
     }
 
-    if (renderer) {
-      push_frame(renderer->render_frame());
+    if (renderer && !frame_queue_full()) {
+      push_frame(empty_frame());
     }
 
     draw_frame = 0;

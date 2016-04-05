@@ -25,6 +25,13 @@ struct frame_buffer_t* create_frame() {
   return (struct frame_buffer_t*) malloc(sizeof(struct frame_buffer_t));
 }
 
+
+void destroy_frame(struct frame_buffer_t* frame) {
+  if (frame->flags & FRAME_FREE_AFTER_DRAW) {
+    free(frame);
+  }
+}
+
 bool frame_queue_full() {
   return (head == tail) && (tail_wrapped != head_wrapped);
 }

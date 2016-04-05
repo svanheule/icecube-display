@@ -299,7 +299,10 @@ static void callback_data_usb_frame(struct control_transfer_t* transfer) {
   // Push if all data was received
   uint8_t* end_ptr = (uint8_t*) usb_frame->buffer + FRAME_LENGTH;
   if (usb_frame_buffer_ptr == end_ptr) {
-    push_frame(usb_frame);
+    if(!push_frame(usb_frame)) {
+      destroy_frame(usb_frame);
+      usb_frame = 0;
+    }
     transfer->stage = CTRL_HANDSHAKE_OUT;
   }
 }
