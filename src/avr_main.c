@@ -135,8 +135,6 @@ int main () {
       if ( state == DISPLAY_IDLE
         && (switch_pressed(SWITCH_PLAY_PAUSE) || switch_pressed(SWITCH_FORWARD))
       ) {
-        clear_switch_pressed(SWITCH_PLAY_PAUSE);
-        clear_switch_pressed(SWITCH_FORWARD);
         advance_display_state(DISPLAY_GOTO_DEMO);
       }
       else if (state == DISPLAY_EXTERNAL) {

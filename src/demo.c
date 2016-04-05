@@ -109,6 +109,8 @@ static void load_next_event() {
 }
 
 static void init_demo() {
+  clear_switch_pressed(SWITCH_PLAY_PAUSE);
+  clear_switch_pressed(SWITCH_FORWARD);
   paused = false;
   current_event = &events[0];
   load_event_P(current_event);
