@@ -31,6 +31,31 @@ from icecube.shovelart import ChoiceSetting, I3TimeColorMap
 from icecube.shovelart import PyQColor, TimeWindowColor, StepFunctionFloat
 from icecube.dataclasses import I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion
 
+def merge_lists(left, right, key=lambda x: x):
+    merged = []
+
+    # Pick smallest from top while both lists have items
+    i = 0
+    j = 0
+    while (i < len(left) and j < len(right)):
+        if key(left[i]) < key(right[j]):
+            merged.append(left[i])
+            i = i+1
+        else:
+            merged.append(right[j])
+            j = j+1
+
+    # Add remaining items from left, or right
+    # Note that both cases are mutually exclusive
+    while i < len(left):
+        merged.append(left[i])
+        i = i+1
+    while j < len(right):
+        merged.append(right[j])
+        j = j+1
+
+    return merged
+
 class StationLed(object):
     def __init__(self, brightness, color):
         if not hasattr(brightness, "__call__"):
@@ -143,8 +168,12 @@ class LedDisplay(PyArtist):
                             if station not in station_pulses:
                                 station_pulses[station] = list(pulses)
                             else:
-                                station_pulses[station].extend(pulses)
-                                station_pulses[station].sort(key=lambda pulse : pulse.time)
+                                # Merge two already sorted lists (merge sort)
+                                station_pulses[station] = merge_lists(
+                                      station_pulses[station]
+                                    , pulses
+                                    , key=lambda pulse : pulse.time
+                                )
 
             # Determine event normalisation
             max_sum_charges = 0.
