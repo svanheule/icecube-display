@@ -80,6 +80,7 @@ class LedDisplay(PyArtist):
     _SETTING_COLOR = "colormap"
     _SETTING_INFINITE_DURATION = "infinite_pulses"
     _SETTING_DURATION = "duration"
+    _SETTING_COMPRESSION_POWER = "compression"
 
     def __init__(self):
         PyArtist.__init__(self)
@@ -109,6 +110,7 @@ class LedDisplay(PyArtist):
         self.addSetting(self._SETTING_COLOR, I3TimeColorMap())
         self.addSetting(self._SETTING_INFINITE_DURATION, True)
         self.addSetting(self._SETTING_DURATION, RangeSetting( 1.0, 5.0, 40, 5.0 ))
+        self.addSetting(self._SETTING_COMPRESSION_POWER, RangeSetting( 0.0, 1.0, 40, 0.15 ))
         self.addCleanupAction(self._cleanupDisplay)
 
     def _connectDevice(self):
@@ -213,7 +215,7 @@ class LedDisplay(PyArtist):
             # Iterate second time for light curves
             self._stations = {}
             normalisation = max_sum_charges
-            power = 0.15
+            power = self.setting(self._SETTING_COMPRESSION_POWER)
             for station in charges:
                 brightness = StepFunctionFloat(0)
                 pulses = charges[station]
