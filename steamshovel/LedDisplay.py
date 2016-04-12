@@ -116,7 +116,7 @@ class LedDisplay(PyArtist):
                     usb_device_descriptions.append(description)
         if len(self._usb_devices) == 0:
             self._usb_devices.append(None)
-            usb_device_descriptions.append("no devices")
+            usb_device_descriptions.append("no devices detected")
 
         self.addSetting(self._SETTING_DEVICE, ChoiceSetting(usb_device_descriptions, 0))
         self.addSetting(self._SETTING_COLOR_STATIC, PyQColor.fromRgb(255, 0, 255))
