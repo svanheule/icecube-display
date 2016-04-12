@@ -157,8 +157,8 @@ class LedDisplay(PyArtist):
 
     def isValidKey(self, frame, key_idx, key):
         key_type = frame.type_name(key)
+        _log.debug("key '{}' of type '{}' offered for key index {}".format(key, key_type, key_idx))
         if key_idx == 0:
-            _log.debug("key '{}' of type '{}' offered for key index {}".format(key, key_type, key_idx))
             # Key may be any container of OMKeys or a mask
             # copied from Bubbles.py
             return (   ("OMKey" in key_type and not "I3ParticleID" in key_type )
