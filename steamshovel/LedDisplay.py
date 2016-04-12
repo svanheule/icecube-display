@@ -76,6 +76,7 @@ class StationLed(object):
 
 class LedDisplay(PyArtist):
     numRequiredKeys = 1
+    _SETTING_DEVICE = "device"
     _SETTING_COLOR = "colormap"
     _SETTING_DURATION = "duration"
 
@@ -86,19 +87,52 @@ class LedDisplay(PyArtist):
         self._usb_handle = None
         self._stations = {}
 
-        # TODO Settings
-        # * ChoiceSetting: select USB device; hotplugging not possible!
-        # * I3TimeColorMap: time to RGB mapping
-        # * RangeSetting: charge compression
-        # * RangeSetting: charge normalisation
-#        self.defineSettings( { "brightness": RangeSetting(0.0, 1.0, 100, 0.2),
-#                               "scale": RangeSetting(-2.0, 1.0, 100, -0.65),
-#                               "power": RangeSetting(.01,.5, 100, 0.157),
-#                               "colormap": I3TimeColorMap() } )
+        self._usb_devices = []
+        usb_device_descriptions = []
+        if USBContext:
+            usb_context = USBContext()
+            for dev in usb_context.getDeviceList():
+                vendor_id = dev.getVendorID()
+                product_id = dev.getProductID()
+                if vendor_id  == 0x1CE3 and product_id == 1:
+                    self._usb_devices.append(dev)
+                    bus = dev.getBusNumber()
+                    port = dev.getPortNumber()
+                    description = "[usb:{:03d}-{:03d}] {}".format(bus, port, dev.getProduct())
+                    usb_device_descriptions.append(description)
+        if len(self._usb_devices) == 0:
+            self._usb_devices.append(None)
+            usb_device_descriptions.append("no devices")
 
-#        self.addSetting("device", ChoiceSetting(self.device_choices_descriptions, 0))
+        self.addSetting(self._SETTING_DEVICE, ChoiceSetting(usb_device_descriptions, 0))
         self.addSetting(self._SETTING_COLOR, I3TimeColorMap())
 #        self.addSetting(self._SETTING_DURATION, RangeSetting( 1.0, 5.0, 40, 5.0 ))
+        self.addCleanupAction(self._cleanupDisplay)
+
+    def _connectDevice(self):
+        # Release current device before attempting new connection
+        self._releaseInterface()
+        if not self._usb_handle:
+            dev = self._usb_devices[self.setting(self._SETTING_DEVICE)]
+            if dev:
+                bus = dev.getBusNumber()
+                port = dev.getPortNumber()
+                try:
+                    self._usb_handle = dev.open()
+                    self._usb_handle.claimInterface(0)
+                    _log.info("Opened device [usb:{:03d}-{:03d}]".format(bus, port))
+                except:
+                    self._releaseInterface() # Useful call?
+                    self._usb_handle = None
+                    _log.warning("Could not open device [usb:{:03d}-{:03d}]".format(bus, port))
+
+    def _cleanupDisplay(self):
+        _log.info("Clearing display")
+        self._connectDevice()
+        # Blank display and release USB device interface
+        if self._usb_handle:
+            self._writeFrame(bytes(bytearray(LED_COUNT*FormatAPA102.LENGTH)))
+        self._releaseInterface()
 
     def description(self):
         return "IceCube LED event display driver"
@@ -116,30 +150,7 @@ class LedDisplay(PyArtist):
             return False
 
     def create(self, frame, output):
-        # Get list of devices as late as possible, because we can't hook into changes of
-        # ChoiceSetting's value
-        if USBContext:
-            usb_context = USBContext()
-            for dev in usb_context.getDeviceList():
-                # Be strict on device selection since getting feedback from the GUI is a bit
-                # sub-optimal
-                vendor_id = dev.getVendorID()
-                product_id = dev.getProductID()
-                try:
-                    serial = dev.getSerialNumber()
-                except:
-                    serial = None
-                if vendor_id  == 0x1CE3 and product_id == 1 and serial == "ICD-IT-001-0001":
-                    bus = dev.getBusNumber()
-                    port = dev.getPortNumber()
-                    try:
-                        self._usb_handle = dev.open()
-                        self._usb_handle.claimInterface(0)
-                        _log.info("Opened device [usb:{:03d}-{:03d}]".format(bus, port))
-                    except:
-                        self._releaseInterface() # Useful call?
-                        self._usb_handle = None
-                        _log.warning("Could not open device [usb:{:03d}-{:03d}]".format(bus, port))
+        self._connectDevice()
 
         if self._usb_handle:
             color_map = self.setting(self._SETTING_COLOR)
@@ -231,8 +242,6 @@ class LedDisplay(PyArtist):
 
     def _releaseInterface(self):
         if self._usb_handle:
-            # Blank display and release USB device interface
-            self._writeFrame(bytes(bytearray(LED_COUNT*FormatAPA102.LENGTH)))
             self._usb_handle.releaseInterface(0)
             self._usb_handle.close()
             self._usb_handle = None
