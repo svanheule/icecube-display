@@ -334,8 +334,12 @@ class LedDisplay(PyArtist):
 
     def _releaseInterface(self):
         if self._usb_handle:
-            self._usb_handle.releaseInterface(0)
-            self._usb_handle.close()
-            self._usb_handle = None
-            _log.info("Released USB display interface")
+            try:
+                self._usb_handle.releaseInterface(0)
+                self._usb_handle.close()
+            except:
+                pass
+            finally:
+                self._usb_handle = None
+                _log.info("Released USB display interface")
 
