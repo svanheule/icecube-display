@@ -47,12 +47,10 @@ def merge_lists(left, right, key=lambda x: x):
 
     # Add remaining items from left, or right
     # Note that both cases are mutually exclusive
-    while i < len(left):
-        merged.append(left[i])
-        i = i+1
-    while j < len(right):
-        merged.append(right[j])
-        j = j+1
+    if i < len(left):
+        merged.extend(left[i:])
+    if j < len(right):
+        merged.extend(right[j:])
 
     return merged
 
