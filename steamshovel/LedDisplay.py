@@ -27,7 +27,7 @@ except:
   _log.error("Failed to import python-libusb1")
 
 from icecube.shovelart import PyArtist
-from icecube.shovelart import ChoiceSetting, I3TimeColorMap
+from icecube.shovelart import RangeSetting, ChoiceSetting, I3TimeColorMap
 from icecube.shovelart import PyQColor, TimeWindowColor, StepFunctionFloat
 from icecube.dataclasses import I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion
 
@@ -67,7 +67,7 @@ class StationLed(object):
             self._color = color
 
     def getValue(self, time):
-        brightness = min(0.8, self._brightness(time)) # Clip brightness
+        brightness = min(1.0, self._brightness(time)) # Clip brightness
         color = self._color(time)
         alpha = float(color.alpha)/255
         value = [comp*brightness*alpha for comp in color.rgbF()]
@@ -78,6 +78,7 @@ class LedDisplay(PyArtist):
     numRequiredKeys = 1
     _SETTING_DEVICE = "device"
     _SETTING_COLOR = "colormap"
+    _SETTING_INFINITE_DURATION = "infinite_pulses"
     _SETTING_DURATION = "duration"
 
     def __init__(self):
@@ -106,7 +107,8 @@ class LedDisplay(PyArtist):
 
         self.addSetting(self._SETTING_DEVICE, ChoiceSetting(usb_device_descriptions, 0))
         self.addSetting(self._SETTING_COLOR, I3TimeColorMap())
-#        self.addSetting(self._SETTING_DURATION, RangeSetting( 1.0, 5.0, 40, 5.0 ))
+        self.addSetting(self._SETTING_INFINITE_DURATION, True)
+        self.addSetting(self._SETTING_DURATION, RangeSetting( 1.0, 5.0, 40, 5.0 ))
         self.addCleanupAction(self._cleanupDisplay)
 
     def _connectDevice(self):
@@ -154,16 +156,17 @@ class LedDisplay(PyArtist):
 
         if self._usb_handle:
             color_map = self.setting(self._SETTING_COLOR)
-            
+            if self.setting(self._SETTING_INFINITE_DURATION):
+                duration = None
+            else:
+                duration = 10**self.setting(self._SETTING_DURATION)
+
             (frame_key,) = self.keys()
             pulse_series = frame[frame_key]
 
             # If we are displaying a mask/union, ensure pulse_series is a I3RecoPulseSeries object
             if isinstance(pulse_series, (I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion)):
                 pulse_series = pulse_series.apply(frame)
-
-#            def has_time(value):
-#                return hasattr(value, "time")
 
             station_pulses = {}
 
@@ -193,28 +196,63 @@ class LedDisplay(PyArtist):
                 has_npe = hasattr(pulses[0], "npe")
                 has_charge = hasattr(pulses[0], "charge")
 
+                total_charge = 0.
                 if has_charge:
                     charges[station] = [(pulse.time, pulse.charge) for pulse in pulses]
+                    total_charge += pulse.charge
                 elif has_npe:
                     charges[station] = [(pulse.time, pulse.npe) for pulse in pulses]
+                    total_charge += pulse.npe
                 else:
                     charges[station] = [(pulse.time, 1.0) for pulse in pulses]
+                    total_charge += 1.0
 
-                sum_charges = sum(zip(*charges[station])[1])
-                if sum_charges > max_sum_charges:
-                    max_sum_charges = sum_charges
+                if total_charge > max_sum_charges:
+                    max_sum_charges = total_charge
 
             # Iterate second time for light curves
             self._stations = {}
-            normalisation = 1./max_sum_charges
+            normalisation = max_sum_charges
             power = 0.15
             for station in charges:
-                t0, q0 = charges[station][0]
                 brightness = StepFunctionFloat(0)
-                accumulated_charge = 0
-                for time, charge in charges[station]:
-                    accumulated_charge += (charge*normalisation)**power
-                    brightness.add(accumulated_charge, time)
+                pulses = charges[station]
+                t0 = pulses[0][0]
+
+                if duration:
+                    tail = 0
+                    head = None
+                    while tail < len(pulses):
+                        accumulated_charge = 0.0
+                        head = tail
+                        t, q = pulses[head]
+                        while pulses[head][0]+duration > t and head >= 0:
+                            accumulated_charge += pulses[head][1]/normalisation
+                            head -= 1
+                        tail += 1
+                        brightness.add(accumulated_charge**power, t)
+                    # Now `tail == len(pulses)`, but the brightness curve is still at the last
+                    # accumulated charge
+                    # If `head` is 0, its interval is most likely still included for the total
+                    # charge, so progress to the next change point
+                    if pulses[head][0]+duration <= pulses[-1][0]:
+                        head += 1
+                    # Scan the ends of the display intervals to see what charge is still remaining
+                    while head < len(pulses):
+                        t, q = pulses[head]
+                        accumulated_charge = 0.0
+                        tail = head + 1
+                        while tail < len(pulses):
+                            accumulated_charge += pulses[tail][1]/normalisation
+                            tail += 1
+                        brightness.add(accumulated_charge**power, t+duration)
+                        head += 1
+                else:
+                    accumulated_charge = 0.0
+                    for t, q in pulses:
+                        accumulated_charge += q/normalisation
+                        brightness.add(accumulated_charge**power, t)
+
                 color = TimeWindowColor(output, t0, color_map)
                 self._stations[station] = StationLed(brightness.value, color.value)
 
