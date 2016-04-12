@@ -320,15 +320,15 @@ static void process_setup(struct control_transfer_t* transfer) {
   }
 }
 
-static struct control_transfer_t control_transfer;
-static struct UsbSetupPacket_t setup_packet;
-
 ISR(USB_COM_vect) {
   trip_led();
   uint8_t prev_ep = UENUM;
 
   // Process USB transfers
   if (FLAG_IS_SET(UEINT, 0)) {
+    static struct control_transfer_t control_transfer;
+    static struct UsbSetupPacket_t setup_packet;
+
     UENUM = 0;
     if (FLAG_IS_SET(UEIENX, RXSTPE) && FLAG_IS_SET(UEINTX, RXSTPI)) {
       CLEAR_FLAG(UEIENX, TXINE);
