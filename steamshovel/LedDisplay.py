@@ -77,6 +77,8 @@ class StationLed(object):
 class LedDisplay(PyArtist):
     numRequiredKeys = 1
     _SETTING_DEVICE = "device"
+    _SETTING_COLOR_STATIC = "static_color"
+    _SETTING_BRIGHTNESS_STATIC = "static_brightness"
     _SETTING_COLOR = "colormap"
     _SETTING_INFINITE_DURATION = "infinite_pulses"
     _SETTING_DURATION = "duration"
@@ -107,10 +109,12 @@ class LedDisplay(PyArtist):
             usb_device_descriptions.append("no devices")
 
         self.addSetting(self._SETTING_DEVICE, ChoiceSetting(usb_device_descriptions, 0))
+        self.addSetting(self._SETTING_COLOR_STATIC, PyQColor.fromRgb(255, 0, 255))
+        self.addSetting(self._SETTING_BRIGHTNESS_STATIC, RangeSetting(0.0, 1.0, 32, 0.5))
+        self.addSetting(self._SETTING_COMPRESSION_POWER, RangeSetting(0.0, 1.0, 40, 0.25))
         self.addSetting(self._SETTING_COLOR, I3TimeColorMap())
         self.addSetting(self._SETTING_INFINITE_DURATION, True)
-        self.addSetting(self._SETTING_DURATION, RangeSetting( 1.0, 5.0, 40, 5.0 ))
-        self.addSetting(self._SETTING_COMPRESSION_POWER, RangeSetting( 0.0, 1.0, 40, 0.15 ))
+        self.addSetting(self._SETTING_DURATION, RangeSetting(1.0, 5.0, 40, 5.0))
         self.addCleanupAction(self._cleanupDisplay)
 
     def _connectDevice(self):
@@ -153,110 +157,147 @@ class LedDisplay(PyArtist):
         else:
             return False
 
+    def _handleOMKeyMapTimed(self, output, omkey_pulses_map):
+        color_map = self.setting(self._SETTING_COLOR)
+        if self.setting(self._SETTING_INFINITE_DURATION):
+            duration = None
+        else:
+            duration = 10**self.setting(self._SETTING_DURATION)
+
+        # content of station_pulses: {station : [(time, charge-like)]} {int : [(float, float)]}
+        station_pulses = {}
+
+        for omkey, pulses in omkey_pulses_map:
+            station = omkey.string
+            om = omkey.om
+            _log.debug("Data available for DOM {}-{}".format(station, om))
+            if station <= 78 and om > 60 and om <= 64:
+                # Ensure we're dealing with a list of pulses
+                if not hasattr(pulses, "__len__"):
+                    pulses = list(pulses)
+
+                if len(pulses) > 0:
+                    if station not in station_pulses:
+                        station_pulses[station] = pulses
+                    else:
+                        # Merge two already sorted lists (merge sort)
+                        station_pulses[station] = merge_lists(
+                              station_pulses[station]
+                            , pulses
+                            , key=lambda pulse : pulse.time
+                        )
+
+        # Determine event normalisation
+        max_sum_charges = 0.
+        charges = {}
+        for station in station_pulses:
+            pulses = station_pulses[station]
+            t0 = pulses[0].time
+            has_npe = hasattr(pulses[0], "npe")
+            has_charge = hasattr(pulses[0], "charge")
+
+            total_charge = 0.
+            if has_charge:
+                charges[station] = [(pulse.time, pulse.charge) for pulse in pulses]
+                total_charge += pulse.charge
+            elif has_npe:
+                charges[station] = [(pulse.time, pulse.npe) for pulse in pulses]
+                total_charge += pulse.npe
+            else:
+                charges[station] = [(pulse.time, 1.0) for pulse in pulses]
+                total_charge += 1.0
+
+            if total_charge > max_sum_charges:
+                max_sum_charges = total_charge
+
+        # Iterate second time for light curves
+        station_leds = {}
+        normalisation = max_sum_charges
+        power = self.setting(self._SETTING_COMPRESSION_POWER)
+        for station in charges:
+            brightness = StepFunctionFloat(0)
+            pulses = charges[station]
+            t0 = pulses[0][0]
+
+            if duration:
+                tail = 0
+                head = None
+                while tail < len(pulses):
+                    accumulated_charge = 0.0
+                    head = tail
+                    t, q = pulses[head]
+                    while pulses[head][0]+duration > t and head >= 0:
+                        accumulated_charge += pulses[head][1]/normalisation
+                        head -= 1
+                    tail += 1
+                    brightness.add(accumulated_charge**power, t)
+                # Now `tail == len(pulses)`, but the brightness curve is still at the last
+                # accumulated charge
+                # If `head` is 0, its interval is most likely still included for the total
+                # charge, so progress to the next change point
+                if pulses[head][0]+duration <= pulses[-1][0]:
+                    head += 1
+                # Scan the ends of the display intervals to see what charge is still remaining
+                while head < len(pulses):
+                    t, q = pulses[head]
+                    accumulated_charge = 0.0
+                    tail = head + 1
+                    while tail < len(pulses):
+                        accumulated_charge += pulses[tail][1]/normalisation
+                        tail += 1
+                    brightness.add(accumulated_charge**power, t+duration)
+                    head += 1
+            else:
+                accumulated_charge = 0.0
+                for t, q in pulses:
+                    accumulated_charge += q/normalisation
+                    brightness.add(accumulated_charge**power, t)
+
+            color = TimeWindowColor(output, t0, color_map)
+            station_leds[station] = StationLed(brightness.value, color.value)
+
+        return station_leds
+
+    def _handleOMKeyListStatic(self, output, omkey_list):
+        color_static = self.setting(self._SETTING_COLOR_STATIC)
+        brightness_static = self.setting(self._SETTING_BRIGHTNESS_STATIC)
+
+        station_leds = {}
+
+        for omkey in omkey_list:
+            station = omkey.string
+            om = omkey.om
+            _log.debug("Data available for DOM {}-{}".format(station, om))
+            if station <= 78 and om > 60 and om <= 64:
+                if not station in station_leds:
+                    station_leds[station] = StationLed(brightness_static, color_static)
+
+        return station_leds
+
     def create(self, frame, output):
         self._connectDevice()
 
         if self._usb_handle:
-            color_map = self.setting(self._SETTING_COLOR)
-            if self.setting(self._SETTING_INFINITE_DURATION):
-                duration = None
-            else:
-                duration = 10**self.setting(self._SETTING_DURATION)
-
             (frame_key,) = self.keys()
-            pulse_series = frame[frame_key]
+            omkey_object = frame[frame_key]
 
-            # If we are displaying a mask/union, ensure pulse_series is a I3RecoPulseSeries object
-            if isinstance(pulse_series, (I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion)):
-                pulse_series = pulse_series.apply(frame)
+            # If we are displaying a mask/union, ensure omkey_object is a I3RecoPulseSeries object
+            if isinstance(omkey_object, (I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion)):
+                omkey_object = omkey_object.apply(frame)
 
-            station_pulses = {}
-
-            if hasattr(pulse_series, "keys"): # I3Map of OMKeys
-                for omkey, pulses in pulse_series:
-                    _log.debug("Data available for DOM {}-{}".format(omkey.string, omkey.om))
-                    if hasattr(pulses, "__len__") and len(pulses) > 0:
-                        station = omkey.string
-                        om = omkey.om
-                        if station <= 78 and om > 60 and om <= 64:
-                            if station not in station_pulses:
-                                station_pulses[station] = list(pulses)
-                            else:
-                                # Merge two already sorted lists (merge sort)
-                                station_pulses[station] = merge_lists(
-                                      station_pulses[station]
-                                    , pulses
-                                    , key=lambda pulse : pulse.time
-                                )
-
-            # Determine event normalisation
-            max_sum_charges = 0.
-            charges = {}
-            for station in station_pulses:
-                pulses = station_pulses[station]
-                t0 = pulses[0].time
-                has_npe = hasattr(pulses[0], "npe")
-                has_charge = hasattr(pulses[0], "charge")
-
-                total_charge = 0.
-                if has_charge:
-                    charges[station] = [(pulse.time, pulse.charge) for pulse in pulses]
-                    total_charge += pulse.charge
-                elif has_npe:
-                    charges[station] = [(pulse.time, pulse.npe) for pulse in pulses]
-                    total_charge += pulse.npe
-                else:
-                    charges[station] = [(pulse.time, 1.0) for pulse in pulses]
-                    total_charge += 1.0
-
-                if total_charge > max_sum_charges:
-                    max_sum_charges = total_charge
-
-            # Iterate second time for light curves
-            self._stations = {}
-            normalisation = max_sum_charges
-            power = self.setting(self._SETTING_COMPRESSION_POWER)
-            for station in charges:
-                brightness = StepFunctionFloat(0)
-                pulses = charges[station]
-                t0 = pulses[0][0]
-
-                if duration:
-                    tail = 0
-                    head = None
-                    while tail < len(pulses):
-                        accumulated_charge = 0.0
-                        head = tail
-                        t, q = pulses[head]
-                        while pulses[head][0]+duration > t and head >= 0:
-                            accumulated_charge += pulses[head][1]/normalisation
-                            head -= 1
-                        tail += 1
-                        brightness.add(accumulated_charge**power, t)
-                    # Now `tail == len(pulses)`, but the brightness curve is still at the last
-                    # accumulated charge
-                    # If `head` is 0, its interval is most likely still included for the total
-                    # charge, so progress to the next change point
-                    if pulses[head][0]+duration <= pulses[-1][0]:
-                        head += 1
-                    # Scan the ends of the display intervals to see what charge is still remaining
-                    while head < len(pulses):
-                        t, q = pulses[head]
-                        accumulated_charge = 0.0
-                        tail = head + 1
-                        while tail < len(pulses):
-                            accumulated_charge += pulses[tail][1]/normalisation
-                            tail += 1
-                        brightness.add(accumulated_charge**power, t+duration)
-                        head += 1
-                else:
-                    accumulated_charge = 0.0
-                    for t, q in pulses:
-                        accumulated_charge += q/normalisation
-                        brightness.add(accumulated_charge**power, t)
-
-                color = TimeWindowColor(output, t0, color_map)
-                self._stations[station] = StationLed(brightness.value, color.value)
+            if hasattr(omkey_object, "keys"): # I3Map of OMKeys
+                if len(omkey_object) > 0:
+                    first_value = omkey_object[omkey_object.keys()[0]]
+                    if hasattr(first_value, "__len__") and len(first_value) > 0:
+                        if hasattr(first_value[0], "time"):
+                            self._stations = self._handleOMKeyMapTimed(output, omkey_object)
+                    elif hasattr(first_value, "time"):
+                        self._stations = self._handleOMKeyMapTimed(output, omkey_object)
+                    else:
+                        self._stations = self._handleOMKeyListStatic(output, omkey_object.keys())
+            elif hasattr(omkey_object, "__len__"):
+                if len(omkey_object) > 0:
+                    self._stations = self._handleOMKeyListStatic(output, omkey_object)
 
             output.addPhantom(self._releaseInterface, self._updateDisplay)
 
