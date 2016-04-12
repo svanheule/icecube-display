@@ -15,7 +15,6 @@ _log.info("leddisplay loaded")
 try:
   import sys
   # libusb1 support
-  sys.path.append("/usr/local/lib/python2.7/dist-packages/libusb1-1.4.1-py2.7.egg")
   from usb1 import USBContext, ENDPOINT_OUT, TYPE_VENDOR, RECIPIENT_INTERFACE
 except:
   USBContext = None
