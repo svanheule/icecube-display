@@ -17,11 +17,6 @@ try:
   # libusb1 support
   sys.path.append("/usr/local/lib/python2.7/dist-packages/libusb1-1.4.1-py2.7.egg")
   from usb1 import USBContext, ENDPOINT_OUT, TYPE_VENDOR, RECIPIENT_INTERFACE
-  # Add icetopdisplay module to path
-  # FIXME Ensure the icetopdisplay module can be loaded instead of the submodules
-  sys.path.append("/home/sjvheule/projects/be.ugent/pocket-icetop/icetopdisplay")
-  from led_format import FormatAPA102
-  from geometry import LED_COUNT
 except:
   USBContext = None
   _log.error("Failed to import python-libusb1")
@@ -54,7 +49,11 @@ def merge_lists(left, right, key=lambda x: x):
 
     return merged
 
+
 class StationLed(object):
+    MAX_BRIGHTNESS = 2**5-1
+    DATA_LENGTH = 4
+
     def __init__(self, brightness, color):
         if not hasattr(brightness, "__call__"):
             self._brightness = (lambda time : brightness)
@@ -66,15 +65,27 @@ class StationLed(object):
         else:
             self._color = color
 
+    @classmethod
+    def float_to_led_data(cls, rgb):
+        "APA102 data format: 5b global brightness, 3*8b RGB"
+        # Factor out brightness from colour
+        brightness = max(1./cls.MAX_BRIGHTNESS, max(rgb))
+        scaling = brightness / cls.MAX_BRIGHTNESS
+        rgb = [int(round(255 * (c**2.2)/brightness)) for c in rgb]
+        return [int(round(brightness*cls.MAX_BRIGHTNESS)), rgb[0], rgb[1], rgb[2]]
+
     def getValue(self, time):
         brightness = min(1.0, self._brightness(time)) # Clip brightness
         color = self._color(time)
         alpha = float(color.alpha)/255
         value = [comp*brightness*alpha for comp in color.rgbF()]
-        return FormatAPA102.float_to_led_data(value)
+        return self.float_to_led_data(value)
 
 
 class LedDisplay(PyArtist):
+    _LED_COUNT = 78
+    _FRAME_SIZE = _LED_COUNT*StationLed.DATA_LENGTH
+
     numRequiredKeys = 1
     _SETTING_DEVICE = "device"
     _SETTING_COLOR_STATIC = "static_color"
@@ -139,7 +150,7 @@ class LedDisplay(PyArtist):
         self._connectDevice()
         # Blank display and release USB device interface
         if self._usb_handle:
-            self._writeFrame(bytes(bytearray(LED_COUNT*FormatAPA102.LENGTH)))
+            self._writeFrame(bytes(bytearray(self._FRAME_SIZE)))
         self._releaseInterface()
 
     def description(self):
@@ -312,12 +323,12 @@ class LedDisplay(PyArtist):
             )
 
     def _updateDisplay(self, event_time):
-        frame = bytearray(LED_COUNT*FormatAPA102.LENGTH)
+        frame = bytearray(self._FRAME_SIZE)
 
         for station in self._stations:
             led = station - 1
             led_value = self._stations[station].getValue(event_time)
-            frame[led*FormatAPA102.LENGTH:(led+1)*FormatAPA102.LENGTH] = led_value
+            frame[led*StationLed.DATA_LENGTH:(led+1)*StationLed.DATA_LENGTH] = led_value
 
         self._writeFrame(bytes(frame))
 
