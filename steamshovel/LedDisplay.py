@@ -48,6 +48,22 @@ def merge_lists(left, right, key=lambda x: x):
 
     return merged
 
+class TimeWindowColorSequence(object):
+    def __init__(self, output, times, colormap):
+        self._windows = [(t, TimeWindowColor(output, t, colormap)) for t in times]
+
+    def value(self, time):
+        i = 0
+        while i < len(self._windows) and self._windows[i][0] < time:
+            i += 1
+
+        if i > 0:
+            return self._windows[i-1][1].value(time)
+        elif len(self._windows) > 0: # i == 0 and window list is not empty
+            return self._windows[0][1].value(time)
+        else:
+            return PyQColor.fromRgb(0, 0, 0)
+
 
 class StationLed(object):
     MAX_BRIGHTNESS = 2**5-1
@@ -232,15 +248,23 @@ class LedDisplay(PyArtist):
             if duration:
                 tail = 0
                 head = None
+                # Determine pulse intervals
+                t0s = [t0]
                 while tail < len(pulses):
                     accumulated_charge = 0.0
                     head = tail
                     t, q = pulses[head]
+                    # Add accumulated charge of currently visible pulses
                     while pulses[head][0]+duration > t and head >= 0:
-                        accumulated_charge += pulses[head][1]/normalisation
+                        accumulated_charge += q/normalisation
                         head -= 1
-                    tail += 1
                     brightness.add(accumulated_charge**power, t)
+                    # If the current sequence doesn't overlap with the next pulse, reset the
+                    # brightness and register the new series starting point
+                    if tail < len(pulses)-1 and t+duration < pulses[tail+1][0]:
+                        t0s.append(t)
+                        brightness.add(0, t+duration)
+                    tail += 1
                 # Now `tail == len(pulses)`, but the brightness curve is still at the last
                 # accumulated charge
                 # If `head` is 0, its interval is most likely still included for the total
@@ -257,13 +281,18 @@ class LedDisplay(PyArtist):
                         tail += 1
                     brightness.add(accumulated_charge**power, t+duration)
                     head += 1
+
+                if len(t0s) > 1:
+                    color = TimeWindowColorSequence(output, t0s, color_map)
+                else:
+                    color = TimeWindowColor(output, t0, color_map)
             else:
                 accumulated_charge = 0.0
+                color = TimeWindowColor(output, t0, color_map)
                 for t, q in pulses:
                     accumulated_charge += q/normalisation
                     brightness.add(accumulated_charge**power, t)
 
-            color = TimeWindowColor(output, t0, color_map)
             station_leds[station] = StationLed(brightness.value, color.value)
 
         return station_leds
