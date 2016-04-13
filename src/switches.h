@@ -4,6 +4,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#if defined(CONTROLLER_ARDUINO)
+#error Switch inputs currently not supported on the Arduino platform
+#endif
+
 #define SWITCH_COUNT 2
 #define SWITCH_PLAY_PAUSE 0
 #define SWITCH_FORWARD 1
