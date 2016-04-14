@@ -172,11 +172,14 @@ add_custom_target(
 
 # Custom make target for uploading to microcontroller
 if(NOT ("${PROGRAMMER_ID}" STREQUAL ""))
+  set(
+    PROGRAM_COMMAND
+    avrdude -p $<UPPER_CASE:${AVR_TARGET_DEVICE}> -c ${PROGRAMMER_ID} ${PROGRAMMER_PORT_FLAGS}
+  )
+
   add_custom_target(
     upload
-    avrdude -p $<UPPER_CASE:${AVR_TARGET_DEVICE}>
-      -c ${PROGRAMMER_ID} ${PROGRAMMER_PORT_FLAGS}
-      -U flash:w:icetop_display.hex
+    ${PROGRAM_COMMAND} -U flash:w:icetop_display.hex
     DEPENDS icetop_display
     COMMENT "Upload new program file"
   )
@@ -185,8 +188,7 @@ if(NOT ("${PROGRAMMER_ID}" STREQUAL ""))
   if(FUSES)
     add_custom_target(
       fuses
-      avrdude -p $<UPPER_CASE:${AVR_TARGET_DEVICE}>
-        -c ${PROGRAMMER_ID} ${PROGRAMMER_PORT_FLAGS}
+      ${PROGRAM_COMMAND}
         -U lfuse:w:${FUSE_LOW}:m
         -U hfuse:w:${FUSE_HIGH}:m
         -U efuse:w:${FUSE_EXTENDED}:m
@@ -223,9 +225,7 @@ if(NOT ("${PROGRAMMER_ID}" STREQUAL ""))
 
     add_custom_target(
       bootloader
-      avrdude -p $<UPPER_CASE:${AVR_TARGET_DEVICE}>
-        -c ${PROGRAMMER_ID} ${PROGRAMMER_PORT_FLAGS}
-        -U flash:w:${bootloader_hex}
+      ${PROGRAM_COMMAND} -U flash:w:${bootloader_hex_filename}
       DEPENDS bootloader_images
       COMMENT "Upload DFU bootloader"
     )
