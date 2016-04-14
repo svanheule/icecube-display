@@ -221,12 +221,12 @@ if(NOT ("${PROGRAMMER_ID}" STREQUAL ""))
 
   # Custom target to flash, and download if needed, the Atmel DFU bootloader
   if(NOT ARDUINO)
-    set(bootloader_dir "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/bootloader")
+    set(bootloader_dir "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/images")
     set(bootloader_zip_filename "megaUSB_DFU_Bootloaders.zip")
     set(bootloader_hex_filename "ATMega32U4-usbdevice_dfu-1_0_0.hex")
     set(bootloader_url "http://www.atmel.com/Images/${bootloader_zip_filename}")
     set(bootloader_zip "${bootloader_dir}/${bootloader_zip_filename}")
-    set(bootloader_hex "${bootloader_dir}/${bootloader_hex_filename}")
+    set(bootloader_hex "${bootloader_hex_filename}")
 
     if(NOT EXISTS ${bootloader_dir})
       file(MAKE_DIRECTORY ${bootloader_dir})
@@ -240,16 +240,15 @@ if(NOT ("${PROGRAMMER_ID}" STREQUAL ""))
     endif()
 
     add_custom_target(
-      bootloader_images
-      ${CMAKE_COMMAND} -E tar xf ${bootloader_zip_filename}
+      bootloader_image
+      ${CMAKE_COMMAND} -E tar xf ${bootloader_zip} -- ${bootloader_hex_filename}
       DEPENDS ${bootloader_zip}
-      WORKING_DIRECTORY ${bootloader_dir}
     )
 
     add_custom_target(
       bootloader
-      ${PROGRAM_COMMAND} -U flash:w:${bootloader_hex_filename}
-      DEPENDS bootloader_images
+      ${PROGRAM_COMMAND} -U flash:w:${bootloader_hex}
+      DEPENDS bootloader_image
       COMMENT "Upload DFU bootloader"
     )
   endif()
