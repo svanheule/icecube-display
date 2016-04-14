@@ -1,0 +1,4 @@
+#include <avr/eeprom.h>
+
+typedef __CHAR16_TYPE__ char16_t;
+const char16_t STR_SERIAL_NUMBER[] EEMEM = u"${DEVICE_SERIAL}";

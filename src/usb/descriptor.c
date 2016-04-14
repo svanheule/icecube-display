@@ -1,6 +1,7 @@
 #include "usb/descriptor.h"
 #include <stdlib.h>
 #include <avr/pgmspace.h>
+#include <avr/eeprom.h>
 
 typedef __CHAR16_TYPE__ char16_t;
 
@@ -16,8 +17,25 @@ static size_t strlen16(const char16_t* str) {
 
 static size_t strlen16_P(const char16_t* str) {
   const char16_t* end = str;
-  while (pgm_read_word(end) != 0) {
+  uint16_t word = pgm_read_word((const uint16_t*) end);
+  // See strlen16_E for more information on `word != 0xffff`
+  while (word != 0 && word != 0xffff) {
     ++end;
+    word = pgm_read_word((const uint16_t*) end);
+  }
+  return end-str;
+}
+
+/* It may occur that the EEPROM was left unprogrammed, so all reads will return 0xFFFF.
+ * In UTF-16, the word 0xFFFF however is not valid. String length determination therefore stops
+ * either at a 0x0000 (valid termination) or at 0xFFFF (invalid termination).
+ */
+static size_t strlen16_E(const char16_t* str) {
+  const char16_t* end = str;
+  uint16_t word = eeprom_read_word((const uint16_t*) end);
+  while (word != 0 && word != 0xffff) {
+    ++end;
+    word = eeprom_read_word((const uint16_t*) end);
   }
   return end-str;
 }
@@ -25,16 +43,16 @@ static size_t strlen16_P(const char16_t* str) {
 uint8_t usb_descriptor_size(
     const enum usb_descriptor_type_t type
   , const void* body
-  , const bool body_in_flash
+  , const enum memspace_t memspace
 ) {
   typedef struct usb_descriptor_header_t header;
-  return usb_descriptor_body_size(type, body, body_in_flash) + sizeof(header);
+  return usb_descriptor_body_size(type, body, memspace) + sizeof(header);
 }
 
 uint8_t usb_descriptor_body_size(
     const enum usb_descriptor_type_t type
   , const void* body
-  , const bool body_in_flash
+  , const enum memspace_t memspace
 ) {
   typedef struct usb_descriptor_body_device_t body_device;
   typedef struct usb_descriptor_body_configuration_t body_configuration;
@@ -49,11 +67,19 @@ uint8_t usb_descriptor_body_size(
       return sizeof(body_device);
       break;
     case DESC_TYPE_STRING:
-      if (!body_in_flash) {
-        return 2*strlen16((const char16_t*) body);
-      }
-      else {
-        return 2*strlen16_P((const char16_t*) body);
+      switch (memspace) {
+        case MEMSPACE_RAM:
+          return 2*strlen16((const char16_t*) body);
+          break;
+        case MEMSPACE_PROGMEM:
+          return 2*strlen16_P((const char16_t*) body);
+          break;
+        case MEMSPACE_EEPROM:
+          return 2*strlen16_E((const char16_t*) body);
+          break;
+        default:
+          return 0;
+          break;
       }
       break;
     case DESC_TYPE_INTERFACE:
@@ -71,14 +97,14 @@ uint8_t usb_descriptor_body_size(
 static struct descriptor_list_t* create_list_item(
     const enum usb_descriptor_type_t type
   , const void* body
-  , const bool body_in_flash
+  , const enum memspace_t memspace
 ) {
   typedef struct descriptor_list_t item_t;
   item_t* item = (item_t*) malloc(sizeof(item_t));
   if (item) {
-    item->header.bLength = usb_descriptor_size(type, body, body_in_flash);
+    item->header.bLength = usb_descriptor_size(type, body, memspace);
     item->header.bDescriptorType = type;
-    item->body_in_flash = body_in_flash;
+    item->memspace = memspace;
     item->body = body;
     item->next = 0;
   }
@@ -153,7 +179,7 @@ static const struct usb_descriptor_body_interface_t BODY_INTERFACE PROGMEM = {
 
 static const char16_t STR_MANUFACTURER[] PROGMEM = u"Ghent University";
 static const char16_t STR_PRODUCT[] PROGMEM = u"IceTop event display";
-static const char16_t STR_SERIAL_NUMBER[] PROGMEM = u"ICD-IT-001-0001";
+extern const char16_t STR_SERIAL_NUMBER[] EEMEM;
 static const char16_t STR_IFACE_DESCR[] PROGMEM = u"Steamshovel display";
 
 #define LANG_ID_EN_US 0x0409

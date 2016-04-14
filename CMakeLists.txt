@@ -41,8 +41,8 @@ else()
   # Fuse values
   # >8MHz crystal, low rise VCC, no clock-out, no clock divide by 8
   set(FUSE_LOW 0xff)
-  # no on-chip debug, no JTAG, enable SPI, no WDT, no EEPROM save, bootsize 2k, boot to application
-  set(FUSE_HIGH 0xd9)
+  # no on-chip debug, no JTAG, enable SPI, no WDT, EEPROM save, bootsize 2k, boot to application
+  set(FUSE_HIGH 0xd1)
   # BOD level 4.3V, HWB/DFU enable
   set(FUSE_EXTENDED 0xf0)
 #  set(DEFAULT_PROGRAMMER_ID "")
@@ -57,6 +57,10 @@ set(
 set(
   PROGRAMMER_PORT_FLAGS ${DEFAULT_PROGRAMMER_PORT_FLAGS}
   CACHE STRING "avrdude options to specify the programmer settings"
+)
+set(
+  DEVICE_SERIAL "ICD-IT-001-0000"
+  CACHE STRING "Device serial number, stored in the microcontroller's EEPROM"
 )
 
 # Set the GCC flags required
@@ -91,6 +95,8 @@ else()
     src/usb/descriptor.c
     src/usb/configuration.c
   )
+  configure_file(src/usb/serial.c.in serial.c)
+  list(APPEND SOURCES "${CMAKE_BINARY_DIR}/serial.c")
 endif()
 
 set(EVENTS
@@ -161,6 +167,7 @@ add_custom_command(
   TARGET icetop_display
   POST_BUILD
   COMMAND avr-objcopy -O ihex -R .eeprom $<TARGET_FILE:icetop_display> icetop_display.hex
+  COMMAND avr-objcopy -O ihex -j .eeprom $<TARGET_FILE:icetop_display> icetop_display.eep
 )
 
 # Custom target to get size
@@ -195,6 +202,13 @@ if(NOT ("${PROGRAMMER_ID}" STREQUAL ""))
       COMMENT "Setting microcontroller fuses..."
     )
   endif()
+
+  add_custom_target(
+    upload_eeprom
+    ${PROGRAM_COMMAND} -D -U eeprom:w:icetop_display.eep
+    DEPENDS icetop_display
+    COMMENT "Upload device EEPROM"
+  )
 
   # Custom target to flash, and download if needed, the Atmel DFU bootloader
   if(NOT ARDUINO)

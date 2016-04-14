@@ -17,6 +17,12 @@ enum usb_descriptor_type_t {
   , DESC_TYPE_INTERFACE_POWER = 8 // USB power delivery, not used
 };
 
+enum memspace_t {
+    MEMSPACE_RAM
+  , MEMSPACE_PROGMEM
+  , MEMSPACE_EEPROM
+};
+
 // Common header used for all USB descriptors
 struct usb_descriptor_header_t {
   uint8_t bLength;
@@ -30,12 +36,12 @@ struct usb_descriptor_t {
   void* body;
 };
 
-uint8_t usb_descriptor_size(const enum usb_descriptor_type_t type, const void* body, bool body_in_flash);
-uint8_t usb_descriptor_body_size(const enum usb_descriptor_type_t type, const void* body, bool body_in_flash);
+uint8_t usb_descriptor_size(const enum usb_descriptor_type_t type, const void* body, const enum memspace_t memspace);
+uint8_t usb_descriptor_body_size(const enum usb_descriptor_type_t type, const void* body, const enum memspace_t memspace);
 
 struct descriptor_list_t {
   struct usb_descriptor_header_t header;
-  bool body_in_flash;
+  enum memspace_t memspace;
   const void* body;
   struct descriptor_list_t* next;
 };
