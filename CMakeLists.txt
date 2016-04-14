@@ -251,6 +251,12 @@ if(NOT ("${PROGRAMMER_ID}" STREQUAL ""))
       DEPENDS bootloader_image
       COMMENT "Upload DFU bootloader"
     )
+
+    add_custom_target(
+      erase_device
+      ${PROGRAM_COMMAND} -e
+      COMMENT "Erase device memory"
+    )
   endif()
 
 endif()
