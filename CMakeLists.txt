@@ -24,7 +24,7 @@ set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
 set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
 
 option(ARDUINO "Build image for Arduino development hardware" OFF)
-option(FUSES "Enable setting of fuses (advanced feature, may brick your device)" OFF)
+option(FUSES "Enable setting of fuses and lock bits (advanced feature, may brick your device)" OFF)
 
 # Set the target AVR device
 if(ARDUINO)
@@ -33,6 +33,7 @@ if(ARDUINO)
   set(FUSE_LOW 0xff)
   set(FUSE_HIGH 0xde)
   set(FUSE_EXTENDED 0x05)
+  set(LOCK 0xcf)
   # Programmer: Arduino on port /dev/ttyACM0, baudrate 115200
   set(DEFAULT_PROGRAMMER_ID arduino)
   set(DEFAULT_PROGRAMMER_PORT_FLAGS -P /dev/ttyACM0 -b 115200)
@@ -45,6 +46,8 @@ else()
   set(FUSE_HIGH 0xd1)
   # BOD level 4.3V, HWB/DFU enable
   set(FUSE_EXTENDED 0xf0)
+  # Lock bits: prevent firmware from writing to in bootloader section
+  set(LOCK 0xef)
 #  set(DEFAULT_PROGRAMMER_ID "")
 #  set(DEFAULT_PROGRAMMER_PORT_FLAGS "")
 endif()
@@ -199,7 +202,13 @@ if(NOT ("${PROGRAMMER_ID}" STREQUAL ""))
         -U lfuse:w:${FUSE_LOW}:m
         -U hfuse:w:${FUSE_HIGH}:m
         -U efuse:w:${FUSE_EXTENDED}:m
-      COMMENT "Setting microcontroller fuses..."
+      COMMENT "Program microcontroller fuses"
+    )
+
+    add_custom_target(
+      lock
+      ${PROGRAM_COMMAND} -U lock:w:${LOCK}:m
+      COMMENT "Program memory lock bits"
     )
   endif()
 
