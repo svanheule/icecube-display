@@ -48,8 +48,7 @@ else()
   set(FUSE_EXTENDED 0xf0)
   # Lock bits: prevent firmware from writing to in bootloader section
   set(LOCK 0xef)
-#  set(DEFAULT_PROGRAMMER_ID "")
-#  set(DEFAULT_PROGRAMMER_PORT_FLAGS "")
+  set(DEFAULT_PROGRAMMER_ID flip1)
 endif()
 
 set(AVR_TARGET_F_CPU 16000000)
