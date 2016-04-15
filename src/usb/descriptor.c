@@ -222,11 +222,7 @@ struct descriptor_list_t* generate_descriptor_list(const UsbSetupPacket* req) {
         head = create_list_item(DESC_TYPE_CONFIGURATION, &descriptor_config, MEMSPACE_RAM);
         descriptor_list_append(
               head
-            , create_list_item(DESC_TYPE_INTERFACE, &BODY_INTERFACE_0, MEMSPACE_PROGMEM)
-        );
-        descriptor_list_append(
-              head
-            , create_list_item(DESC_TYPE_INTERFACE, &BODY_INTERFACE_1, MEMSPACE_PROGMEM)
+            , create_list_item(DESC_TYPE_INTERFACE, &BODY_INTERFACE, MEMSPACE_PROGMEM)
         );
         // Calculate and fill in total configuration length
         descriptor_config.wTotalLength = get_list_total_length(head);
