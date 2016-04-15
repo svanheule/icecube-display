@@ -202,16 +202,16 @@ struct descriptor_list_t* generate_descriptor_list(const UsbSetupPacket* req) {
   switch (type) {
     case DESC_TYPE_DEVICE:
       if (index == 0) {
-        head = create_list_item(DESC_TYPE_DEVICE, &BODY_DEVICE, true);
+        head = create_list_item(DESC_TYPE_DEVICE, &BODY_DEVICE, MEMSPACE_PROGMEM);
       }
       break;
     case DESC_TYPE_STRING:
       if (index == 0) {
-        head = create_list_item(DESC_TYPE_STRING, LANG_IDS, true);
+        head = create_list_item(DESC_TYPE_STRING, LANG_IDS, MEMSPACE_PROGMEM);
       }
       else if (index-1 < STRING_COUNT) {
         if (req->wIndex == LANG_ID_EN_US) {
-          head = create_list_item(DESC_TYPE_STRING, STR_EN_US[index-1], true);
+          head = create_list_item(DESC_TYPE_STRING, STR_EN_US[index-1], MEMSPACE_EEPROM);
         }
       }
       break;
@@ -219,9 +219,15 @@ struct descriptor_list_t* generate_descriptor_list(const UsbSetupPacket* req) {
       // Create appropriate configuration descriptor
       if (index == 0) {
         memcpy_P(&descriptor_config, &BODY_CONFIG, sizeof(BODY_CONFIG));
-        head = create_list_item(DESC_TYPE_CONFIGURATION, &descriptor_config, false);
-        descriptor_list_append(head, create_list_item(DESC_TYPE_INTERFACE, &BODY_INTERFACE, true));
-/*        descriptor_list_append(head, create_list_item(DESC_TYPE_ENDPOINT, &BODY_ENDPOINT_1, true));*/
+        head = create_list_item(DESC_TYPE_CONFIGURATION, &descriptor_config, MEMSPACE_RAM);
+        descriptor_list_append(
+              head
+            , create_list_item(DESC_TYPE_INTERFACE, &BODY_INTERFACE_0, MEMSPACE_PROGMEM)
+        );
+        descriptor_list_append(
+              head
+            , create_list_item(DESC_TYPE_INTERFACE, &BODY_INTERFACE_1, MEMSPACE_PROGMEM)
+        );
         // Calculate and fill in total configuration length
         descriptor_config.wTotalLength = get_list_total_length(head);
       }
