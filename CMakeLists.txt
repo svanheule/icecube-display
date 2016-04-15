@@ -212,13 +212,6 @@ if(NOT ("${PROGRAMMER_ID}" STREQUAL ""))
     )
   endif()
 
-  add_custom_target(
-    upload_eeprom
-    ${PROGRAM_COMMAND} -D -U eeprom:w:icetop_display.eep
-    DEPENDS icetop_display
-    COMMENT "Upload device EEPROM"
-  )
-
   # Custom target to flash, and download if needed, the Atmel DFU bootloader
   if(NOT ARDUINO)
     set(bootloader_dir "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/images")
@@ -256,6 +249,23 @@ if(NOT ("${PROGRAMMER_ID}" STREQUAL ""))
       erase_device
       ${PROGRAM_COMMAND} -e
       COMMENT "Erase device memory"
+    )
+
+    add_custom_target(
+      upload_eeprom
+      ${PROGRAM_COMMAND} -D -U eeprom:w:icetop_display.eep
+      DEPENDS icetop_display
+      COMMENT "Upload device EEPROM"
+    )
+
+    add_custom_target(
+      upload_all
+      ${PROGRAM_COMMAND}
+        -U flash:w:icetop_display.hex:i
+        -U flash:w:${bootloader_hex}:i
+        -U eeprom:w:icetop_display.eep:i
+      DEPENDS icetop_display bootloader_image
+      COMMENT "Upload device program file, DFU bootloader, and device EEPROM"
     )
   endif()
 
