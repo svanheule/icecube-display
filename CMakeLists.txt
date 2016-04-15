@@ -169,7 +169,8 @@ add_custom_command(
   TARGET icetop_display
   POST_BUILD
   COMMAND avr-objcopy -O ihex -R .eeprom $<TARGET_FILE:icetop_display> icetop_display.hex
-  COMMAND avr-objcopy -O ihex -j .eeprom $<TARGET_FILE:icetop_display> icetop_display.eep
+  COMMAND avr-objcopy -O ihex --change-section-lma .eeprom=0 -j .eeprom
+        $<TARGET_FILE:icetop_display> icetop_display.eep
 )
 
 # Custom target to get size
