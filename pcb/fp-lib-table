@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name pocket-icetop)(type KiCad)(uri "$(KIPRJMOD)/pocket-icetop.pretty")(options "")(descr ""))
+)

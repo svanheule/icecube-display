@@ -1,0 +1,8 @@
+# Ignore list for KiCad files
+# BOM tables
+*.csv
+*.net
+*.xml
+*.cmp
+*.txt
+*.kicad_pcb-bak
