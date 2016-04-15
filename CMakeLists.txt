@@ -45,9 +45,9 @@ else()
   # no on-chip debug, no JTAG, enable SPI, no WDT, EEPROM save, bootsize 2k, boot to application
   set(FUSE_HIGH 0xd1)
   # BOD level 4.3V, HWB/DFU enable
-  set(FUSE_EXTENDED 0xf0)
+  set(FUSE_EXTENDED 0xc0)
   # Lock bits: prevent firmware from writing to in bootloader section
-  set(LOCK 0xef)
+  set(LOCK 0x2f)
   set(DEFAULT_PROGRAMMER_ID flip1)
 endif()
 
