@@ -185,12 +185,17 @@ static const char16_t STR_IFACE_DESCR[] PROGMEM = u"Steamshovel display";
 #define LANG_ID_EN_US 0x0409
 #define STRING_COUNT 4
 
+struct string_pointer_t {
+  const char16_t* const p;
+  const enum memspace_t memspace;
+};
+
 static const uint16_t LANG_IDS[] PROGMEM = {LANG_ID_EN_US, 0x0000};
-static const char16_t* const STR_EN_US[STRING_COUNT] = {
-    STR_MANUFACTURER
-  , STR_PRODUCT
-  , STR_SERIAL_NUMBER
-  , STR_IFACE_DESCR
+static const struct string_pointer_t STR_EN_US[STRING_COUNT] PROGMEM = {
+    {STR_MANUFACTURER, MEMSPACE_PROGMEM}
+  , {STR_PRODUCT, MEMSPACE_PROGMEM}
+  , {STR_SERIAL_NUMBER, MEMSPACE_EEPROM}
+  , {STR_IFACE_DESCR, MEMSPACE_PROGMEM}
 };
 
 static struct usb_descriptor_body_configuration_t descriptor_config;
@@ -211,7 +216,12 @@ struct descriptor_list_t* generate_descriptor_list(const UsbSetupPacket* req) {
       }
       else if (index-1 < STRING_COUNT) {
         if (req->wIndex == LANG_ID_EN_US) {
-          head = create_list_item(DESC_TYPE_STRING, STR_EN_US[index-1], MEMSPACE_EEPROM);
+          const struct string_pointer_t* str = &STR_EN_US[index-1];
+          head = create_list_item(
+                DESC_TYPE_STRING
+              , (const void*) pgm_read_word(&str->p)
+              , pgm_read_byte(&str->memspace)
+          );
         }
       }
       break;
