@@ -13,7 +13,6 @@ _log.addHandler(_log_handler)
 _log.info("leddisplay loaded")
 
 try:
-  import sys
   # libusb1 support
   from usb1 import USBContext, ENDPOINT_OUT, TYPE_VENDOR, RECIPIENT_INTERFACE
 except:
@@ -141,7 +140,6 @@ class LedDisplay(PyArtist):
         self.addSetting(self._SETTING_COLOR, I3TimeColorMap())
         self.addSetting(self._SETTING_INFINITE_DURATION, True)
         self.addSetting(self._SETTING_DURATION, RangeSetting(1.0, 5.0, 40, 5.0))
-        self.addCleanupAction(self._cleanupDisplay)
 
     def _connectDevice(self):
         # Release current device before attempting new connection
@@ -159,6 +157,11 @@ class LedDisplay(PyArtist):
                     self._releaseInterface() # Useful call?
                     self._usb_handle = None
                     _log.warning("Could not open device [usb:{:03d}-{:03d}]".format(bus, port))
+
+    def __del__(self):
+        self._cleanupDisplay()
+        if hasattr(PyArtist, "__del__"):
+            PyArtist.__del__(self)
 
     def _cleanupDisplay(self):
         _log.info("Clearing display")
