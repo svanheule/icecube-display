@@ -256,9 +256,9 @@ class LedDisplay(PyArtist):
                     t, q = pulses[head]
                     # Add accumulated charge of currently visible pulses
                     while pulses[head][0]+duration > t and head >= 0:
-                        accumulated_charge += q/normalisation
+                        accumulated_charge += pulses[head][1]
                         head -= 1
-                    brightness.add(accumulated_charge**power, t)
+                    brightness.add((accumulated_charge/normalisation)**power, t)
                     # If the current sequence doesn't overlap with the next pulse, reset the
                     # brightness and register the new series starting point
                     if tail < len(pulses)-1 and t+duration < pulses[tail+1][0]:
