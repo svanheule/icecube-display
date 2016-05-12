@@ -76,8 +76,8 @@ set(SOURCES
   src/avr_main.c
   src/display_driver.c
   src/frame_buffer.c
-  src/test_render.c
-  src/demo.c
+  src/render/test.c
+  src/render/demo.c
   src/display_state.c
   src/switches.c
 )

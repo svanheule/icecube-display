@@ -1,5 +1,5 @@
-#ifndef TEST_RENDER_H
-#define TEST_RENDER_H
+#ifndef RENDER_TEST_H
+#define RENDER_TEST_H
 
 #include "frame_buffer.h"
 

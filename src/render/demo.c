@@ -1,4 +1,4 @@
-#include "demo.h"
+#include "render/demo.h"
 #include "stdlib.h"
 #include "switches.h"
 #include <avr/pgmspace.h>
@@ -13,7 +13,7 @@ static const struct renderer_t DEMO_RENDERER = {
   , render_demo
 };
 
-const struct renderer_t* get_demo_renderer(){
+const struct renderer_t* get_demo_renderer() {
   return &DEMO_RENDERER;
 }
 

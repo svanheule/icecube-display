@@ -8,8 +8,8 @@
 #include "display_driver.h"
 #include "display_state.h"
 #include "frame_buffer.h"
-#include "demo.h"
-#include "test_render.h"
+#include "render/demo.h"
+#include "render/test.h"
 #include "remote.h"
 #include "switches.h"
 
