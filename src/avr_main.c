@@ -46,7 +46,6 @@ void init_timer() {
   TIMSK1 = (1<<OCIE1A);
 }
 
-void pass() {}
 struct frame_buffer_t* empty_frame() {
   struct frame_buffer_t* frame = create_frame();
   if (frame) {
@@ -55,12 +54,6 @@ struct frame_buffer_t* empty_frame() {
   }
   return frame;
 }
-
-struct renderer_t display_idle = {
-    pass
-  , pass
-  , empty_frame
-};
 
 const struct renderer_t* get_renderer(const enum display_state_t display_state) {
   switch (display_state) {
