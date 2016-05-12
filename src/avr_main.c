@@ -75,11 +75,8 @@ const struct renderer_t* get_renderer(const enum display_state_t display_state) 
 }
 
 int main () {
-  // Init display pin configuration
+  // Init display pin configuration and switches
   init_display_driver();
-
-  // Init display timer and switches
-  init_timer();
   init_switches();
 
   draw_frame = 0;
@@ -101,7 +98,7 @@ int main () {
   enum display_state_t state = get_display_state();
   const struct renderer_t* renderer = get_renderer(state);
   struct frame_buffer_t* frame;
-  if (renderer) {
+  if (renderer && renderer->start) {
     renderer->start();
     frame = renderer->render_frame();
   }
@@ -112,6 +109,9 @@ int main () {
   if (!push_frame(frame)) {
     destroy_frame(frame);
   }
+
+  // Init display timer just before display loop
+  init_timer();
 
   for (;;) {
     while (!draw_frame) {
@@ -151,13 +151,13 @@ int main () {
     if (state != current_state) {
       state = current_state;
       // Stop current renderer
-      if (renderer) {
+      if (renderer && renderer->stop) {
         renderer->stop();
       }
       // Select new renderer
       renderer = get_renderer(state);
       // Init new renderer
-      if (renderer) {
+      if (renderer && renderer->start) {
         renderer->start();
       }
       else if (!frame_queue_full()) {
