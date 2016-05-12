@@ -5,6 +5,7 @@
 
 enum display_state_t {
     DISPLAY_IDLE
+  , DISPLAY_BOOT_SPLASH
   , DISPLAY_EXTERNAL
   , DISPLAY_DEMO
   , DISPLAY_TEST_RING
@@ -13,6 +14,7 @@ enum display_state_t {
 
 enum display_command_t {
     DISPLAY_GOTO_IDLE
+  , DISPLAY_GOTO_BOOT_SPLASH
   , DISPLAY_GOTO_EXTERNAL
   , DISPLAY_GOTO_DEMO
   , DISPLAY_GOTO_TEST_RING

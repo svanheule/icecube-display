@@ -20,6 +20,9 @@ void advance_display_state(enum display_command_t command) {
         case DISPLAY_GOTO_TEST_SNAKE:
           display_state = DISPLAY_TEST_SNAKE;
           break;
+        case DISPLAY_BOOT_SPLASH:
+          display_state = DISPLAY_BOOT_SPLASH;
+          break;
         default:
           break;
         }
@@ -29,6 +32,7 @@ void advance_display_state(enum display_command_t command) {
     case DISPLAY_TEST_RING:
     case DISPLAY_TEST_SNAKE:
     case DISPLAY_EXTERNAL:
+    case DISPLAY_BOOT_SPLASH:
       if (command == DISPLAY_GOTO_IDLE) {
         display_state = DISPLAY_IDLE;
       }
