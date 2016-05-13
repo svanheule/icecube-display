@@ -10,6 +10,7 @@
 #include "frame_buffer.h"
 #include "render/demo.h"
 #include "render/test.h"
+#include "render/boot_splash.h"
 #include "remote.h"
 #include "switches.h"
 
@@ -55,6 +56,16 @@ struct frame_buffer_t* empty_frame() {
   return frame;
 }
 
+void pop_and_display_frame() {
+  struct frame_buffer_t* frame = pop_frame();
+  if (frame) {
+    frame->flags |= FRAME_DRAW_IN_PROGRESS;
+    display_frame((const frame_t*) frame->buffer);
+    frame->flags &= ~FRAME_DRAW_IN_PROGRESS;
+    destroy_frame(frame);
+  }
+}
+
 const struct renderer_t* get_renderer(const enum display_state_t display_state) {
   switch (display_state) {
     case DISPLAY_DEMO:
@@ -65,6 +76,9 @@ const struct renderer_t* get_renderer(const enum display_state_t display_state) 
       break;
     case DISPLAY_TEST_SNAKE:
       return get_snake_renderer();
+      break;
+    case DISPLAY_BOOT_SPLASH:
+      return get_boot_splash_renderer();
       break;
     case DISPLAY_IDLE:
     case DISPLAY_EXTERNAL:
@@ -91,7 +105,7 @@ int main () {
   // Enable interrupts
   sei();
 
-  advance_display_state(DISPLAY_GOTO_IDLE);
+  advance_display_state(DISPLAY_GOTO_BOOT_SPLASH);
 
   // If the current state already has an associated renderer, render and push first frame.
   // Otherwise clear the display.
@@ -113,19 +127,42 @@ int main () {
   // Init display timer just before display loop
   init_timer();
 
+  // Boot splash loop
+  uint8_t frame_counter = 0;
+  while (state == DISPLAY_BOOT_SPLASH) {
+    while(!draw_frame) {
+      sleep_cpu();
+    }
+
+    pop_and_display_frame();
+
+    if (frame_counter < 2*25) {
+      frame = renderer->render_frame();
+      ++frame_counter;
+    }
+    else {
+      frame = empty_frame();
+      advance_display_state(DISPLAY_GOTO_IDLE);
+    }
+
+    if (!push_frame(frame)) {
+      destroy_frame(frame);
+    }
+
+    state = get_display_state();
+    renderer = get_renderer(state);
+
+    draw_frame = 0;
+  }
+
+  // Main loop
   for (;;) {
     while (!draw_frame) {
       // Idle CPU until next interrupt
       sleep_cpu();
     }
 
-    frame = pop_frame();
-    if (frame) {
-      frame->flags |= FRAME_DRAW_IN_PROGRESS;
-      display_frame((const frame_t*) frame->buffer);
-      frame->flags &= ~FRAME_DRAW_IN_PROGRESS;
-      destroy_frame(frame);
-    }
+    pop_and_display_frame();
 
     if (!is_remote_connected()) {
       if ( state == DISPLAY_IDLE
