@@ -3,28 +3,14 @@
 #include <avr/sleep.h>
 
 #include <stdint.h>
-#include <stdlib.h>
 
 #include "display_driver.h"
 #include "display_state.h"
-#include "frame_buffer.h"
 #include "render/demo.h"
 #include "render/test.h"
 #include "render/boot_splash.h"
 #include "remote.h"
 #include "switches.h"
-
-/**
- * Dual frame buffer APA-102C LED display driver.
- * The frame_buffer_select variable indicates which frame buffer will be written out to the display.
- * The other buffer is then to be used by the USART interrupt handler to write the next frame to.
- * When the last byte of the next frame is written, the frame buffer select variable is updated
- * to indicate that a new frame is present.
- *
- * Frame transmission protocol requirements:
- * * Start-of-frame (SOF) indicator; to grab the frame buffer for writing
- * * 78 RGB 3-tuples (243 bytes) written to the buffer
- */
 
 // CTC interrupt handling
 volatile uint8_t draw_frame;

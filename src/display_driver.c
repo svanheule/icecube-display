@@ -75,12 +75,6 @@ static const uint8_t LED_TO_BUFFER[LED_COUNT] PROGMEM = {
           , 74, 75, 76, 77
 };
 
-/**
- * display_frame should be able to handle interruptions and be performed in the main loop.
- * The CTC compare interrupt should just wake the main loop, and then return.
- * In this way, the interrupt duration is kept to a minimum, which ensures that the USART Rx ISR
- * can be called in due time to write a newly received byte to the next frame.
- */
 void display_frame(const frame_t* buffer) {
   /* # APA102C
    * Transmit bytes with MSB first
@@ -121,4 +115,3 @@ void display_frame(const frame_t* buffer) {
 
   }
 }
-
