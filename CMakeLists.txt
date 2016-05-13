@@ -64,6 +64,10 @@ set(
   DEVICE_SERIAL "ICD-IT-001-0000"
   CACHE STRING "Device serial number, stored in the microcontroller's EEPROM"
 )
+set(
+  HW_REV 2
+  CACHE STRING "Hardware revision"
+)
 
 # Set the GCC flags required
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmcu=${AVR_TARGET_DEVICE}")
@@ -156,9 +160,15 @@ target_compile_definitions(icetop_display
   PUBLIC F_CPU=${AVR_TARGET_F_CPU}UL
 )
 if(ARDUINO)
-  target_compile_definitions(icetop_display PUBLIC CONTROLLER_ARDUINO)
+  target_compile_definitions(
+    icetop_display
+    PUBLIC CONTROLLER_ARDUINO HW_REV=0
+  )
 else()
-  target_compile_definitions(icetop_display PUBLIC CONTROLLER_UGENT)
+  target_compile_definitions(
+    icetop_display
+    PUBLIC CONTROLLER_UGENT HW_REV=${HW_REV}
+  )
 endif()
 
 target_compile_options(icetop_display
