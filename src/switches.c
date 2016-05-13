@@ -5,22 +5,71 @@
 // Use a timer to periodically check the input switches.
 // Based on http://www.ganssle.com/debouncing.htm
 
-// Currently assume all switches are on the same port
-#define SWITCH_PORT_DIRECTION DDRD
-#define SWITCH_PORT_OUTPUT PORTD
-#define SWITCH_PORT_INPUT PIND
-#define SWITCH_0_PIN DDD0
-#define SWITCH_1_PIN DDD1
+#ifndef HW_REV
+#error "You must define a hardware revision"
+#endif
 
 enum switch_state_t {
     PRESSED
   , DEPRESSED
 };
 
-static const uint8_t switch_pins[SWITCH_COUNT] = {
-    SWITCH_0_PIN
-  , SWITCH_1_PIN
-};
+// Hardware revision specific implementations
+#define SWITCH_COUNT 2
+
+static void init_switch_pin(uint8_t switch_index) {
+  // Set port connected to push button to input
+  // Disable internal pull-up since an external pull-up is provided
+  switch (switch_index) {
+    case 0:
+      DDRD &= ~(_BV(DDD0));
+      PORTD &= ~(_BV(PORTD0));
+      break;
+    case 1:
+#if HW_REV==1
+      DDRD &= ~(_BV(DDD1));
+      PORTD &= ~(_BV(PORTD1));
+#elif HW_REV==2
+      DDRE &= ~(_BV(DDE2));
+      PORTE &= ~(_BV(PORTE2));
+#else
+#error "Unsupported hardware revision"
+#endif
+      break;
+    default:
+      break;
+  }
+}
+
+/// Get the (bouncy) signal from the input pins for the given switch
+/// A switch depressed switch will read '1' (pull-up), a pressed switch '0'
+static enum switch_state_t get_switch_signal(uint8_t switch_index) {
+  bool depressed = true;
+
+  switch (switch_index) {
+    case 0:
+      depressed = PIND & _BV(PIND0);
+      break;
+    case 1:
+#if HW_REV==1
+      depressed = PIND & _BV(PIND1);
+#elif HW_REV==2
+      depressed = PINE & _BV(PINE2);
+#else
+#error "Unsupported hardware revision"
+#endif
+      break;
+    default:
+      break;
+  }
+
+  if (depressed) {
+    return DEPRESSED;
+  }
+  else {
+    return PRESSED;
+  }
+}
 
 // Launch pin read every ~5ms (200Hz)
 #define SWITCH_POLLING_RATE 200
@@ -39,10 +88,8 @@ static volatile uint8_t switch_edge_detected;
 
 void init_switches() {
   for (int i = 0; i < SWITCH_COUNT; ++i) {
-    // Set port connected to push button to input
-    SWITCH_PORT_DIRECTION &= ~(_BV(switch_pins[i]));
-    // Disable internal pull-up since an external pull-up is provided
-    SWITCH_PORT_OUTPUT &= ~(_BV(switch_pins[i]));
+    // Init switch pin
+    init_switch_pin(i);
     // Init countdown timers
     switch_timer[i] = SWITCH_PRESS_COUNTS;
   }
@@ -67,18 +114,6 @@ void disable_switches() {
   // Reset switch state
   switch_edge_detected = 0;
   switch_state = 0;
-}
-
-/// Get the (bouncy) signal from the input pins for the given switch
-/// A switch depressed switch will read '1' (pull-up), a pressed switch '0'
-static enum switch_state_t get_switch_signal(uint8_t switch_index) {
-  uint8_t pin = switch_pins[switch_index];
-  if (SWITCH_PORT_INPUT & _BV(pin)) {
-    return DEPRESSED;
-  }
-  else {
-    return PRESSED;
-  }
 }
 
 /// Get the debounced state for the given switch
