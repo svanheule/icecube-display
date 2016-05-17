@@ -15,25 +15,24 @@ struct led_t {
   uint8_t blue;
 };
 
-// Array of led_t objects, so (frame_t) ~ (led_t*)
-typedef struct led_t frame_t[LED_COUNT];
-// Total frame size
-#define FRAME_LENGTH sizeof(frame_t)
+/// Total frame byte count
+#define FRAME_LENGTH (sizeof(struct led_t)*LED_COUNT)
 
 // Frame queue
-/// Flag to indicate a frame buffer may be deallocated after drawing
-#define FRAME_FREE_AFTER_DRAW 1
-
-/// Flag to indicate if the frame is currently being drawn.
-/// A renderer may choose to abstain from drawing to the buffer to avoid rendering artifacts.
-#define FRAME_DRAW_IN_PROGRESS (1<<1)
+enum frame_flag_t {
+  /// Indicate whether a frame buffer may be deallocated after drawing
+    FRAME_FREE_AFTER_DRAW  = 1,
+  /// Indicate if the frame is currently being drawn.
+  /// A renderer may choose to abstain from drawing to the buffer to avoid rendering artifacts.
+    FRAME_DRAW_IN_PROGRESS = 2
+};
 
 /// Object constisting of a frame buffer and a number of associated (bit)flags.
 /// * flags(0): FRAME_FREE_AFTER_DRAW
 /// * flags(1): FRAME_DRAW_IN_PROGRESS
 struct frame_buffer_t {
-  frame_t buffer;
-  uint8_t flags;
+  struct led_t buffer[LED_COUNT];
+  enum frame_flag_t flags;
 };
 
 struct frame_buffer_t* create_frame();

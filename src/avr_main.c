@@ -45,9 +45,7 @@ struct frame_buffer_t* empty_frame() {
 void pop_and_display_frame() {
   struct frame_buffer_t* frame = pop_frame();
   if (frame) {
-    frame->flags |= FRAME_DRAW_IN_PROGRESS;
-    display_frame((const frame_t*) frame->buffer);
-    frame->flags &= ~FRAME_DRAW_IN_PROGRESS;
+    display_frame(frame);
     destroy_frame(frame);
   }
 }
