@@ -67,6 +67,16 @@ static const struct event_t events[] PROGMEM = {
 static const struct event_t* events_end = events + sizeof(events)/sizeof(struct event_t);
 
 
+// Constants in number of frames (25 fps)
+//! On time of an LED for each pulse.
+#define PULSE_DURATION 25
+//! Off time of the entire display after all pulses.
+#define PULSE_CLEAR_DURATION 33
+//! Duration of the event overview.
+#define OVERVIEW_DURATION 75
+//! Off time of the entire display after the event overview.
+#define OVERVIEW_CLEAR_DURATION 50
+
 // Module variables
 static const struct event_t* current_event;
 static const struct pulse_t* current_pulse;

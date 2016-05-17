@@ -15,18 +15,7 @@
  * \author Sander Vanheule (Universiteit  Gent)
  */
 
-#include <stdint.h>
 #include "frame_buffer.h"
-
-// Constants in number of frames (25 fps)
-//! On time of an LED for each pulse.
-#define PULSE_DURATION 25
-//! Off time of the entire display after all pulses.
-#define PULSE_CLEAR_DURATION 33
-//! Duration of the event overview.
-#define OVERVIEW_DURATION 75
-//! Off time of the entire display after the event overview.
-#define OVERVIEW_CLEAR_DURATION 50
 
 const struct renderer_t* get_demo_renderer();
 
