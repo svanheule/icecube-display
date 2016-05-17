@@ -51,6 +51,7 @@ bool push_frame(struct frame_buffer_t* frame) {
     return true;
   }
   else {
+    destroy_frame(frame);
     return false;
   }
 }

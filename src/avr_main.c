@@ -104,9 +104,7 @@ int main () {
     frame = empty_frame();
   }
 
-  if (!push_frame(frame)) {
-    destroy_frame(frame);
-  }
+  push_frame(frame);
 
   // Init display timer just before display loop
   init_timer();
@@ -129,9 +127,7 @@ int main () {
       advance_display_state(DISPLAY_GOTO_IDLE);
     }
 
-    if (!push_frame(frame)) {
-      destroy_frame(frame);
-    }
+    push_frame(frame);
 
     state = get_display_state();
     renderer = get_renderer(state);
