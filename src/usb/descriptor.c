@@ -181,9 +181,10 @@ static const char16_t STR_MANUFACTURER[] PROGMEM = u"Ghent University";
 static const char16_t STR_PRODUCT[] PROGMEM = u"IceTop event display";
 extern const char16_t STR_SERIAL_NUMBER[] EEMEM;
 static const char16_t STR_IFACE_DESCR[] PROGMEM = u"Steamshovel display";
+static const char16_t STR_IFACE_TEST_DESCR[] PROGMEM = u"Display test mode";
 
 #define LANG_ID_EN_US 0x0409
-#define STRING_COUNT 4
+#define STRING_COUNT 5
 
 struct string_pointer_t {
   const char16_t* const p;
