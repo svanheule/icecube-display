@@ -196,11 +196,12 @@ static const struct string_pointer_t STR_EN_US[STRING_COUNT] PROGMEM = {
   , {STR_PRODUCT, MEMSPACE_PROGMEM}
   , {STR_SERIAL_NUMBER, MEMSPACE_EEPROM}
   , {STR_IFACE_DESCR, MEMSPACE_PROGMEM}
+  , {STR_IFACE_TEST_DESCR, MEMSPACE_PROGMEM}
 };
 
 static struct usb_descriptor_body_configuration_t descriptor_config;
 
-struct descriptor_list_t* generate_descriptor_list(const UsbSetupPacket* req) {
+struct descriptor_list_t* generate_descriptor_list(const struct usb_setup_packet_t* req) {
   struct descriptor_list_t* head = 0;
   enum usb_descriptor_type_t type = req->wValue >> 8;
   uint8_t index = req->wValue & 0xFF;
@@ -243,4 +244,3 @@ struct descriptor_list_t* generate_descriptor_list(const UsbSetupPacket* req) {
   }
   return head;
 }
-

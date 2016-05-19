@@ -46,7 +46,7 @@ struct descriptor_list_t {
   struct descriptor_list_t* next;
 };
 
-struct descriptor_list_t* generate_descriptor_list(const UsbSetupPacket* req);
+struct descriptor_list_t* generate_descriptor_list(const struct usb_setup_packet_t* req);
 uint16_t get_list_total_length(const struct descriptor_list_t* head);
 
 // Device descriptor definitions

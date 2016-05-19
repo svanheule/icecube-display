@@ -121,7 +121,7 @@ enum control_stage_t {
 
 struct control_transfer_t {
   enum control_stage_t stage;
-  const struct UsbSetupPacket_t* req;
+  const struct usb_setup_packet_t* req;
   void* data_in;
   uint16_t data_in_length;
   uint16_t data_in_done;
@@ -337,7 +337,7 @@ ISR(USB_COM_vect) {
   // Process USB transfers
   if (FLAG_IS_SET(UEINT, 0)) {
     static struct control_transfer_t control_transfer;
-    static struct UsbSetupPacket_t setup_packet;
+    static struct usb_setup_packet_t setup_packet;
 
     UENUM = 0;
     if (FLAG_IS_SET(UEIENX, RXSTPE) && FLAG_IS_SET(UEINTX, RXSTPI)) {
@@ -349,8 +349,8 @@ ISR(USB_COM_vect) {
       control_transfer.callback_data_out = 0;
       control_transfer.stage = CTRL_SETUP;
 
-      size_t read = fifo_read(&setup_packet, sizeof(struct UsbSetupPacket_t));
-      if (read == sizeof(struct UsbSetupPacket_t)) {
+      size_t read = fifo_read(&setup_packet, sizeof(struct usb_setup_packet_t));
+      if (read == sizeof(struct usb_setup_packet_t)) {
         control_transfer.req = &setup_packet;
         process_setup(&control_transfer);
       }

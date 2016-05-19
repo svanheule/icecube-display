@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-typedef enum UsbRequestCode_t {
+enum usb_request_code_t {
     GET_STATUS = 0
   , CLEAR_FEATURE = 1
   , SET_FEATURE = 3
@@ -15,7 +15,7 @@ typedef enum UsbRequestCode_t {
   , GET_INTERFACE = 10
   , SET_INTERFACE = 11
   , SYNCH_FRAME = 12
-} UsbRequestCode;
+};
 
 #define REQ_DIR_MASK (0x1<<7)
 #define REQ_DIR_OUT (0<<7)
@@ -39,19 +39,19 @@ typedef enum UsbRequestCode_t {
 #define DEVICE_STATUS_REMOTE_WAKEUP 2
 #define ENDPOINT_STATUS_HALTED 1
 
-typedef enum UsbFeature_t {
+enum usb_feature_t {
     ENDPOINT_HALT = 0
   , REMOTE_WAKEUP = 1
   , TEST_MODE = 2
-} UsbFeature;
+};
 
 
-typedef struct UsbSetupPacket_t {
+struct usb_setup_packet_t {
   uint8_t bmRequestType;
   uint8_t bRequest;
   uint16_t wValue;
   uint16_t wIndex;
   uint16_t wLength;
-} UsbSetupPacket;
+};
 
 #endif // USB_STD_H
