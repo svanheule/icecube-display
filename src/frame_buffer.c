@@ -1,4 +1,15 @@
 #include "frame_buffer.h"
+#include <stdlib.h>
+
+struct frame_buffer_t* create_frame() {
+  return (struct frame_buffer_t*) malloc(sizeof(struct frame_buffer_t));
+}
+
+void destroy_frame(struct frame_buffer_t* frame) {
+  if (frame->flags & FRAME_FREE_AFTER_DRAW) {
+    free(frame);
+  }
+}
 
 void clear_frame(struct frame_buffer_t* frame_ptr) {
   if (frame_ptr) {
@@ -12,7 +23,6 @@ void clear_frame(struct frame_buffer_t* frame_ptr) {
 }
 
 // Definitions of frame FIFO
-#include <stdlib.h>
 
 #define QUEUE_SIZE 2
 static struct frame_buffer_t* frame_queue[QUEUE_SIZE];
@@ -20,17 +30,6 @@ static volatile uint8_t head;
 static volatile bool head_wrapped;
 static volatile uint8_t tail;
 static volatile bool tail_wrapped;
-
-struct frame_buffer_t* create_frame() {
-  return (struct frame_buffer_t*) malloc(sizeof(struct frame_buffer_t));
-}
-
-
-void destroy_frame(struct frame_buffer_t* frame) {
-  if (frame->flags & FRAME_FREE_AFTER_DRAW) {
-    free(frame);
-  }
-}
 
 bool frame_queue_full() {
   return (head == tail) && (tail_wrapped != head_wrapped);
