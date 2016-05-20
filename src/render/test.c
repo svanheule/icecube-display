@@ -75,7 +75,7 @@ static const struct station_t STATION_VECTOR[LED_COUNT] PROGMEM = {
   , {4,8}, {5,8}, {6,8}, {7,8}, {8,8}, {9,8}, {10,8}
   , {5,9}, {6,9}, {7,9}, {8,9}
 };
-static const struct station_t CENTRE = {5,4}; //STATION_VECTOR[34]
+static const struct station_t CENTRE = {5,4};
 
 static uint8_t ring_frame;
 
