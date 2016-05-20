@@ -15,6 +15,7 @@ enum switch_state_t {
 };
 
 // Hardware revision specific implementations
+#define SWITCH_COUNT 2
 
 static void init_switch_pin(uint8_t switch_index) {
   // Set port connected to push button to input
