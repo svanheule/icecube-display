@@ -140,6 +140,7 @@ class LedDisplay(PyArtist):
         self.addSetting(self._SETTING_COLOR, I3TimeColorMap())
         self.addSetting(self._SETTING_INFINITE_DURATION, True)
         self.addSetting(self._SETTING_DURATION, RangeSetting(1.0, 5.0, 40, 5.0))
+        self.addCleanupAction(self._cleanupDisplay)
 
     def _connectDevice(self):
         # Release current device before attempting new connection
@@ -158,10 +159,16 @@ class LedDisplay(PyArtist):
                     self._usb_handle = None
                     _log.warning("Could not open device [usb:{:03d}-{:03d}]".format(bus, port))
 
-    def __del__(self):
-        self._cleanupDisplay()
-        if hasattr(PyArtist, "__del__"):
-            PyArtist.__del__(self)
+    def _releaseInterface(self):
+        if self._usb_handle:
+            try:
+                self._usb_handle.releaseInterface(0)
+                self._usb_handle.close()
+            except:
+                pass
+            finally:
+                self._usb_handle = None
+                _log.info("Released USB display interface")
 
     def _cleanupDisplay(self):
         _log.info("Clearing display")
@@ -362,15 +369,4 @@ class LedDisplay(PyArtist):
             frame[led*StationLed.DATA_LENGTH:(led+1)*StationLed.DATA_LENGTH] = led_value
 
         self._writeFrame(bytes(frame))
-
-    def _releaseInterface(self):
-        if self._usb_handle:
-            try:
-                self._usb_handle.releaseInterface(0)
-                self._usb_handle.close()
-            except:
-                pass
-            finally:
-                self._usb_handle = None
-                _log.info("Released USB display interface")
 
