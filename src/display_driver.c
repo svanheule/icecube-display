@@ -89,32 +89,30 @@ void display_frame(struct frame_buffer_t* frame) {
   const uint8_t FRAME_FOOTER = 0xFF;
   const uint8_t LED_HEADER = 0xE0;
 
-  if (frame) {
-    frame->flags |= FRAME_DRAW_IN_PROGRESS;
+  frame->flags |= FRAME_DRAW_IN_PROGRESS;
 
-    uint8_t i;
-    // Start of frame
-    for (i = 0; i < 4; ++i) {
-      write_byte(FRAME_HEADER);
-    }
-
-    const struct led_t* leds = &(frame->buffer[0]);
-
-    // LED data
-    uint8_t index;
-    for (i = 0; i < LED_COUNT; ++i) {
-      index = pgm_read_byte(&LED_TO_BUFFER[i]);
-      write_byte(LED_HEADER | leds[index].brightness);
-      write_byte(leds[index].blue);
-      write_byte(leds[index].green);
-      write_byte(leds[index].red);
-    }
-
-    // End of frame
-    for (i = 0; i < LED_COUNT; i+=16) {
-      write_byte(FRAME_FOOTER);
-    }
-
-    frame->flags &= ~FRAME_DRAW_IN_PROGRESS;
+  uint8_t i;
+  // Start of frame
+  for (i = 0; i < 4; ++i) {
+    write_byte(FRAME_HEADER);
   }
+
+  const struct led_t* leds = &(frame->buffer[0]);
+
+  // LED data
+  uint8_t index;
+  for (i = 0; i < LED_COUNT; ++i) {
+    index = pgm_read_byte(&LED_TO_BUFFER[i]);
+    write_byte(LED_HEADER | leds[index].brightness);
+    write_byte(leds[index].blue);
+    write_byte(leds[index].green);
+    write_byte(leds[index].red);
+  }
+
+  // End of frame
+  for (i = 0; i < LED_COUNT; i+=16) {
+    write_byte(FRAME_FOOTER);
+  }
+
+  frame->flags &= ~FRAME_DRAW_IN_PROGRESS;
 }
