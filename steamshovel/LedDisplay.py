@@ -95,19 +95,18 @@ class StationLed(object):
         value = [comp*brightness*alpha for comp in color.rgbF()]
         return self.float_to_led_data(value)
 
-
 class LedDisplay(PyArtist):
     _LED_COUNT = 78
     _FRAME_SIZE = _LED_COUNT*StationLed.DATA_LENGTH
 
     numRequiredKeys = 1
-    _SETTING_DEVICE = "device"
-    _SETTING_COLOR_STATIC = "static_color"
-    _SETTING_BRIGHTNESS_STATIC = "static_brightness"
-    _SETTING_COLOR = "colormap"
-    _SETTING_INFINITE_DURATION = "infinite_pulses"
-    _SETTING_DURATION = "duration"
-    _SETTING_COMPRESSION_POWER = "compression"
+    _SETTING_DEVICE = "Device"
+    _SETTING_COLOR_STATIC = "Static color"
+    _SETTING_BRIGHTNESS_STATIC = "Static brightness"
+    _SETTING_COLOR = "Colormap"
+    _SETTING_INFINITE_DURATION = "Use infinite pulses"
+    _SETTING_DURATION = "Finite pulse duration (log10 ns)"
+    _SETTING_COMPRESSION_POWER = "Compression"
 
     def __init__(self):
         PyArtist.__init__(self)
@@ -126,8 +125,9 @@ class LedDisplay(PyArtist):
                 if vendor_id  == 0x1CE3 and product_id == 1:
                     self._usb_devices.append(dev)
                     bus = dev.getBusNumber()
-                    port = dev.getPortNumber()
+                    port = dev.getDeviceAddress()
                     description = "[usb:{:03d}-{:03d}] {}".format(bus, port, dev.getProduct())
+                    _log.debug("Added device {}".format(description))
                     usb_device_descriptions.append(description)
         if len(self._usb_devices) == 0:
             self._usb_devices.append(None)
@@ -136,7 +136,7 @@ class LedDisplay(PyArtist):
         self.addSetting(self._SETTING_DEVICE, ChoiceSetting(usb_device_descriptions, 0))
         self.addSetting(self._SETTING_COLOR_STATIC, PyQColor.fromRgb(255, 0, 255))
         self.addSetting(self._SETTING_BRIGHTNESS_STATIC, RangeSetting(0.0, 1.0, 32, 0.5))
-        self.addSetting(self._SETTING_COMPRESSION_POWER, RangeSetting(0.0, 1.0, 40, 0.25))
+        self.addSetting(self._SETTING_COMPRESSION_POWER, RangeSetting(0.0, 1.0, 40, 0.18))
         self.addSetting(self._SETTING_COLOR, I3TimeColorMap())
         self.addSetting(self._SETTING_INFINITE_DURATION, True)
         self.addSetting(self._SETTING_DURATION, RangeSetting(1.0, 5.0, 40, 5.0))
@@ -172,7 +172,7 @@ class LedDisplay(PyArtist):
         self._releaseInterface()
 
     def description(self):
-        return "IceCube LED event display driver"
+        return "IceTop LED event display driver"
 
     def isValidKey(self, frame, key_idx, key):
         key_type = frame.type_name(key)
