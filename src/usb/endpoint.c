@@ -27,3 +27,13 @@ bool endpoint_configure(const struct ep_hw_config_t* config) {
   // Return configuration status
   return (UESTA0X & _BV(CFGOK));
 }
+
+
+void endpoint_deconfigure(const uint8_t ep_num) {
+  const uint8_t prev_ep = UENUM;
+  UENUM = ep_num;
+  // Disable EP and deallocate its memory
+  UECONX &= ~_BV(EPEN);
+  UECFG1X &= ~_BV(ALLOC);
+  UENUM = prev_ep;
+}

@@ -31,4 +31,6 @@ struct ep_config_t {
 
 bool endpoint_configure(const struct ep_hw_config_t* config);
 
+void endpoint_deconfigure(const uint8_t ep_num);
+
 #endif
