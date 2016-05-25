@@ -127,6 +127,7 @@ struct control_transfer_t {
   uint16_t data_in_done;
   void (*callback_data_out)(struct control_transfer_t* transfer);
   void (*callback_handshake)(struct control_transfer_t* transfer);
+  void (*callback_cancel)();
 };
 
 static void callback_set_address(struct control_transfer_t* transfer);
@@ -144,6 +145,11 @@ static void* init_data_in(struct control_transfer_t* transfer, size_t length) {
 
 static void cancel_control_transfer(struct control_transfer_t* transfer) {
   transfer->stage = CTRL_STALL;
+  // Call any cancel callbacks that my perform clean-up
+  if (transfer->callback_cancel) {
+    transfer->callback_cancel();
+  }
+  // Release untransmitted data
   if (transfer->data_in) {
     free(transfer->data_in);
     transfer->data_in = 0;
@@ -287,6 +293,7 @@ static void callback_set_configuration(struct control_transfer_t* transfer) {
 static struct frame_buffer_t* usb_frame;
 static uint8_t* usb_frame_buffer_ptr;
 static void callback_data_usb_frame(struct control_transfer_t* transfer);
+static void callback_cancel_usb_frame();
 
 static void process_vendor_request(struct control_transfer_t* transfer) {
   if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_VENDOR | REQ_REC_INTERFACE)) {
@@ -298,6 +305,7 @@ static void process_vendor_request(struct control_transfer_t* transfer) {
         usb_frame_buffer_ptr = (uint8_t*) usb_frame->buffer;
         transfer->stage = CTRL_DATA_OUT;
         transfer->callback_data_out = callback_data_usb_frame;
+        transfer->callback_cancel = callback_cancel_usb_frame;
       }
     }
   }
@@ -314,6 +322,13 @@ static void callback_data_usb_frame(struct control_transfer_t* transfer) {
       usb_frame = 0;
     }
     transfer->stage = CTRL_HANDSHAKE_OUT;
+  }
+}
+
+static void callback_cancel_usb_frame() {
+  if (usb_frame) {
+    destroy_frame(usb_frame);
+    usb_frame = 0;
   }
 }
 
@@ -347,6 +362,7 @@ ISR(USB_COM_vect) {
       cancel_control_transfer(&control_transfer);
       control_transfer.callback_handshake = 0;
       control_transfer.callback_data_out = 0;
+      control_transfer.callback_cancel = 0;
       control_transfer.stage = CTRL_SETUP;
 
       size_t read = fifo_read(&setup_packet, sizeof(struct usb_setup_packet_t));
