@@ -42,8 +42,7 @@ struct frame_buffer_t* empty_frame() {
   return frame;
 }
 
-void pop_and_display_frame() {
-  struct frame_buffer_t* frame = pop_frame();
+void consume_frame(struct frame_buffer_t* frame) {
   if (frame) {
     display_frame(frame);
     destroy_frame(frame);
@@ -89,51 +88,28 @@ int main () {
   // Enable interrupts
   sei();
 
-  advance_display_state(DISPLAY_GOTO_BOOT_SPLASH);
+  // Clear display just in case the LEDs didn't power on without output
+  consume_frame(empty_frame());
 
-  // If the current state already has an associated renderer, render and push first frame.
-  // Otherwise clear the display.
-  enum display_state_t state = get_display_state();
-  const struct renderer_t* renderer = get_renderer(state);
-  struct frame_buffer_t* frame;
-  if (renderer && renderer->start) {
-    renderer->start();
-    frame = renderer->render_frame();
+  // If boot splash duration is > 0, display splash first.
+  // Otherwise go straight to idle.
+  uint8_t boot_splash_duration = 16;
+  if (boot_splash_duration > 0) {
+    advance_display_state(DISPLAY_GOTO_BOOT_SPLASH);
   }
   else {
-    frame = empty_frame();
+    advance_display_state(DISPLAY_GOTO_IDLE);
   }
 
-  push_frame(frame);
+  // Initialise state and renderer variables
+  enum display_state_t state = get_display_state();
+  const struct renderer_t* renderer = get_renderer(state);
+  if (renderer && renderer->start) {
+    renderer->start();
+  }
 
   // Init display timer just before display loop
   init_timer();
-
-  // Boot splash loop
-  uint8_t frame_counter = 0;
-  while (state == DISPLAY_BOOT_SPLASH) {
-    while(!draw_frame) {
-      sleep_cpu();
-    }
-
-    pop_and_display_frame();
-
-    if (frame_counter < 2*25) {
-      frame = renderer->render_frame();
-      ++frame_counter;
-    }
-    else {
-      frame = empty_frame();
-      advance_display_state(DISPLAY_GOTO_IDLE);
-    }
-
-    push_frame(frame);
-
-    state = get_display_state();
-    renderer = get_renderer(state);
-
-    draw_frame = 0;
-  }
 
   // Main loop
   for (;;) {
@@ -142,9 +118,16 @@ int main () {
       sleep_cpu();
     }
 
-    pop_and_display_frame();
+    consume_frame(pop_frame());
 
-    if (!is_remote_connected()) {
+    if (state == DISPLAY_BOOT_SPLASH) {
+      // Initial boot splash loop
+      --boot_splash_duration;
+      if (boot_splash_duration == 0) {
+        advance_display_state(DISPLAY_GOTO_IDLE);
+      }
+    }
+    else if (!is_remote_connected()) {
       if ( state == DISPLAY_IDLE
         && (switch_pressed(SWITCH_PLAY_PAUSE) || switch_pressed(SWITCH_FORWARD))
       ) {
@@ -159,7 +142,7 @@ int main () {
     }
     else if (state != DISPLAY_EXTERNAL) {
       advance_display_state(DISPLAY_GOTO_IDLE);
-      // TODO push cleared frame
+      push_frame(empty_frame());
       advance_display_state(DISPLAY_GOTO_EXTERNAL);
     }
 
