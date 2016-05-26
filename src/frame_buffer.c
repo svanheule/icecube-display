@@ -1,13 +1,20 @@
 #include "frame_buffer.h"
 #include <stdlib.h>
+#include <util/atomic.h>
 
 struct frame_buffer_t* create_frame() {
-  return (struct frame_buffer_t*) malloc(sizeof(struct frame_buffer_t));
+  struct frame_buffer_t* f;
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    f = (struct frame_buffer_t*) malloc(sizeof(struct frame_buffer_t));
+  }
+  return f;
 }
 
 void destroy_frame(struct frame_buffer_t* frame) {
   if (frame->flags & FRAME_FREE_AFTER_DRAW) {
-    free(frame);
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+      free(frame);
+    }
   }
 }
 
