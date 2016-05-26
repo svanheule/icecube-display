@@ -107,8 +107,10 @@ void advance_display_state() {
     display_state = new_state;
     renderer = get_renderer(new_state);
     // Init new renderer
-    if (renderer && renderer->start) {
-      renderer->start();
+    if (renderer) {
+      if (renderer->start) {
+        renderer->start();
+      }
     }
     else {
       struct frame_buffer_t* f = empty_frame();
