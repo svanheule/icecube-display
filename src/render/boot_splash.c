@@ -52,7 +52,7 @@ void init_splash()  {
 
 void stop_splash() {
   if (ugent_frame) {
-    free(ugent_frame);
+    destroy_frame(ugent_frame);
     ugent_frame = 0;
   }
 }

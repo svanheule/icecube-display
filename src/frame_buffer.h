@@ -51,9 +51,7 @@ struct frame_buffer_t {
 /// Allocate a new frame buffer if possible. Returns NULL on failure.
 struct frame_buffer_t* create_frame();
 
-/** Deallocate a frame if the ::FRAME_FREE_AFTER_DRAW flag is set.
-  * This function is a no-op if this is not the case.
-  */
+/// Deallocate a frame irrespective of whether the flag ::FRAME_FREE_AFTER_DRAW is set.
 void destroy_frame(struct frame_buffer_t* frame);
 
 /// Clear the frame contents, i.e. set all values to zero.

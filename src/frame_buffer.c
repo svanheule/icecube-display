@@ -11,10 +11,8 @@ struct frame_buffer_t* create_frame() {
 }
 
 void destroy_frame(struct frame_buffer_t* frame) {
-  if (frame->flags & FRAME_FREE_AFTER_DRAW) {
-    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-      free(frame);
-    }
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    free(frame);
   }
 }
 
@@ -57,7 +55,6 @@ bool push_frame(struct frame_buffer_t* frame) {
     return true;
   }
   else {
-    destroy_frame(frame);
     return false;
   }
 }

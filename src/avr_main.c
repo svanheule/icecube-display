@@ -110,8 +110,11 @@ void advance_display_state() {
     if (renderer && renderer->start) {
       renderer->start();
     }
-    else if (!frame_queue_full()) {
-      push_frame(empty_frame());
+    else {
+      struct frame_buffer_t* f = empty_frame();
+      if (!push_frame(f)) {
+        destroy_frame(f);
+      }
     }
   }
 }
@@ -140,7 +143,9 @@ void init_timer() {
 void consume_frame(struct frame_buffer_t* frame) {
   if (frame) {
     display_frame(frame);
-    destroy_frame(frame);
+    if (frame->flags & FRAME_FREE_AFTER_DRAW) {
+      destroy_frame(frame);
+    }
   }
 }
 
@@ -181,7 +186,10 @@ int main () {
     advance_display_state();
 
     if (renderer && !frame_queue_full()) {
-      push_frame(renderer->render_frame());
+      struct frame_buffer_t* f = renderer->render_frame();
+      if (!push_frame(f) && (f->flags & FRAME_FREE_AFTER_DRAW)) {
+        destroy_frame(f);
+      }
     }
 
     draw_frame = 0;
