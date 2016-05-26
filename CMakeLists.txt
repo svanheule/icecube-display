@@ -83,7 +83,6 @@ set(SOURCES
   src/render/boot_splash.c
   src/render/test.c
   src/render/demo.c
-  src/display_state.c
   src/switches.c
 )
 

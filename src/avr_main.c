@@ -5,12 +5,116 @@
 #include <stdint.h>
 
 #include "display_driver.h"
-#include "display_state.h"
+//#include "display_state.h"
 #include "render/demo.h"
 #include "render/test.h"
 #include "render/boot_splash.h"
 #include "remote.h"
 #include "switches.h"
+
+enum display_state_t {
+    DISPLAY_STATE_BOOT = 0
+  , DISPLAY_STATE_IDLE
+  , DISPLAY_STATE_BOOT_SPLASH
+  , DISPLAY_STATE_EXTERNAL
+  , DISPLAY_STATE_DEMO
+  , DISPLAY_STATE_TEST_RING
+  , DISPLAY_STATE_TEST_SNAKE
+};
+
+const struct renderer_t* get_renderer(const enum display_state_t display_state) {
+  switch (display_state) {
+    case DISPLAY_STATE_DEMO:
+      return get_demo_renderer();
+      break;
+    case DISPLAY_STATE_TEST_RING:
+      return get_ring_renderer();
+      break;
+    case DISPLAY_STATE_TEST_SNAKE:
+      return get_snake_renderer();
+      break;
+    case DISPLAY_STATE_BOOT_SPLASH:
+      return get_ring_renderer();
+      break;
+    case DISPLAY_STATE_BOOT:
+    case DISPLAY_STATE_IDLE:
+    case DISPLAY_STATE_EXTERNAL:
+    default:
+      return 0;
+      break;
+  }
+}
+
+struct frame_buffer_t* empty_frame() {
+  struct frame_buffer_t* frame = create_frame();
+  if (frame) {
+    clear_frame(frame);
+    frame->flags = FRAME_FREE_AFTER_DRAW;
+  }
+  return frame;
+}
+
+static enum display_state_t display_state = DISPLAY_STATE_BOOT;
+static const struct renderer_t* renderer = 0;
+// If boot splash duration is > 0, display splash first.
+// Otherwise go straight to idle.
+static uint8_t boot_splash_duration = 15;
+
+void advance_display_state() {
+  // By default, keep old state
+  enum display_state_t new_state = display_state;
+
+  if (display_state == DISPLAY_STATE_BOOT) {
+    if (boot_splash_duration > 0) {
+      new_state = DISPLAY_STATE_BOOT_SPLASH;
+    }
+    else {
+      new_state = DISPLAY_STATE_IDLE;
+    }
+  }
+  else if (display_state == DISPLAY_STATE_BOOT_SPLASH) {
+    if (boot_splash_duration > 0) {
+      --boot_splash_duration;
+    }
+    else {
+      new_state = DISPLAY_STATE_IDLE;
+    }
+  }
+  else if (!is_remote_connected()) {
+    if ( display_state == DISPLAY_STATE_IDLE
+      && (switch_pressed(SWITCH_PLAY_PAUSE) || switch_pressed(SWITCH_FORWARD))
+    ) {
+      new_state = DISPLAY_STATE_DEMO;
+    }
+    else if (display_state == DISPLAY_STATE_EXTERNAL) {
+      // Clear any switch presses on going to IDLE
+      clear_switch_pressed(SWITCH_PLAY_PAUSE);
+      clear_switch_pressed(SWITCH_FORWARD);
+      new_state = DISPLAY_STATE_IDLE;
+    }
+  }
+  else if (display_state != DISPLAY_STATE_EXTERNAL) {
+    new_state = DISPLAY_STATE_EXTERNAL;
+  }
+
+  // Check if state changed and switch renderers accordingly
+  if (new_state != display_state) {
+    // Stop current renderer
+    if (renderer && renderer->stop) {
+      renderer->stop();
+    }
+    // Select new renderer
+    display_state = new_state;
+    renderer = get_renderer(new_state);
+    // Init new renderer
+    if (renderer && renderer->start) {
+      renderer->start();
+    }
+    else if (!frame_queue_full()) {
+      push_frame(empty_frame());
+    }
+  }
+}
 
 // CTC interrupt handling
 volatile uint8_t draw_frame;
@@ -33,41 +137,10 @@ void init_timer() {
   TIMSK1 = (1<<OCIE1A);
 }
 
-struct frame_buffer_t* empty_frame() {
-  struct frame_buffer_t* frame = create_frame();
-  if (frame) {
-    clear_frame(frame);
-    frame->flags = FRAME_FREE_AFTER_DRAW;
-  }
-  return frame;
-}
-
 void consume_frame(struct frame_buffer_t* frame) {
   if (frame) {
     display_frame(frame);
     destroy_frame(frame);
-  }
-}
-
-const struct renderer_t* get_renderer(const enum display_state_t display_state) {
-  switch (display_state) {
-    case DISPLAY_DEMO:
-      return get_demo_renderer();
-      break;
-    case DISPLAY_TEST_RING:
-      return get_ring_renderer();
-      break;
-    case DISPLAY_TEST_SNAKE:
-      return get_snake_renderer();
-      break;
-    case DISPLAY_BOOT_SPLASH:
-      return get_boot_splash_renderer();
-      break;
-    case DISPLAY_IDLE:
-    case DISPLAY_EXTERNAL:
-    default:
-      return 0;
-      break;
   }
 }
 
@@ -91,22 +164,7 @@ int main () {
   // Clear display just in case the LEDs didn't power on without output
   consume_frame(empty_frame());
 
-  // If boot splash duration is > 0, display splash first.
-  // Otherwise go straight to idle.
-  uint8_t boot_splash_duration = 16;
-  if (boot_splash_duration > 0) {
-    advance_display_state(DISPLAY_GOTO_BOOT_SPLASH);
-  }
-  else {
-    advance_display_state(DISPLAY_GOTO_IDLE);
-  }
-
   // Initialise state and renderer variables
-  enum display_state_t state = get_display_state();
-  const struct renderer_t* renderer = get_renderer(state);
-  if (renderer && renderer->start) {
-    renderer->start();
-  }
 
   // Init display timer just before display loop
   init_timer();
@@ -120,50 +178,7 @@ int main () {
 
     consume_frame(pop_frame());
 
-    if (state == DISPLAY_BOOT_SPLASH) {
-      // Initial boot splash loop
-      --boot_splash_duration;
-      if (boot_splash_duration == 0) {
-        advance_display_state(DISPLAY_GOTO_IDLE);
-      }
-    }
-    else if (!is_remote_connected()) {
-      if ( state == DISPLAY_IDLE
-        && (switch_pressed(SWITCH_PLAY_PAUSE) || switch_pressed(SWITCH_FORWARD))
-      ) {
-        advance_display_state(DISPLAY_GOTO_DEMO);
-      }
-      else if (state == DISPLAY_EXTERNAL) {
-        // Clear any switch presses on going to IDLE
-        clear_switch_pressed(SWITCH_PLAY_PAUSE);
-        clear_switch_pressed(SWITCH_FORWARD);
-        advance_display_state(DISPLAY_GOTO_IDLE);
-      }
-    }
-    else if (state != DISPLAY_EXTERNAL) {
-      advance_display_state(DISPLAY_GOTO_IDLE);
-      push_frame(empty_frame());
-      advance_display_state(DISPLAY_GOTO_EXTERNAL);
-    }
-
-    enum display_state_t current_state = get_display_state();
-    // Detect display state changes and switch renderers accordingly
-    if (state != current_state) {
-      state = current_state;
-      // Stop current renderer
-      if (renderer && renderer->stop) {
-        renderer->stop();
-      }
-      // Select new renderer
-      renderer = get_renderer(state);
-      // Init new renderer
-      if (renderer && renderer->start) {
-        renderer->start();
-      }
-      else if (!frame_queue_full()) {
-        push_frame(empty_frame());
-      }
-    }
+    advance_display_state();
 
     if (renderer && !frame_queue_full()) {
       push_frame(renderer->render_frame());
