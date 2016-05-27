@@ -315,7 +315,7 @@ static void callback_data_usb_frame(struct control_transfer_t* transfer) {
   // Get frame data
   usb_frame_buffer_ptr += fifo_read(usb_frame_buffer_ptr, fifo_size());
   // Push if all data was received
-  uint8_t* end_ptr = (uint8_t*) usb_frame->buffer + FRAME_LENGTH;
+  uint8_t* end_ptr = (uint8_t*) usb_frame->buffer + sizeof(usb_frame->buffer);
   if (usb_frame_buffer_ptr == end_ptr) {
     if(!push_frame(usb_frame)) {
       // Prevent memory leaks and dangling pointers
