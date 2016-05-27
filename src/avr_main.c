@@ -41,7 +41,7 @@ static inline const struct renderer_t* get_renderer() {
       return get_scan_renderer();
       break;
     case DISPLAY_STATE_BOOT_SPLASH:
-      return get_ring_renderer();
+      return get_boot_splash_renderer();
       break;
     case DISPLAY_STATE_BOOT:
     case DISPLAY_STATE_IDLE:
