@@ -31,7 +31,7 @@ const struct renderer_t* get_renderer(const enum display_state_t display_state) 
       return get_ring_renderer();
       break;
     case DISPLAY_STATE_TEST_SNAKE:
-      return get_snake_renderer();
+      return get_scan_renderer();
       break;
     case DISPLAY_STATE_BOOT_SPLASH:
       return get_ring_renderer();
