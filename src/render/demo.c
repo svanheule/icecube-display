@@ -126,7 +126,7 @@ static void init_demo() {
   load_event_P(current_event);
 }
 
-void stop_demo() {
+static void stop_demo() {
   current_event = 0;
 }
 
