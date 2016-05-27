@@ -6,7 +6,7 @@
 /// Render a number of pixels scanning from the start to end of the buffer, and back.
 const struct renderer_t* get_scan_renderer();
 
-/// Render consecutive concentric rings around pixel (5,4), i.e. station 36
+/// Render consecutive concentric rings around station 36.
 const struct renderer_t* get_ring_renderer();
 
 #endif

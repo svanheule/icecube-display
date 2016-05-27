@@ -58,7 +58,7 @@ const struct renderer_t* get_scan_renderer() {
   return &SCAN_RENDERER;
 }
 
-// Render expanding concentric rings around station 36 with coordinates (5,4) (pixel nr. 35)
+// Render expanding concentric rings around station 36 with coordinates (5,4)
 struct station_t {
   int8_t v;
   int8_t w;
@@ -85,6 +85,14 @@ static void init_ring() {
 
 static void stop_ring() {}
 
+/* Extensive explanation at: [http://www.redblobgames.com/grids/hexagons/]
+ * A hexagonal lattice may be constructed from a regular, 3D square grid by taking the plane
+ * satisfying the eqaution \f$x+y+z=0\f$. If the pair \f$(x,y)\f$ is mapped onto a 2D space
+ * given by \f$(v,w)\f$, this plane equation determines \f$z\f$.
+ * The distance between 2 points on a hexagonal is given by
+ * \f$0.5 (|x_1-x_2| + |y_1-y_2| + |z_1-z_2|)\f$ or
+ * \f$0.5 (|v_1-v_2| + |w_1-w_2| + |(v_1-v_2)-(w_1-w_2)|)\f$.
+ */
 static uint8_t station_distance(const struct station_t s1, const struct station_t s2) {
   int8_t dv = s1.v - s2.v;
   int8_t dw = s1.w - s2.w;
