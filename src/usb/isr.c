@@ -156,7 +156,7 @@ static void cancel_control_transfer(struct control_transfer_t* transfer) {
   }
 }
 
-static void process_standard_request(struct control_transfer_t* transfer) {
+static inline void process_standard_request(struct control_transfer_t* transfer) {
   switch (transfer->req->bRequest) {
     case GET_STATUS:
       // default state fail; address state fail if EP!=0; config state fail if non-existant
@@ -295,7 +295,7 @@ static uint8_t* usb_frame_buffer_ptr;
 static void callback_data_usb_frame(struct control_transfer_t* transfer);
 static void callback_cancel_usb_frame();
 
-static void process_vendor_request(struct control_transfer_t* transfer) {
+static inline void process_vendor_request(struct control_transfer_t* transfer) {
   if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_VENDOR | REQ_REC_INTERFACE)) {
     // If correct request and request length
     if (transfer->req->bRequest == VENDOR_REQUEST_PUSH_FRAME && transfer->req->wLength == FRAME_LENGTH) {
@@ -333,7 +333,7 @@ static void callback_cancel_usb_frame() {
   }
 }
 
-static void process_setup(struct control_transfer_t* transfer) {
+static inline void process_setup(struct control_transfer_t* transfer) {
   switch (GET_REQUEST_TYPE(transfer->req->bmRequestType)) {
     case REQ_TYPE_STANDARD:
       process_standard_request(transfer);
