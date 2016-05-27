@@ -121,8 +121,7 @@ struct frame_buffer_t* render_ring() {
 
       // Set colour
       ++offset;
-      uint8_t colour;
-      for (colour = 0; colour < 3; ++colour) {
+      for (uint8_t colour = 0; colour < 3; ++colour) {
         if (d+colour == radius) {
           buffer[offset+colour] = 0x0F;
         }
