@@ -125,7 +125,10 @@ void display_blank() {
   }
 
   // LED data
-  for (uint16_t i = 0; i < (sizeof(struct led_t)*LED_COUNT); ++i) {
+  for (uint8_t i = 0; i < LED_COUNT; ++i) {
+    write_byte(LED_HEADER);
+    write_byte(0);
+    write_byte(0);
     write_byte(0);
   }
 
