@@ -12,6 +12,10 @@
  *     energy
  *   * Three inclined events (cosine zenith \f$\in[0.3,0.35]\f$), displayed in increasing energy
  *
+ * The *Forward* button can be used to cycle through the stored events, and the *Play/Pause* button
+ * can be used to pause display to the current event.
+ * When paused, the display will show the event overview. If the user then presses play again, the
+ * renderer will again start in the time lapse mode for the event currently selected event.
  * \author Sander Vanheule (Universiteit  Gent)
  */
 
