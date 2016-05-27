@@ -23,7 +23,13 @@ enum display_state_t {
   , DISPLAY_STATE_TEST_SNAKE
 };
 
-const struct renderer_t* get_renderer(const enum display_state_t display_state) {
+static volatile enum display_state_t display_state = DISPLAY_STATE_BOOT;
+static volatile const struct renderer_t* renderer = 0;
+// If boot splash duration is > 0, display splash first.
+// Otherwise go straight to idle.
+static uint8_t boot_splash_duration = 15;
+
+static inline const struct renderer_t* get_renderer() {
   switch (display_state) {
     case DISPLAY_STATE_DEMO:
       return get_demo_renderer();
@@ -46,13 +52,7 @@ const struct renderer_t* get_renderer(const enum display_state_t display_state) 
   }
 }
 
-static enum display_state_t display_state = DISPLAY_STATE_BOOT;
-static const struct renderer_t* renderer = 0;
-// If boot splash duration is > 0, display splash first.
-// Otherwise go straight to idle.
-static uint8_t boot_splash_duration = 15;
-
-void advance_display_state() {
+static inline void advance_display_state() {
   // By default, keep old state
   enum display_state_t new_state = display_state;
 
@@ -97,7 +97,7 @@ void advance_display_state() {
     }
     // Select new renderer
     display_state = new_state;
-    renderer = get_renderer(new_state);
+    renderer = get_renderer();
     // Init new renderer
     if (renderer) {
       if (renderer->start) {
@@ -134,7 +134,7 @@ void init_timer() {
   TIMSK1 = (1<<OCIE1A);
 }
 
-void consume_frame(struct frame_buffer_t* frame) {
+static inline void consume_frame(struct frame_buffer_t* frame) {
   if (frame) {
     display_frame(frame);
     if (frame->flags & FRAME_FREE_AFTER_DRAW) {
