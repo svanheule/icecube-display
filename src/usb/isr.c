@@ -9,7 +9,7 @@
 #include "usb/configuration.h"
 #include "usb/fifo.h"
 #include "usb/led.h"
-#include "frame_buffer.h"
+#include "frame_queue.h"
 
 // Descriptor transaction definitions
 #include "usb/descriptor.h"

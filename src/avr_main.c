@@ -11,6 +11,7 @@
 #include "render/boot_splash.h"
 #include "remote.h"
 #include "switches.h"
+#include "frame_queue.h"
 
 enum display_state_t {
     DISPLAY_STATE_BOOT = 0

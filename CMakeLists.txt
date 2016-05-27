@@ -80,6 +80,7 @@ set(SOURCES
   src/avr_main.c
   src/display_driver.c
   src/frame_buffer.c
+  src/frame_queue.c
   src/render/boot_splash.c
   src/render/test.c
   src/render/demo.c

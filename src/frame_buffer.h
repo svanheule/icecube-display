@@ -30,7 +30,6 @@ struct led_t {
 /// Total frame byte count
 #define FRAME_LENGTH (sizeof(struct led_t)*LED_COUNT)
 
-// Frame queue
 enum frame_flag_t {
   /// Indicate whether a frame buffer may be deallocated after drawing
   FRAME_FREE_AFTER_DRAW  = 1,
@@ -56,25 +55,6 @@ void destroy_frame(struct frame_buffer_t* frame);
 
 /// Clear the frame contents, i.e. set all values to zero.
 void clear_frame(struct frame_buffer_t* frame);
-
-/// Check if the frame queue is full.
-bool frame_queue_full();
-/// Check if the frame queue is empty.
-bool frame_queue_empty();
-
-/** Push new frame into the frame FIFO.
-  * If the queue is already full, destroy_frame() will be called.
-  * If ::FRAME_FREE_AFTER_DRAW is set, this means that ownership of the frame is transferred to the
-  * queue. If it is not set, the frame's memory will not be released and the pointer can be
-  * re-used.
-  * \returns `true` on success, and `false` if the FIFO was full.
-  */
-bool push_frame(struct frame_buffer_t* frame);
-
-/** Pop a frame from the frame FIFO.
-  * \returns Pointer to the popped frame, or NULL if the FIFO was empty.
-  */
-struct frame_buffer_t* pop_frame();
 
 /** A renderer is an object that, once initialised/started, must return frames indefinitely.
   * `start` (`stop`) should be called when (de)initialising the object. The behaviour of
