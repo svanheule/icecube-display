@@ -24,4 +24,6 @@ void init_display_driver();
 /// This function should not be called with a null-pointer for `buffer`!
 void display_frame(struct frame_buffer_t* buffer);
 
+void display_blank();
+
 #endif

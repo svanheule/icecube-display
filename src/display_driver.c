@@ -75,6 +75,10 @@ static const uint8_t LED_TO_BUFFER[LED_COUNT] PROGMEM = {
           , 74, 75, 76, 77
 };
 
+const uint8_t FRAME_HEADER = 0x00;
+const uint8_t FRAME_FOOTER = 0xFF;
+const uint8_t LED_HEADER = 0xE0;
+
 void display_frame(struct frame_buffer_t* frame) {
   /* # APA102C
    * Transmit bytes with MSB first
@@ -85,10 +89,6 @@ void display_frame(struct frame_buffer_t* frame) {
    *   * blue, green, red
    * * frame end: ceil(n/2) '1' bits, or ceil(n/2/8) 0xFF bytes
    */
-  const uint8_t FRAME_HEADER = 0x00;
-  const uint8_t FRAME_FOOTER = 0xFF;
-  const uint8_t LED_HEADER = 0xE0;
-
   frame->flags |= FRAME_DRAW_IN_PROGRESS;
 
   uint8_t i;
@@ -115,4 +115,22 @@ void display_frame(struct frame_buffer_t* frame) {
   }
 
   frame->flags &= ~FRAME_DRAW_IN_PROGRESS;
+}
+
+
+void display_blank() {
+  // Start of frame
+  for (uint8_t i = 0; i < 4; ++i) {
+    write_byte(FRAME_HEADER);
+  }
+
+  // LED data
+  for (uint16_t i = 0; i < (sizeof(struct led_t)*LED_COUNT); ++i) {
+    write_byte(0);
+  }
+
+  // End of frame
+  for (uint8_t i = 0; i < LED_COUNT; i+=16) {
+    write_byte(FRAME_FOOTER);
+  }
 }

@@ -155,9 +155,9 @@ void consume_frame(struct frame_buffer_t* frame) {
 int main () {
   // Init display pin configuration and switches
   init_display_driver();
-  init_switches();
+  display_blank();
 
-  draw_frame = 0;
+  init_switches();
 
   // Enable idle mode sleep
   set_sleep_mode(SLEEP_MODE_IDLE);
@@ -169,12 +169,8 @@ int main () {
   // Enable interrupts
   sei();
 
-  // Clear display just in case the LEDs didn't power on without output
-  consume_frame(empty_frame());
-
-  // Initialise state and renderer variables
-
   // Init display timer just before display loop
+  draw_frame = 0;
   init_timer();
 
   // Main loop
