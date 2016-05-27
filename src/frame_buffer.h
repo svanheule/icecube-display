@@ -32,10 +32,10 @@ struct led_t {
 
 enum frame_flag_t {
   /// Indicate whether a frame buffer may be deallocated after drawing
-  FRAME_FREE_AFTER_DRAW  = 1,
+  FRAME_FREE_AFTER_DRAW  = 1<<1,
   /// Indicate if the frame is currently being drawn.
   /// A renderer may choose to abstain from drawing to the buffer to avoid rendering artifacts.
-  FRAME_DRAW_IN_PROGRESS = 2
+  FRAME_DRAW_IN_PROGRESS = 1<<2
 };
 
 /** Object constisting of a frame buffer and a number of associated (bit)flags.
