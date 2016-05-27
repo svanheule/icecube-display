@@ -134,13 +134,12 @@ static struct frame_buffer_t* render_demo() {
   struct frame_buffer_t* frame = 0;
   // Only allocate a frame if there's something to be rendered
   if (current_event) {
-    frame = create_frame();
+    frame = create_empty_frame();
   }
 
   if (frame) {
     // Allow frame to be released
     frame->flags = FRAME_FREE_AFTER_DRAW;
-    clear_frame(frame);
 
     // Loop over currently shown pulses
     const struct pulse_t* pulse = current_pulse;

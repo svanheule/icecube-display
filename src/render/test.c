@@ -23,11 +23,10 @@ static void init_scan() {
 static void stop_scan() {}
 
 struct frame_buffer_t* render_scan() {
-  struct frame_buffer_t* frame = create_frame();
+  struct frame_buffer_t* frame = create_empty_frame();
 
   if (frame) {
     frame->flags = FRAME_FREE_AFTER_DRAW;
-    clear_frame(frame);
     struct led_t* write_ptr = &frame->buffer[0];
 
     uint8_t tail = TAIL_LENGTH;
@@ -100,11 +99,10 @@ static uint8_t station_distance(const struct station_t s1, const struct station_
 }
 
 struct frame_buffer_t* render_ring() {
-  struct frame_buffer_t* frame = create_frame();
+  struct frame_buffer_t* frame = create_empty_frame();
 
   if (frame) {
     frame->flags = FRAME_FREE_AFTER_DRAW;
-    clear_frame(frame);
 
     // Only expand every second frame
     uint8_t radius = ring_frame>>1;
