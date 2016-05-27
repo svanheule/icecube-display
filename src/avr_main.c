@@ -5,12 +5,12 @@
 #include <stdint.h>
 
 #include "display_driver.h"
-//#include "display_state.h"
 #include "render/demo.h"
 #include "render/test.h"
 #include "render/boot_splash.h"
 #include "remote.h"
 #include "switches.h"
+#include "frame_buffer.h"
 #include "frame_queue.h"
 
 enum display_state_t {
@@ -44,15 +44,6 @@ const struct renderer_t* get_renderer(const enum display_state_t display_state) 
       return 0;
       break;
   }
-}
-
-struct frame_buffer_t* empty_frame() {
-  struct frame_buffer_t* frame = create_frame();
-  if (frame) {
-    clear_frame(frame);
-    frame->flags = FRAME_FREE_AFTER_DRAW;
-  }
-  return frame;
 }
 
 static enum display_state_t display_state = DISPLAY_STATE_BOOT;
@@ -114,7 +105,7 @@ void advance_display_state() {
       }
     }
     else {
-      struct frame_buffer_t* f = empty_frame();
+      struct frame_buffer_t* f = create_empty_frame();
       if (!push_frame(f)) {
         destroy_frame(f);
       }

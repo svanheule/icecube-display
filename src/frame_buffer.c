@@ -26,3 +26,12 @@ void clear_frame(struct frame_buffer_t* frame_ptr) {
     }
   }
 }
+
+
+struct frame_buffer_t* create_empty_frame() {
+  struct frame_buffer_t* f = create_frame();
+  if (f) {
+    clear_frame(f);
+  }
+  return f;
+}
