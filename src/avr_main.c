@@ -180,7 +180,7 @@ int main () {
 
     if (renderer && !frame_queue_full()) {
       struct frame_buffer_t* f = renderer->render_frame();
-      if (f &&  !push_frame(f) && (f->flags & FRAME_FREE_AFTER_DRAW)) {
+      if (f && !push_frame(f) && (f->flags & FRAME_FREE_AFTER_DRAW)) {
         destroy_frame(f);
       }
     }

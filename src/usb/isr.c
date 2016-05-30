@@ -145,7 +145,7 @@ static void* init_data_in(struct control_transfer_t* transfer, size_t length) {
 
 static void cancel_control_transfer(struct control_transfer_t* transfer) {
   transfer->stage = CTRL_STALL;
-  // Call any cancel callbacks that my perform clean-up
+  // Call any cancel callbacks that may perform clean-up
   if (transfer->callback_cancel) {
     transfer->callback_cancel();
   }
@@ -194,7 +194,7 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
       }
       break;
     case GET_CONFIGURATION:
-      if (transfer->req->bmRequestType == (REQ_DIR_IN| REQ_TYPE_STANDARD | REQ_REC_DEVICE)) {
+      if (transfer->req->bmRequestType == (REQ_DIR_IN | REQ_TYPE_STANDARD | REQ_REC_DEVICE)) {
         if(init_data_in(transfer, 1)) {
           *((uint8_t*) transfer->data_in) = get_configuration_index();
         }
