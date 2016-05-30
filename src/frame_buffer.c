@@ -11,14 +11,14 @@ static uint8_t buffer_taken;
 // Frame memory management functions
 struct frame_buffer_t* create_frame() {
   struct frame_buffer_t* f = 0;
+  uint8_t buffer = BUFFER_LIST_LENGTH-1;
+  uint8_t buffer_mask = 1<<(BUFFER_LIST_LENGTH-1);
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
-    /* Look for free available buffer.
+    /* Look for available buffer.
      * Start by looking at the last buffer and shift the bit mask to the right.
      * If no free buffer has been encountered by then (i.e. bit set to '0' in buffer_taken)
      * buffer_mask will become zero and loop evaluation will also end.
      */
-    uint8_t buffer = BUFFER_LIST_LENGTH-1;
-    uint8_t buffer_mask = 1<<(BUFFER_LIST_LENGTH-1);
     while (buffer_mask & buffer_taken) {
       --buffer;
       buffer_mask >>= 1;
@@ -33,11 +33,11 @@ struct frame_buffer_t* create_frame() {
 }
 
 void destroy_frame(struct frame_buffer_t* frame) {
+  struct frame_buffer_t* buffer = buffer_list + (BUFFER_LIST_LENGTH-1);
+  uint8_t buffer_mask = 1<<(BUFFER_LIST_LENGTH-1);
   ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
     // Compare pointer to list of allocated buffers
     // See create_frame() for details on the variable manipulations.
-    struct frame_buffer_t* buffer = buffer_list + (BUFFER_LIST_LENGTH-1);
-    uint8_t buffer_mask = 1<<(BUFFER_LIST_LENGTH-1);
     while (frame != buffer && buffer_mask) {
       --buffer;
       buffer_mask >>= 1;
