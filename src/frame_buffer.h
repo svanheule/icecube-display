@@ -3,14 +3,12 @@
 
 /**
   * \file
-  * \brief Description of the frame object and a FIFO queue to use as buffer.
+  * \brief Description of the frame object.
   * \details
   * \author Sander Vanheule (Universiteit Gent)
   */
 
-#include <stdlib.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 // Frame buffer size and structure definitions
 
@@ -53,7 +51,7 @@ struct frame_buffer_t* create_frame();
 /// Deallocate a frame irrespective of whether the flag ::FRAME_FREE_AFTER_DRAW is set.
 void destroy_frame(struct frame_buffer_t* frame);
 
-/// Clear the frame contents, i.e. set all values to zero.
+/// Clear the frame contents, i.e. set `frame->buffer` to all zeros.
 void clear_frame(struct frame_buffer_t* frame);
 struct frame_buffer_t* create_empty_frame();
 

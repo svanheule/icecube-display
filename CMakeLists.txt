@@ -46,7 +46,7 @@ else()
   set(FUSE_HIGH 0xd1)
   # BOD level 4.3V, HWB/DFU enable
   set(FUSE_EXTENDED 0xc0)
-  # Lock bits: prevent firmware from writing to in bootloader section
+  # Lock bits: prevent firmware from writing to the bootloader section
   set(LOCK 0x2f)
   set(DEFAULT_PROGRAMMER_ID flip1)
 endif()

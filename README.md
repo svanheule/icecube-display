@@ -21,9 +21,9 @@ The firmware for the microcontrollers is written in standard C.
 
 ### Cost estimate
 
-*Total:* €120 (excl. VAT)
+*Total:* €110 (excl. VAT)
   * 78 APA-102C LEDs (60 LEDs/m strips): €27 (€21/m) ([lednexus](http://lednexus.de))
-  * 5V, 10A power supply: €25 (ibid.)
+  * 5V, 5A power supply (HNP40EU-050/HNP36-050): €15 ([schukat](http://schukat.com))
   * Custom PCB: €15 (ordered 5pc, got 6pc) ([eurocircuits](http://eurocircuits.com))
   * Electronic components: €20 ([Conrad](http://conrad.be))
   * Laser cut PMMA (3 plates): €30 ([RU58](http://ru58.nl))

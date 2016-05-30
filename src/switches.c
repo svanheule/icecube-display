@@ -151,7 +151,7 @@ ISR(TIMER0_COMPA_vect) {
       --switch_timer[i];
       if(!switch_timer[i]) {
         toggle_switch_state(i);
-        // Set pressed flag on downgoing edge
+        // Set pressed flag on upgoing edge
         if (get_switch_state(i) == DEPRESSED) {
           switch_edge_detected |= _BV(i);
         }
