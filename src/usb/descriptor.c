@@ -113,7 +113,7 @@ static struct descriptor_list_t* create_list_item(
 
 uint16_t get_list_total_length(const struct descriptor_list_t* head) {
   uint16_t total = 0;
-  while (head && head->next != head) {
+  while (head) {
     total += head->header.bLength;
     head = head->next;
   }
