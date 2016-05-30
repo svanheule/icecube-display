@@ -106,8 +106,11 @@ static inline void advance_display_state() {
     }
     else {
       struct frame_buffer_t* f = create_empty_frame();
-      if (!push_frame(f)) {
-        destroy_frame(f);
+      if (f) {
+        f->flags |= FRAME_FREE_AFTER_DRAW;
+        if (!push_frame(f)) {
+          destroy_frame(f);
+        }
       }
     }
   }
@@ -177,7 +180,7 @@ int main () {
 
     if (renderer && !frame_queue_full()) {
       struct frame_buffer_t* f = renderer->render_frame();
-      if (!push_frame(f) && (f->flags & FRAME_FREE_AFTER_DRAW)) {
+      if (f &&  !push_frame(f) && (f->flags & FRAME_FREE_AFTER_DRAW)) {
         destroy_frame(f);
       }
     }
