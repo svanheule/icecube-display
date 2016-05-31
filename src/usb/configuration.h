@@ -1,8 +1,6 @@
 #ifndef USB_CONFIGURATION_H
 #define USB_CONFIGURATION_H
 
-#include <avr/pgmspace.h>
-#include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
 
