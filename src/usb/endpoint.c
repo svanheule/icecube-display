@@ -9,17 +9,17 @@ bool endpoint_configure(const struct ep_hw_config_t* config) {
   // Deconfigure/reset endpoint
   UECFG1X = 0;
   // Configure endpoint
-  UECFG0X = config->cfg0;
-  UECFG1X = config->cfg1 | _BV(ALLOC);
+  UECFG0X = config->config_type;
+  UECFG1X = config->config_bank | _BV(ALLOC);
   // Enable appropriate interrupts
-  switch (config->cfg0 >> 6) { // EP type
+  switch (config->config_type >> 6) { // EP type
     case 0: // control
       UEIENX = _BV(RXSTPE);
       break;
     case 1: // isochronous
     case 2: // interrupt
     case 3: // bulk
-      if (!(config->cfg0 & 0x1)) { // only for OUT EP
+      if (!(config->config_type & 0x1)) { // only for OUT EP
         UEIENX = _BV(RXOUTE);
       }
       break;

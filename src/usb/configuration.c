@@ -4,7 +4,12 @@
 
 // Configuration list
 // 64B, single bank, control
-static const struct ep_hw_config_t ENDPOINT_0 = {0, 0, _BV(EPSIZE1)|_BV(EPSIZE0)};
+static const struct ep_hw_config_t ENDPOINT_0 = {
+    0
+  , EP_CONTROL
+  , EP_BANK_SIZE_64 | EP_BANK_COUNT_1
+};
+
 // 64B, single bank, bulk
 /*static const struct ep_hw_config_t ENDPOINT_1 = {1, _BV(EPTYPE1), _BV(EPSIZE1)|_BV(EPSIZE0)};*/
 
