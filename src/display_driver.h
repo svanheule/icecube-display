@@ -15,15 +15,21 @@
 
 #include "frame_buffer.h"
 
-/// Initialise the hardware equired for driving the display.
-/// Must be called before display_frame
+/** \brief Initialise the hardware equired for driving the display.
+  * Must be called before display_frame().
+  */
 void init_display_driver();
 
-/// Write a frame out to the display from the given frame buffer.
-/// During the write-out, the `FRAME_DRAW_IN_PROGRESS` flag will be set on the frame.
-/// This function should not be called with a null-pointer for `buffer`!
+/** \brief Write a frame out to the display from the given frame buffer.
+  * \details During the write-out, the ::FRAME_DRAW_IN_PROGRESS flag will be set on the frame.
+  * This function should not be called with a null-pointer for \a buffer!
+  */
 void display_frame(struct frame_buffer_t* buffer);
 
+/** \brief Turn all the LEDs off.
+  * \details This achieves the same effect as calling display_frame() with an all-zero frame buffer
+  *   but is more efficient since it requires less time to run.
+  */
 void display_blank();
 
 #endif
