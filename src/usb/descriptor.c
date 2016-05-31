@@ -6,7 +6,7 @@
 typedef __CHAR16_TYPE__ char16_t;
 
 // Return the number of 16b words in str.
-// Codepoints that are split over two UTF16 char16_t values, add 2 to the returned length.
+// Codepoints that are split over two UTF16 char16_t values add 2 to the returned length.
 static size_t strlen16(const char16_t* str) {
   const char16_t* end = str;
   while (*end != 0) {
