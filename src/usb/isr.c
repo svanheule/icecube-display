@@ -221,6 +221,7 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
           uint16_t bytes_left = requested_length < list_length ? requested_length : list_length;
 
           if (init_data_in(transfer, bytes_left)) {
+            const uint8_t HEADER_SIZE = sizeof(struct usb_descriptor_header_t);
             uint8_t body_length, len;
             uint8_t* write_ptr = (uint8_t*) transfer->data_in;
             while (head && bytes_left) {

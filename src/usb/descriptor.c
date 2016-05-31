@@ -165,11 +165,6 @@ static const struct usb_descriptor_body_interface_t BODY_INTERFACE PROGMEM = {
   , 4
 };
 
-#define EP_NUM_MASK 0xF
-#define EP_DIR_IN (0<<7)
-#define EP_DIR_OUT (1<<7)
-
-
 static const char16_t STR_MANUFACTURER[] PROGMEM = u"Ghent University";
 static const char16_t STR_PRODUCT[] PROGMEM = u"IceTop event display";
 extern const char16_t STR_SERIAL_NUMBER[] EEMEM;

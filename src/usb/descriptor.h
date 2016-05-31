@@ -29,13 +29,6 @@ struct usb_descriptor_header_t {
   uint8_t bDescriptorType;
 };
 
-#define HEADER_SIZE sizeof(struct usb_descriptor_header_t)
-
-struct usb_descriptor_t {
-  enum usb_descriptor_type_t type;
-  void* body;
-};
-
 uint8_t usb_descriptor_size(const enum usb_descriptor_type_t type, const void* body, const enum memspace_t memspace);
 uint8_t usb_descriptor_body_size(const enum usb_descriptor_type_t type, const void* body, const enum memspace_t memspace);
 
@@ -65,11 +58,6 @@ struct usb_descriptor_body_device_t {
   uint8_t bNumConfigurations;
 };
 
-struct usb_decriptor_device_t {
-  struct usb_descriptor_header_t header;
-  struct usb_descriptor_body_device_t body;
-};
-
 // Configuration descriptor definitions
 struct usb_descriptor_body_configuration_t {
   uint16_t wTotalLength;
@@ -78,11 +66,6 @@ struct usb_descriptor_body_configuration_t {
   uint8_t iConfiguration;
   uint8_t bmAttributes;
   uint8_t bMaxPower;
-};
-
-struct usb_descriptor_configuration_t {
-  struct usb_descriptor_header_t header;
-  struct usb_descriptor_body_configuration_t body;
 };
 
 // Interface descriptor definitions
@@ -96,11 +79,6 @@ struct usb_descriptor_body_interface_t {
   uint8_t iInterface;
 };
 
-struct usb_descriptor_interface_t {
-  struct usb_descriptor_header_t header;
-  struct usb_descriptor_body_interface_t body;
-};
-
 // Endpoint descriptor definitions
 struct usb_descriptor_body_endpoint_t {
   uint8_t bEndpointAddress;
@@ -109,10 +87,4 @@ struct usb_descriptor_body_endpoint_t {
   uint8_t bInterval;
 };
 
-struct usb_descriptor_endpoint_t {
-  struct usb_descriptor_header_t header;
-  struct usb_descriptor_body_endpoint_t body;
-};
-
 #endif
-
