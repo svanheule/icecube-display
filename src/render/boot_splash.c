@@ -1,4 +1,5 @@
 #include "render/boot_splash.h"
+#include "frame_buffer.h"
 #include <avr/pgmspace.h>
 #include <stdlib.h>
 

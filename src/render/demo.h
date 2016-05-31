@@ -20,8 +20,9 @@
  * \author Sander Vanheule (Universiteit  Gent)
  */
 
-#include "frame_buffer.h"
+#include "render/renderer.h"
 
+/// Get a pointer to the demo renderer.
 const struct renderer_t* get_demo_renderer();
 
 #endif //RENDER_DEMO_H

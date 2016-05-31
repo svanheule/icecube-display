@@ -1,4 +1,5 @@
 #include "render/test.h"
+#include "frame_buffer.h"
 #include <avr/pgmspace.h>
 #include <stdint.h>
 #include <stdlib.h>

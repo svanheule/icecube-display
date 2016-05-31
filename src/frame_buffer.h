@@ -55,14 +55,4 @@ void destroy_frame(struct frame_buffer_t* frame);
 void clear_frame(struct frame_buffer_t* frame);
 struct frame_buffer_t* create_empty_frame();
 
-/** A renderer is an object that, once initialised/started, must return frames indefinitely.
-  * `start` (`stop`) should be called when (de)initialising the object. The behaviour of
-  * `render_frame` is undefined before calling `start`, and after calling `stop`.
-  */
-struct renderer_t {
-  void (*start)();
-  void (*stop)();
-  struct frame_buffer_t* (*render_frame)();
-};
-
 #endif
