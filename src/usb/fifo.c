@@ -11,10 +11,6 @@ uint16_t fifo_size() {
   return 1 << (3 + size_power);
 }
 
-void fifo_write_byte(const uint8_t data) {
-  UEDATX = data;
-}
-
 size_t fifo_write(const void* restrict data, const size_t length) {
   const uint8_t* tmp = (const uint8_t*) data;
   size_t remaining = length;

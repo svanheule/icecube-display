@@ -19,9 +19,6 @@ uint16_t fifo_byte_count();
 /// Total capacity of the endpoint FIFO.
 uint16_t fifo_size();
 
-/// Write a single byte to the selected FIFO.
-void fifo_write_byte(const uint8_t data);
-
 /// Copy a block of memory of \a length bytes, starting at \a data from RAM to the FIFO.
 size_t fifo_write(const void* restrict data, const size_t length);
 
