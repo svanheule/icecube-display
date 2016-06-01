@@ -24,10 +24,11 @@ bool endpoint_configure(const struct ep_hw_config_t* config) {
       }
       break;
   }
+  bool config_ok = UESTA0X & _BV(CFGOK);
   // Make room in stack
   endpoint_pop();
   // Return configuration status
-  return (UESTA0X & _BV(CFGOK));
+  return config_ok;
 }
 
 
