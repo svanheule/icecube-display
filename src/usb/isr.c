@@ -285,7 +285,9 @@ ISR(USB_COM_vect) {
       CLEAR_FLAG(UEIENX, TXINE);
       CLEAR_FLAG(UEIENX, RXOUTE);
 
-      cancel_control_transfer(&control_transfer);
+      if (control_transfer.stage != CTRL_IDLE && control_transfer.stage != CTRL_STALL) {
+        cancel_control_transfer(&control_transfer);
+      }
       control_transfer.callback_handshake = 0;
       control_transfer.callback_data_out = 0;
       control_transfer.callback_cancel = 0;
