@@ -3,11 +3,6 @@
 
 #include "usb/std.h"
 
-void configure_pll();
-void enable_pll();
-void disable_pll();
-
-
 enum usb_device_state_t {
     ATTACHED
   , POWERED

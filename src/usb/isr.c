@@ -16,98 +16,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
-#define FLAG_IS_SET(reg, flag) (reg & (1<<flag))
-#define CLEAR_INTERRUPT(reg, flag) reg &= ~(1<<flag)
-#define CLEAR_UDINT(flag) UDINT &= ~(1<<flag)
-#define CLEAR_FLAG(reg, flag) reg &= ~(1<<flag)
-#define SET_FLAG(reg, flag) reg |= (1<<flag)
-
-
-ISR(USB_GEN_vect) {
-  // VBUS transitions
-  if (FLAG_IS_SET(USBINT, VBUSTI) && FLAG_IS_SET(USBCON, VBUSTE)) {
-    CLEAR_INTERRUPT(USBINT, VBUSTI);
-    if (FLAG_IS_SET(USBSTA, VBUS)) {
-      // TODO reset all endpoints
-      enable_pll();
-      CLEAR_FLAG(USBCON, FRZCLK);
-      SET_FLAG(UDIEN, EORSTE);
-      SET_FLAG(UDIEN, SUSPI);
-      set_device_state(POWERED);
-    }
-    else {
-      CLEAR_FLAG(UDIEN, SUSPI);
-      CLEAR_FLAG(UDIEN, WAKEUPE);
-      CLEAR_FLAG(UDIEN, EORSTE);
-      SET_FLAG(USBCON, FRZCLK);
-      disable_pll();
-      set_device_state(ATTACHED);
-    }
-  }
-
-  // End-of-reset
-  if (FLAG_IS_SET(UDINT, EORSTI) && FLAG_IS_SET(UDIEN, EORSTE)) {
-    CLEAR_UDINT(EORSTI);
-    // After reset, wait for activity
-    CLEAR_UDINT(WAKEUPI);
-    CLEAR_FLAG(UDIEN, WAKEUPE);
-    SET_FLAG(UDIEN, SUSPE);
-
-    // Load default configuration
-    if (set_configuration_index(0)) {
-      set_device_state(DEFAULT);
-    }
-  }
-
-  // Wake-up, suspend
-  if (FLAG_IS_SET(UDINT, SUSPI) && FLAG_IS_SET(UDIEN, SUSPE)) {
-    CLEAR_FLAG(UDIEN, SUSPE);
-    CLEAR_UDINT(WAKEUPI);
-    SET_FLAG(UDIEN, WAKEUPE);
-
-    SET_FLAG(USBCON, FRZCLK);
-    disable_pll();
-    set_device_state(SUSPENDED);
-  }
-  
-  if (FLAG_IS_SET(UDINT, WAKEUPI) && FLAG_IS_SET(UDIEN, WAKEUPE)) {
-    // Wake up device
-    enable_pll();
-    CLEAR_FLAG(USBCON, FRZCLK);
-
-    // Clear WAKEUP, enable SUSPEND
-    CLEAR_UDINT(SUSPI);
-    CLEAR_UDINT(WAKEUPI);
-    CLEAR_FLAG(UDIEN, WAKEUPE);
-    SET_FLAG(UDIEN, SUSPE);
-
-    // Track device state
-    if (get_configuration_index() > 0) {
-      set_device_state(CONFIGURED);
-    }
-    else if (FLAG_IS_SET(UDADDR, ADDEN)) {
-      set_device_state(ADDRESSED);
-    }
-    else if (get_configuration_index() == 0) {
-      set_device_state(DEFAULT);
-    }
-    else {
-      set_device_state(POWERED);
-    }
-  }
-}
-
-static inline void clear_setup() {
-  CLEAR_INTERRUPT(UEINTX, RXSTPI);
-}
-static inline void clear_in() {
-  CLEAR_INTERRUPT(UEINTX, TXINI);
-}
-static inline void clear_out() {
-  CLEAR_INTERRUPT(UEINTX, RXOUTI);
-}
-
 enum control_stage_t {
     CTRL_IDLE
   , CTRL_SETUP
@@ -346,6 +254,23 @@ static inline void process_setup(struct control_transfer_t* transfer) {
       break;
   }
 }
+
+// Interrupt handling
+#define CLEAR_UEINTX(flag) UEINTX &= ~(1<<flag)
+
+static inline void clear_setup() {
+  CLEAR_UEINTX(RXSTPI);
+}
+static inline void clear_in() {
+  CLEAR_UEINTX(TXINI);
+}
+static inline void clear_out() {
+  CLEAR_UEINTX(RXOUTI);
+}
+
+#define FLAG_IS_SET(reg, flag) (reg & (1<<flag))
+#define CLEAR_FLAG(reg, flag) reg &= ~(1<<flag)
+#define SET_FLAG(reg, flag) reg |= (1<<flag)
 
 ISR(USB_COM_vect) {
   trip_led();
