@@ -18,6 +18,10 @@
   *   ~~~
   * \author Sander Vanheule (Universiteit Gent)
   * \see [ATmega32U4 documentation §21-22](http://www.atmel.com/devices/ATMEGA32U4.aspx)
+  *
+  * \defgroup usb_endpoint USB endpoint operations
+  * \details All communications on the USB bus happen between the host and a device endpoint.
+  *   A number of functions is provided to facilitate endpoint manipulation on the microcontroller.
   */
 
 #include <stdbool.h>
@@ -68,7 +72,9 @@ enum ep_bank_count_t {
 
 /** \brief Initialise the USB endpoint described by \a config.
   * \details This will allocate the hardware as described by the ATmega32U4 manual and enable
-  *   the required interrupts.
+  *   the required interrupts. Note that endpoints should be allocated starting from endpoint 0
+  *   up to the last endpoint. Failing to do so will likely result in endpoint memory corruption.
+  *
   *   For control endpoints, this is `RXSTPI` or 'setup request received' interrupt.
   *   For OUT endpoints (bulk, interrupt, and isochronous) this is `RXOUTI` or 'OUT data received'.
   *   For IN endpoints no interrupts are currently enabled, since none are currently used.
@@ -83,6 +89,7 @@ void endpoint_deconfigure(const uint8_t ep_num);
 // Endpoint selection stack
 
 /** \defgroup usb_endpoint_stack Endpoint selection
+  * \ingroup usb_endpoint
   * \details On the ATmega32U4 only one USB endpoint can be accessed at a time.
   *   This is done by writing the endpoint number to the `UENUM` special function register.
   *   When using interrupts, it may happen that an operation on one endpoint is interrupted to

@@ -12,19 +12,41 @@
 #include <stddef.h>
 #include <stdint.h>
 
+/** \defgroup usb_endpoint_fifo Endpoint FIFO operations
+  * \ingroup usb_endpoint
+  * \details USB communication happens asynchronously to microcontroller operation. Any data
+  *   transferred to one of the device's endpoints is therefore stored in the memory buffer
+  *   associated with tis endpoint.
+  * @{
+  */
+
 /// Current number of bytes in the FIFO.
 uint16_t fifo_byte_count();
 
 /// Total capacity of the endpoint FIFO.
 uint16_t fifo_size();
 
-/// Copy a block of memory of \a length bytes, starting at \a data from RAM to the FIFO.
+/** \brief Copy a block of data of from RAM to the FIFO.
+  * \param data Pointer to the data block.
+  * \param length Number of bytes to copy.
+  * \returns The number of bytes actually written to the FIFO. This may be less than \a length.
+  */
 size_t fifo_write(const void* restrict data, const size_t length);
 
-/// Copy a block of memory of \a length bytes, starting at \a data from flash to the FIFO.
+/** \brief Copy a block of data of from flash to the FIFO.
+  * \param data Pointer to the data block.
+  * \param length Number of bytes to copy.
+  * \returns The number of bytes actually written to the FIFO. This may be less than \a length.
+  */
 size_t fifo_write_P(const void* restrict data, const size_t length);
 
-/// Copy a block of memory of \a length bytes from the FIFO to RAM, starting at \a data.
+/** \brief Copy a block of data of the FIFO to RAM.
+  * \param buffer Pointer to destination memory.
+  * \param length Number of bytes to copy.
+  * \returns The number of bytes actually read from the FIFO. This may be less than \a length.
+  */
 size_t fifo_read(void* restrict buffer, size_t length);
+
+/// @}
 
 #endif
