@@ -1,6 +1,9 @@
 #include "usb/endpoint.h"
 #include <avr/io.h>
 
+#define EP_TYPE_MASK (3<<6)
+#define EP_DIR_MASK 1
+
 bool endpoint_configure(const struct ep_hw_config_t* config) {
   // Select endpoint number
   endpoint_push(config->num);
@@ -12,16 +15,18 @@ bool endpoint_configure(const struct ep_hw_config_t* config) {
   UECFG0X = config->config_type;
   UECFG1X = config->config_bank | _BV(ALLOC);
   // Enable appropriate interrupts
-  switch (config->config_type >> 6) { // EP type
-    case 0: // control
+  switch ((config->config_type & EP_TYPE_MASK) >> 6) {
+    case EP_TYPE_CONTROL:
       UEIENX = _BV(RXSTPE);
       break;
-    case 1: // isochronous
-    case 2: // interrupt
-    case 3: // bulk
-      if (!(config->config_type & 0x1)) { // only for OUT EP
+    case EP_TYPE_ISOCHRONOUS:
+    case EP_TYPE_BULK:
+    case EP_TYPE_INTERRUPT:
+      if ((config->config_type & EP_DIR_MASK) == EP_DIR_OUT) {
         UEIENX = _BV(RXOUTE);
       }
+      break;
+    default:
       break;
   }
   bool config_ok = UESTA0X & _BV(CFGOK);
