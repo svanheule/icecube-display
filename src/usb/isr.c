@@ -274,14 +274,13 @@ static inline void clear_out() {
 
 ISR(USB_COM_vect) {
   trip_led();
-  uint8_t prev_ep = UENUM;
 
   // Process USB transfers
   if (FLAG_IS_SET(UEINT, 0)) {
+    endpoint_push(0);
     static struct control_transfer_t control_transfer;
     static struct usb_setup_packet_t setup_packet;
 
-    UENUM = 0;
     if (FLAG_IS_SET(UEIENX, RXSTPE) && FLAG_IS_SET(UEINTX, RXSTPI)) {
       CLEAR_FLAG(UEIENX, TXINE);
       CLEAR_FLAG(UEIENX, RXOUTE);
@@ -383,8 +382,9 @@ ISR(USB_COM_vect) {
         CLEAR_FLAG(UEIENX, RXOUTE);
       }
     }
+
+    // Restore endpoint number
+    endpoint_pop();
   }
 
-  // Restore endpoint number
-  UENUM = prev_ep;
 }

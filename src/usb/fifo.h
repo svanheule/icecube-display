@@ -4,8 +4,7 @@
 /** \file
   * \brief USB endpoint FIFO access.
   * \details A `memcpy`-like interface is provided to read from, and write to, the USB endpoint
-  *   FIFOs. After selecting the required endpoint by writing to the `UENUM` register, all function
-  *   calls definded in this file
+  *   FIFOs.
   * \author Sander Vanheule (Universiteit Gent)
   * \see [ATmega32U4 documentation §21-22](http://www.atmel.com/devices/ATMEGA32U4.aspx)
   */
