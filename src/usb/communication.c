@@ -1,5 +1,5 @@
-/** \file
-  * \brief Endpoint interrupt handling.
+/** \defgroup usb_endpoint_control Default control endpoint
+ *  \ingroup usb_endpoint
   * \details Control transfers are handled entirely asynchronously via interrupts. When the device
   *   has to wait for an answer from the host for example, this means that the firmware won't wait
   *   and poll to see if an answer has been received, but resumes normal operation until an
@@ -22,17 +22,16 @@
   *     acknowledge the transaction. If extra data will be sent, the FSM first enters the
   *     ::CTRL_DATA_OUT state, waiting to receive more data.
   *   - If an unknown or bad request is received, or the device is unable
-  *     handle the requested/provided data, the endpoint will enter the ::CTRL_STALL state and
+  *     handle the requested/provided data, the FSM will enter the ::CTRL_STALL state and
   *     stall the endpoint, notifying the host of a failed transaction.
   *     The stall is automatically cleared once the next setup request is received.
   *
   *   \dot
   *     digraph setup_fsm {
   *       node [shape=record];
-  *       idle [label=IDLE, URL="\ref ::CTRL_IDLE", style=filled, fillcolor=greenyellow];
-  *       idle_2 [label=IDLE, URL="\ref ::CTRL_IDLE"];
+  *       idle [shape=doublecircle, label=IDLE, URL="\ref ::CTRL_IDLE"];
+  *       stall [style=filled, fillcolor=orange, label="STALL", URL="\ref ::CTRL_STALL"];
   *       setup [label=SETUP, URL="\ref ::CTRL_SETUP"];
-  *       stall [label="STALL", URL="\ref ::CTRL_STALL", style=filled, fillcolor=orange];
   *       data_in [label="{DATA_IN | Send IN frame(s) with data}", URL="\ref ::CTRL_DATA_IN"];
   *       data_out [
   *           label="{DATA_OUT | Receive OUT frame(s) with data}"
@@ -50,20 +49,15 @@
   *           label="{POST_HANDSHAKE | Post-ZLP action}"
   *          , URL="\ref ::CTRL_POST_HANDSHAKE"
   *       ];
-  *       stall -> setup;
-  *       idle -> setup;
+  *       {rank=same stall idle} -> setup;
   *       subgraph data_transmission {
   *         setup -> {data_in data_out handshake_out};
-  *         data_in -> handshake_in;
-  *         data_out -> handshake_out;
-  *         handshake_in -> {idle_2 post_handshake};
-  *         handshake_out -> {idle_2 post_handshake};
+  *         data_in -> handshake_in -> post_handshake;
+  *         data_out -> handshake_out -> post_handshake;
   *       }
-  *       post_handshake -> idle_2;
+  *       {handshake_in handshake_out post_handshake} -> idle;
   *     }
   *   \enddot
-  *
-  * \author Sander Vanheule (Universiteit Gent)
   */
 
 #include <avr/io.h>
@@ -84,6 +78,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+/// \ingroup usb_endpoint_control
+/// Constants used to indicate the default control endpoint's current state.
 enum control_stage_t {
     CTRL_IDLE ///< Control endpoint idle
   , CTRL_SETUP ///< New setup request received
@@ -95,6 +91,7 @@ enum control_stage_t {
   , CTRL_POST_HANDSHAKE ///< Performing post-handshake action
 };
 
+/// \ingroup usb_endpoint_control
 /// Control transfer state tracking.
 struct control_transfer_t {
   /// Stage the request is currently in.

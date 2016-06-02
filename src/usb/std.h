@@ -70,7 +70,9 @@ enum usb_feature_t {
 };
 
 
+/// USB control endpoint setup packet
 struct usb_setup_packet_t {
+  /// bitwise OR of a `REQ_DIR_*`, a `REQ_TYPE_*`, and a `REC_REC_*` constant. See std.h.
   uint8_t bmRequestType;
   uint8_t bRequest;
   uint16_t wValue;
