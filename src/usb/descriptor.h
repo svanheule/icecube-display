@@ -4,7 +4,7 @@
 /** \file
   * \brief USB descriptor definitions and handling.
   * \details In the USB protocol descriptors are a vital part of device enumeration. It is a
-  *   flexible and extensive system, but requires some effort from the developer to implement
+  *   flexible system, but requires some effort from the developer to implement
   *   properly. The constants, structs and functions provided here attempt to make adding new
   *   descriptors as painless as possible. Most structs defined in this file use the notation
   *   from the USB specification instead of notation used elsewhere in this project for easier
@@ -14,6 +14,14 @@
   *   with the required descriptors will be dynamically allocated. Since USB descriptors are
   *   usually only requested during device enumeration, the leaves the memory free to be used
   *   for other purposes during USB operation, such as remote display frame transfers.
+  *
+  *   Descriptor bodies are provided for the following descriptor types:
+  *   - Device: usb_descriptor_body_device_t
+  *   - Configuration: usb_descriptor_body_configuration_t
+  *   - Interface: usb_descriptor_body_interface_t
+  *   - Endpoint: usb_descriptor_body_endpoint_t
+  *   - String: Use a little endian UTF-16 string. e.g. `u"IceTop display"`
+  *
   * \author Sander Vanheule (Universiteit Gent)
   * \see [USB 2.0 specification §9](http://www.usb.org/developers/docs/usb20_docs/)
   */

@@ -9,9 +9,9 @@
   *   The LED subsystem needs to be initiated by calling init_led() once, preferably as soon as
   *   possible after firmware loading. The LED can be set in three different states using
   *   set_led_state():
-  *   * _Off_ Permanently turn off the LED
-  *   * _Blink slow_ Slowly blink (1Hz rate) the LED
-  *   * _Trip fast_ Default LED state is `on`, but a call to trip_led() can be used to shortly
+  *   * Off: Permanently turn off the LED
+  *   * Blink (slow): Slowly blink (1Hz rate) the LED
+  *   * Trip (fast): Default LED state is `on`, but a call to trip_led() can be used to shortly
   *     turn off the LED.
   *
   *   When the device is not connected via USB, the LED is set to in the _Off_ mode.

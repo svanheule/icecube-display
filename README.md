@@ -1,7 +1,7 @@
 # (Almost) Pocket-size IceTop LED display
 
 An LED display consisting of 78 LEDs aranged in a hexagonal shape
-to represent the IceTop detector array, with one RGB LED per tank.
+to represent the IceTop detector array, with one RGB LED per station.
 Due to the small 16mm spacing of the LEDs, the total display has a size of
 about 20cm×24cm.
 
@@ -16,7 +16,7 @@ clock jitter is less of an issue.
 
 The display is controlled by a custom board, designed around the ATmega32U4 microcontroller.
 This microcontroller is similar to the one found on an Arduino Uno, which was used for the initial
-prototyping, but additionally has a hardware USB controller
+prototyping, but additionally has a hardware USB controller.
 The firmware for the microcontrollers is written in standard C.
 
 ### Cost estimate
