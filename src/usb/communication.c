@@ -78,8 +78,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+/// \brief Constants used to indicate the default control endpoint's current state.
 /// \ingroup usb_endpoint_control
-/// Constants used to indicate the default control endpoint's current state.
 enum control_stage_t {
     CTRL_IDLE ///< Control endpoint idle
   , CTRL_SETUP ///< New setup request received
@@ -91,8 +91,8 @@ enum control_stage_t {
   , CTRL_POST_HANDSHAKE ///< Performing post-handshake action
 };
 
+/// \brief Control transfer state tracking.
 /// \ingroup usb_endpoint_control
-/// Control transfer state tracking.
 struct control_transfer_t {
   /// Stage the request is currently in.
   enum control_stage_t stage;
