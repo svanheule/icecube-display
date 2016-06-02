@@ -99,7 +99,7 @@ ISR(USART_RX_vect) {
           frame = create_frame();
           frame->flags = FRAME_FREE_AFTER_DRAW;
           write_ptr = (uint8_t*) frame->buffer;
-          frame_end = write_ptr + sizeof(frame_t);
+          frame_end = write_ptr + sizeof(frame->buffer);
           usart_state = USART_FRAME;
           break;
         case COMMAND_DEMO:
@@ -126,11 +126,8 @@ ISR(USART_RX_vect) {
       *write_ptr = word;
       if (++write_ptr == frame_end) {
         // Frame transfer is completed, push to queue or drop if there is no room
-        if (!frame_queue_full()) {
-          push_frame(frame);
-        }
-        else {
-          free(frame);
+        if (!push_frame(frame)) {
+          destroy_frame(frame);
         }
         frame = 0;
         usart_state = USART_WAIT;
