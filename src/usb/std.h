@@ -14,6 +14,7 @@
 
 /// USB request codes defined in §9.4 of the specification.
 /// Not all requests are currently supported.
+/// \ingroup usb_endpoint_control
 enum usb_request_code_t {
     GET_STATUS = 0
   , CLEAR_FEATURE = 1

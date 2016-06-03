@@ -93,23 +93,26 @@ void endpoint_deconfigure(const uint8_t ep_num);
   * \details On the ATmega32U4 only one USB endpoint can be accessed at a time.
   *   This is done by writing the endpoint number to the `UENUM` special function register.
   *   When using interrupts, it may happen that an operation on one endpoint is interrupted to
-  *   perform an operation on another endpoint. In this case, the first original endpoint number
+  *   perform an operation on another endpoint. In this case, the original endpoint number
   *   should be stored before selecting the new endpoint, and restored after the operation on the
   *   new endpoint is finished.
-  *   ::EP_STACK_DEPTH determines how many endpoint operations can be performed simultaneously.
   *
   *   An endpoint stack is provided to simplify this bookkeeping. Endpoint selection is done via
   *   a call to endpoint_push() and automatically stores the previously selected endpoint.
   *   When the endpoint can be released again, endpoint_pop() should be called to ensure the
-  *   previous endpoint is restored:
+  *   previous endpoint is restored.
+  *   ::EP_STACK_DEPTH determines how many endpoint operations can be performed simultaneously
+  *   using the endpoint stack.
   *
   *   ~~~{.c}
-  *   // Select endpoint 0
+  *   // Select endpoint 0 by pushing it to the top of the stack.
   *   endpoint_push(0);
+  *
   *   // Read 64 bytes from endpoint 0
   *   uint8_t buffer[64];
   *   fifo_read(&(buffer[0]), 64);
-  *   // Restore previous endpoint
+  *
+  *   // Restore previous endpoint by popping the current endpoint from the top of the stack.
   *   endpoint_pop();
   *   ~~~
   * @{

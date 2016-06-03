@@ -3,7 +3,7 @@ IceTop LED event display {#mainpage}
 
 ## Usage ##
 
-![Side view of the LED display](../../doc/pcb-user/front-bg-alpha.png)
+![Side view of the LED display](doc/pcb-user/front-bg-alpha.png)
 
 
 ## USB communication ##
@@ -59,6 +59,8 @@ The following example pushes two frames to the device:
 ~~~{.py}
   import usb1
 
+  REQUEST_PUSH_FRAME = 1
+
   cxt = usb1.USBContext()
   devs = cxt.getDeviceList(skip_on_error=True)
 
@@ -75,16 +77,16 @@ The following example pushes two frames to the device:
     handle = ic_dev.open()
 
     handle.controlWrite(
-       usb1.ENDPOINT_OUT | usb1.TYPE_VENDOR | usb1.RECIPIENT_INTERFACE
-      , 1
+        usb1.ENDPOINT_OUT | usb1.TYPE_VENDOR | usb1.RECIPIENT_INTERFACE
+      , REQUEST_PUSH_FRAME
       , 0
       , 0
       , bytes(frame)
     )
 
     handle.controlWrite(
-       usb1.ENDPOINT_OUT | usb1.TYPE_VENDOR | usb1.RECIPIENT_INTERFACE
-      , 1
+        usb1.ENDPOINT_OUT | usb1.TYPE_VENDOR | usb1.RECIPIENT_INTERFACE
+      , REQUEST_PUSH_FRAME
       , 0
       , 0
       , bytes([0]*78*4)

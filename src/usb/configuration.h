@@ -9,6 +9,7 @@
   *   - Configuration 1: Default device configuration with only the standard control endpoint.
   *
   * \author Sander Vanheule (Universiteit Gent)
+  * \todo Add configuration 2 with an additional isochronous IN endpoint
   */
 
 #include <stdint.h>

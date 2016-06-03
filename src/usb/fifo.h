@@ -16,7 +16,7 @@
   * \ingroup usb_endpoint
   * \details USB communication happens asynchronously to microcontroller operation. Any data
   *   transferred to one of the device's endpoints is therefore stored in the memory buffer
-  *   associated with tis endpoint.
+  *   associated with this endpoint.
   * @{
   */
 

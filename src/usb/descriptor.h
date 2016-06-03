@@ -98,7 +98,9 @@ struct descriptor_list_t {
 };
 
 /** Create a linked list of USB descriptors based on the provided setup request.
-  * \param req Pointer to the setup request packet.
+  * Only pass setup packets that contain a ::GET_DESCRIPTOR request, as this function does not
+  * check the validity of the packet.
+  * \param req Pointer to the setup request packet with a ::GET_DESCRIPTOR request.
   * \returns A linked list of descriptor_list_t objects.
   */
 struct descriptor_list_t* generate_descriptor_list(const struct usb_setup_packet_t* req);
