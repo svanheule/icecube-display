@@ -21,7 +21,7 @@ except:
 
 from icecube.shovelart import PyArtist
 from icecube.shovelart import RangeSetting, ChoiceSetting, I3TimeColorMap
-from icecube.shovelart import PyQColor, TimeWindowColor, StepFunctionFloat
+from icecube.shovelart import PyQColor, DynamicTimeWindowColor, TimeWindowColor, StepFunctionFloat
 from icecube.dataclasses import I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion
 
 def merge_lists(left, right, key=lambda x: x):
@@ -46,22 +46,6 @@ def merge_lists(left, right, key=lambda x: x):
         merged.extend(right[j:])
 
     return merged
-
-class TimeWindowColorSequence(object):
-    def __init__(self, output, times, colormap):
-        self._windows = [(t, TimeWindowColor(output, t, colormap)) for t in times]
-
-    def value(self, time):
-        i = 0
-        while i < len(self._windows) and self._windows[i][0] < time:
-            i += 1
-
-        if i > 0:
-            return self._windows[i-1][1].value(time)
-        elif len(self._windows) > 0: # i == 0 and window list is not empty
-            return self._windows[0][1].value(time)
-        else:
-            return PyQColor.fromRgb(0, 0, 0)
 
 
 class StationLed(object):
@@ -272,7 +256,7 @@ class LedDisplay(PyArtist):
                     # If the current sequence doesn't overlap with the next pulse, reset the
                     # brightness and register the new series starting point
                     if tail < len(pulses)-1 and t+duration < pulses[tail+1][0]:
-                        t0s.append(t)
+                        t0s.append(pulses[tail+1][0])
                         brightness.add(0, t+duration)
                     tail += 1
                 # Now `tail == len(pulses)`, but the brightness curve is still at the last
@@ -293,7 +277,7 @@ class LedDisplay(PyArtist):
                     head += 1
 
                 if len(t0s) > 1:
-                    color = TimeWindowColorSequence(output, t0s, color_map)
+                    color = DynamicTimeWindowColor(output, t0s, color_map)
                 else:
                     color = TimeWindowColor(output, t0, color_map)
             else:
