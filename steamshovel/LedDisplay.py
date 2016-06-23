@@ -21,7 +21,7 @@ except:
 
 from icecube.shovelart import PyArtist
 from icecube.shovelart import RangeSetting, ChoiceSetting, I3TimeColorMap
-from icecube.shovelart import PyQColor, DynamicTimeWindowColor, TimeWindowColor, StepFunctionFloat
+from icecube.shovelart import PyQColor, TimeWindowColor, StepFunctionFloat
 from icecube.dataclasses import I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion
 
 def merge_lists(left, right, key=lambda x: x):
@@ -276,10 +276,7 @@ class LedDisplay(PyArtist):
                     brightness.add(accumulated_charge**power, t+duration)
                     head += 1
 
-                if len(t0s) > 1:
-                    color = DynamicTimeWindowColor(output, t0s, color_map)
-                else:
-                    color = TimeWindowColor(output, t0, color_map)
+                color = TimeWindowColor(output, t0s, color_map)
             else:
                 accumulated_charge = 0.0
                 color = TimeWindowColor(output, t0, color_map)
