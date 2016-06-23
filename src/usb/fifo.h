@@ -14,9 +14,12 @@
 
 /** \defgroup usb_endpoint_fifo Endpoint FIFO operations
   * \ingroup usb_endpoint
+  * \brief Endpoint FIFO reading, writing and information.
   * \details USB communication happens asynchronously to microcontroller operation. Any data
   *   transferred to one of the device's endpoints is therefore stored in the memory buffer
   *   associated with this endpoint.
+  *   Before reading from or writing to an endpoint's FIFO, the endpoint needs to be
+  *   selected. See \ref usb_endpoint_stack for more information.
   * @{
   */
 

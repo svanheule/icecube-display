@@ -1,5 +1,6 @@
 /** \defgroup usb_endpoint_control Default control endpoint
- *  \ingroup usb_endpoint
+  * \ingroup usb_endpoint
+  * \brief Default control endpoint (endpoint 0) behaviour.
   * \details Control transfers are handled entirely asynchronously via interrupts. When the device
   *   has to wait for an answer from the host for example, this means that the firmware won't wait
   *   and poll to see if an answer has been received, but resumes normal operation until an

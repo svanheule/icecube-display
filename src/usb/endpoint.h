@@ -22,12 +22,24 @@
   * \defgroup usb_endpoint USB endpoint operations
   * \details All communications on the USB bus happen between the host and a device endpoint.
   *   A number of functions is provided to facilitate endpoint manipulation on the microcontroller.
+  *   Since the ATmega32U4 microcontroller only allows access to one endpoint at a time, an
+  *   \ref usb_endpoint_stack "endpoint selection system" is provided.
   */
 
 #include <stdbool.h>
 #include <stdint.h>
-#include <avr/io.h>
 
+
+/** \defgroup usb_endpoint_config Endpoint configuration
+  * \ingroup usb_endpoint
+  * \brief Configuration and memory allocation of USB endpoints.
+  * \details To configure a USB endpoint, the USB controller needs to know what type it is and
+  *   how much memory it needs.
+  *   The endpoint configuration definitions and types are currently specific to the AVR hardware,
+  *   but this may change in the future if this firmware if ever ported to work on Teensy-like
+  *   microcontrollers with an ARM CPU.
+  * @{
+  */
 
 struct ep_hw_config_t {
   /// Endpoint number ranging from 0 to 5.
@@ -45,6 +57,7 @@ struct ep_hw_config_t {
 #define EP_DIR_IN 1
 #define EP_DIR_OUT 0
 
+/// List of endpoint types
 enum ep_type_t {
     EP_CONTROL = EP_TYPE_CONTROL
   , EP_ISOCHRONOUS_IN = (EP_TYPE_ISOCHRONOUS << 6) | EP_DIR_IN
@@ -85,11 +98,14 @@ bool endpoint_configure(const struct ep_hw_config_t* config);
 /// Deallocates the endpoint memory.
 void endpoint_deconfigure(const uint8_t ep_num);
 
+/// @}
+
 
 // Endpoint selection stack
 
 /** \defgroup usb_endpoint_stack Endpoint selection
   * \ingroup usb_endpoint
+  * \brief Selection of the currently active endpoint.
   * \details On the ATmega32U4 only one USB endpoint can be accessed at a time.
   *   This is done by writing the endpoint number to the `UENUM` special function register.
   *   When using interrupts, it may happen that an operation on one endpoint is interrupted to
