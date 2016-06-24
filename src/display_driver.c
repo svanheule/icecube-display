@@ -75,33 +75,44 @@ static const uint8_t LED_TO_BUFFER[LED_COUNT] PROGMEM = {
           , 74, 75, 76, 77
 };
 
-const uint8_t FRAME_HEADER = 0x00;
-const uint8_t FRAME_FOOTER = 0xFF;
+
+/* # APA102C
+ * Transmit bytes with MSB first
+ * Data frame
+ * * frame start: 4 bytes 0x00
+ * * led data: (111X:XXXX BBBB:BBBB GGGG:GGGG RRRR:RRRR)
+ *   * '111' header + 5 bits global brightness
+ *   * blue, green, red
+ * * frame end: ceil(n/2) '1' bits, or ceil(n/2/8) 0xFF bytes
+ */
+
+static void inline write_frame_header() {
+  const uint8_t FRAME_HEADER = 0x00;
+  for (uint8_t i = 0; i < 4; ++i) {
+    write_byte(FRAME_HEADER);
+  }
+}
+
+static inline void write_frame_footer() {
+  const uint8_t FRAME_FOOTER = 0xFF;
+  for (uint8_t i = 0; i < LED_COUNT; i+=16) {
+    write_byte(FRAME_FOOTER);
+  }
+}
+
 const uint8_t LED_HEADER = 0xE0;
 
 void display_frame(struct frame_buffer_t* frame) {
-  /* # APA102C
-   * Transmit bytes with MSB first
-   * Data frame
-   * * frame start: 4 bytes 0x00
-   * * led data: (111X:XXXX BBBB:BBBB GGGG:GGGG RRRR:RRRR)
-   *   * '111' header + 5 bits global brightness
-   *   * blue, green, red
-   * * frame end: ceil(n/2) '1' bits, or ceil(n/2/8) 0xFF bytes
-   */
   frame->flags |= FRAME_DRAW_IN_PROGRESS;
 
-  uint8_t i;
   // Start of frame
-  for (i = 0; i < 4; ++i) {
-    write_byte(FRAME_HEADER);
-  }
+  write_frame_header();
 
   const struct led_t* leds = &(frame->buffer[0]);
 
   // LED data
   uint8_t index;
-  for (i = 0; i < LED_COUNT; ++i) {
+  for (uint8_t i = 0; i < LED_COUNT; ++i) {
     index = pgm_read_byte(&LED_TO_BUFFER[i]);
     write_byte(LED_HEADER | leds[index].brightness);
     write_byte(leds[index].blue);
@@ -110,9 +121,7 @@ void display_frame(struct frame_buffer_t* frame) {
   }
 
   // End of frame
-  for (i = 0; i < LED_COUNT; i+=16) {
-    write_byte(FRAME_FOOTER);
-  }
+  write_frame_footer();
 
   frame->flags &= ~FRAME_DRAW_IN_PROGRESS;
 }
@@ -120,9 +129,7 @@ void display_frame(struct frame_buffer_t* frame) {
 
 void display_blank() {
   // Start of frame
-  for (uint8_t i = 0; i < 4; ++i) {
-    write_byte(FRAME_HEADER);
-  }
+  write_frame_header();
 
   // LED data
   for (uint8_t i = 0; i < LED_COUNT; ++i) {
@@ -133,7 +140,5 @@ void display_blank() {
   }
 
   // End of frame
-  for (uint8_t i = 0; i < LED_COUNT; i+=16) {
-    write_byte(FRAME_FOOTER);
-  }
+  write_frame_footer();
 }
