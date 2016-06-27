@@ -7,7 +7,7 @@
   * \author Sander Vanheule (Universiteit Gent)
   * \see [USB 2.0 specification](http://www.usb.org/developers/docs/usb20_docs/)
   * \see src/usb/remote_usb.c
-  * \see src/usb/isr.c
+  * \see src/usb/communication.c
   */
 
 #include <stdint.h>
@@ -16,17 +16,17 @@
 /// Not all requests are currently supported.
 /// \ingroup usb_endpoint_control
 enum usb_request_code_t {
-    GET_STATUS = 0
-  , CLEAR_FEATURE = 1
-  , SET_FEATURE = 3
-  , SET_ADDRESS = 5
-  , GET_DESCRIPTOR = 6
-  , SET_DESCRIPTOR = 7
-  , GET_CONFIGURATION = 8
-  , SET_CONFIGURATION = 9
-  , GET_INTERFACE = 10
-  , SET_INTERFACE = 11
-  , SYNCH_FRAME = 12
+    GET_STATUS = 0 ///< Get device or endpoint status.
+  , CLEAR_FEATURE = 1 ///< Ture device or endpoint feature off. See ::usb_feature_t
+  , SET_FEATURE = 3 ///< Turn device or endpoint feature on. See ::usb_feature_t
+  , SET_ADDRESS = 5 ///< Set device address
+  , GET_DESCRIPTOR = 6 ///< Get USB descriptor
+  , SET_DESCRIPTOR = 7 ///< Set USB descriptor, not supported
+  , GET_CONFIGURATION = 8 ///< Get currently selected configuration index.
+  , SET_CONFIGURATION = 9 ///< Set device configuration.
+  , GET_INTERFACE = 10 ///< Get currently selected interface, not supported
+  , SET_INTERFACE = 11 ///< Select interface, not supported.
+  , SYNCH_FRAME = 12 ///< Device synchronisation for isochronous configurations, not supported.
 };
 
 /// \name USB request direction
@@ -75,10 +75,10 @@ enum usb_feature_t {
 struct usb_setup_packet_t {
   /// bitwise OR of a `REQ_DIR_*`, a `REQ_TYPE_*`, and a `REC_REC_*` constant. See std.h.
   uint8_t bmRequestType;
-  uint8_t bRequest;
-  uint16_t wValue;
-  uint16_t wIndex;
-  uint16_t wLength;
+  uint8_t bRequest; ///< Request code, interpretation depends on value of bmRequestType.
+  uint16_t wValue; ///< Request value, interpretation is specific to bRequest's value.
+  uint16_t wIndex; ///< Request index, interpretation is specific to bRequest's value
+  uint16_t wLength; ///< Data length of the request.
 };
 
 #endif // USB_STD_H

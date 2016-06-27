@@ -50,12 +50,19 @@ struct ep_hw_config_t {
   uint8_t config_bank;
 };
 
+/// \name Endpoint types
+/// @{
 #define EP_TYPE_CONTROL 0
 #define EP_TYPE_ISOCHRONOUS 1
 #define EP_TYPE_BULK 2
 #define EP_TYPE_INTERRUPT 3
+/// @}
+
+/// \name Endpoint directions
+/// @{
 #define EP_DIR_IN 1
 #define EP_DIR_OUT 0
+/// @}
 
 /// List of endpoint types
 enum ep_type_t {
@@ -68,6 +75,7 @@ enum ep_type_t {
   , EP_BULK_OUT = (EP_TYPE_BULK << 6)| EP_DIR_OUT
 };
 
+/// Enumeration of valid endpoint FIFO buffer sizes.
 enum ep_bank_size_t {
     EP_BANK_SIZE_8 = 0
   , EP_BANK_SIZE_16 = (1<<4)
@@ -78,9 +86,17 @@ enum ep_bank_size_t {
   , EP_BANK_SIZE_512 = (6<<4)
 };
 
+/** \brief Endpoint FIFO bank counts
+  * \details An endpoint can use either one or two buffers. Using only one bank saves memory,
+  * but also requires the buffer to be emptied before the endpoint can resume operation.
+  * With two banks, the buffers are used in a ping-pong fashion, allowing for simultaneous use
+  * of the buffers by the endpoint hardware and the firmware. While one buffer is used by the
+  * hardware, the firmware can read/write to the other. This may allow for higher throughputs as
+  * the endpoint doesn't have to wait for the firmware to finish to transmit or receive more data.
+  */
 enum ep_bank_count_t {
-    EP_BANK_COUNT_1 = 0
-  , EP_BANK_COUNT_2 = (1<<2)
+    EP_BANK_COUNT_1 = 0 ///< Use a single endpoint buffer. Has to be emptied before re-use.
+  , EP_BANK_COUNT_2 = (1<<2) ///< Use ping-pong buffers. Allows for higher data throughput.
 };
 
 /** \brief Initialise the USB endpoint described by \a config.

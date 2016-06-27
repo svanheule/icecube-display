@@ -1,100 +1,60 @@
 IceTop LED event display {#mainpage}
 ========================
 
-## Usage ##
+## The IceTop detector ##
 
-![Side view of the LED display](doc/pcb-user/front-bg-alpha.png)
+The surface detector of the IceCube neutrino observatory is better known as the IceTop detector.
+It's purpose is to detect and measure extensive airshowers produced by highly energetic particles
+colliding with the earth's atmosphere at the South Pole, by measuring the Cherenkov light the
+particles in the air shower produce when they cross the detector.
 
+The IceTop detector consists of 81 stations, each consisting of two tanks.
+Each tank has two photosensitive detection devices called DOMs or Digital Optical Modules.
+One of these DOMs is configured to detect small signals, the other to correctly detect the large
+which would saturate the first DOM.
+Of the 81 stations, the 3 in-fill stations are placed in the middle to create a more densely
+instrumented region of the detector, allowing it to detect air showers of lower energy.
 
-## USB communication ##
+The picture below shows the geometry of the detector, as well as the 3 in-fill stations in gray.
+The LED display mimics this geometry, by putting each station on a regular hexagonal grid, instead
+of the slightly irregular grid of the actual detector.
+The in-fill stations have not been included in the display due to a lack of space for the LEDs.
 
-The LED display is equiped with a USB port to provide the possibility of using a PC to display
-IceCube event data not embedded in the device's firmware, or make use of nicer effects that aren't
-so easy to produce using only the microcontroller.
-A full-speed USB 2.0 compliant interface is provided, using `0x1CE3` as a vendor ID, and `0x0001`
-as product ID. The vendor ID is *not* registered with the [USB-IF](http://usb.org), as this would
-be [rather expensive](http://www.usb.org/developers/vendor/) for a small scale project like this.
-The full-speed interface provides a bandwidth of 12Mbps. To display 25 uncompressed frames per
-second, 62.4kbps is required (not including protocol overhead). This interface is provided in a
-very generic fashion, so any application can display (low resolution) RGB data at video frame
-rates.
+\image html icetop-array.png "IceTop detector array layout"
+\image latex icetop-array.pdf "IceTop detector array layout" width=0.7\textwidth
 
-### Protocol specifics ###
-In a first implementation, the control endpoint required by the USB standard is extended with a
-vendor specific command. See section 9.3 of the
-[USB 2.0 specification](http://www.usb.org/developers/docs/usb20_docs/) for more details.
+## Display usage ##
 
-Name       | bRequest
-:----------| -------:
-PUSH_FRAME |        1
+The display has a number of input buttons and LEDs to interact with and relay status information to
+the user.
+The green *Power* LED indicates wether the display is receiving 5V power input.
+The orange *USB activity* LED will light up when there is a USB connection, and blink when there
+is bus activity, e.g. when display data is transmitted.
 
+In stand-alone mode, when the display is not connected via USB and only powered on, the display can
+also show a number of IceTop events stored on the device itself.
+For every event, first a time-lapse will be shown, followed by an overview.
+The light intensity of the LEDs is related to the amount of light collected by the corresponding
+IceTop station, and the colour is related to the time when this light was collected.
+Red means early in the event, blue means late.
+After pressing either of the blue buttons, the display will start cycling through the 9 stored
+IceTop events.
+At any point, you can go to the next event using the *Forward* button. You can also pause an event
+overview by pressing *Play/Pause* during playback, or resume playback by pressing the button again
+when the display is paused.
 
-#### PUSH_FRAME ####
-Pushes a single frame to be shown on the display into the frame buffer queue. When connected via
-USB all other renderers are stopped, so this frame will be displayed until the next one is pushed.
-Note that the device only updates the display 25 times per second, so pushing frame more
-frequently than this will result in buffer overflows on the device and consequently control
-transfers will be stalled until memory is freed.
+First, three down-going events of increasing energy will be shown.
+Then come three slightly inclined events, and three events with large inclination, again each group
+with increasing energy.
+As the energy of the events increases, you will see that the part of the detector that is activated
+by the airshower also increases.
+Also, as the inclination of the showers increase, it becomes clear that the shower is actually
+contained in a moving surface when it hits the detector.
+Downgoing events activate the detector almost simultaneously, while inclined events seem move along
+the surface of the detector.
 
-Field         | Value
---------------|------------:
-bmRequestType | 0b0_10_00001
-bRequest      |            1
-wValue        |            0
-wIndex        |            0
-wLength       |   312 (78×4)
-
-
-### USB command example ###
-
-A device display buffer consists of 312 bytes, corresping to the 4 bytes needed by every LED.
-Data for the APA102 ICs is described by: `(111X:XXXX BBBB:BBBB GGGG:GGGG RRRR:RRRR)`
-  1. Five global brightness bits, used for PWMing the RGB subpixels, preceded by three '1' bits,
-  2. Three bytes giving the RGB value to be displayed.
-
-The following example pushes two frames to the device:
-  * Frame where every LED displays red at half the maximum brightness,
-  * Empty frame to clear the display.
-
-~~~{.py}
-  import usb1
-
-  REQUEST_PUSH_FRAME = 1
-
-  cxt = usb1.USBContext()
-  devs = cxt.getDeviceList(skip_on_error=True)
-
-  ic_dev = None
-  for dev in devs:
-    if dev.getVendorID() == 0x1CE3:
-      ic_dev = dev
-
-  if not ic_dev is None:
-    frame = [0]*78*4
-    for station in range(78):
-      frame[4*station:4*(station+1)] = [0x10, 255, 0, 0]
-
-    handle = ic_dev.open()
-
-    handle.controlWrite(
-        usb1.ENDPOINT_OUT | usb1.TYPE_VENDOR | usb1.RECIPIENT_INTERFACE
-      , REQUEST_PUSH_FRAME
-      , 0
-      , 0
-      , bytes(frame)
-    )
-
-    handle.controlWrite(
-        usb1.ENDPOINT_OUT | usb1.TYPE_VENDOR | usb1.RECIPIENT_INTERFACE
-      , REQUEST_PUSH_FRAME
-      , 0
-      , 0
-      , bytes([0]*78*4)
-    )
-   
-    handle.close()
-~~~
-
+\image html front.png "Side view of the LED display"
+\image latex front.pdf "Side view of the LED display" width=0.9\textwidth
 
 ## Firmware upgrade ##
 

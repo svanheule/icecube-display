@@ -7,9 +7,9 @@
    xmlns="http://www.w3.org/2000/svg"
    xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   inkscape:export-ydpi="75"
-   inkscape:export-xdpi="75"
-   inkscape:export-filename="/home/sjvheule/projects/be.ugent/pocket-icetop/doc/pcb-user/front-75-transparent.png"
+   inkscape:export-ydpi="63.310001"
+   inkscape:export-xdpi="63.310001"
+   inkscape:export-filename="/home/sjvheule/projects/be.ugent/pocket-icetop/doc/front.png"
    sodipodi:docname="front.svg"
    inkscape:version="0.48.4 r9939"
    id="svg2"
@@ -50,7 +50,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title />
+        <dc:title></dc:title>
         <cc:license
            rdf:resource="http://creativecommons.org/licenses/by-sa/3.0/" />
       </cc:Work>
