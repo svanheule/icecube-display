@@ -158,6 +158,7 @@ endforeach()
 add_executable(icetop_display ${SOURCES} ${EVENT_OBJECTS})
 set_target_properties(icetop_display PROPERTIES
   LINK_FLAGS -Wl,-gc-sections
+  LINK_FLAGS -Wl,--section-start=.serialno=0x810000
   SUFFIX ".elf"
 )
 target_compile_definitions(icetop_display
@@ -183,8 +184,10 @@ target_compile_options(icetop_display
 add_custom_command(
   TARGET icetop_display
   POST_BUILD
-  COMMAND avr-objcopy -O ihex -R .eeprom $<TARGET_FILE:icetop_display> icetop_display.hex
-  COMMAND avr-objcopy -O ihex --change-section-lma .eeprom=0 -j .eeprom
+  COMMAND avr-objcopy -O ihex -R .eeprom -R .serialno
+        $<TARGET_FILE:icetop_display> icetop_display.hex
+  COMMAND avr-objcopy -O ihex
+        --change-section-lma .serialno=0 -j .serialno
         $<TARGET_FILE:icetop_display> icetop_display.eep
 )
 
