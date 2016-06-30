@@ -39,12 +39,9 @@
   */
 
 #include <stdint.h>
+#include "display_properties.h"
 
 // Frame buffer size and structure definitions
-
-/// Number of LEDs used in the display. This determines the frame buffer size.
-/// \ingroup led_display
-#define LED_COUNT 78
 
 /** \brief A 4-tuple of bytes describing the data required by the APA102 LEDs.
   * \details The 24-bit RGB values can be scaled using the brightness field to achieve

@@ -73,6 +73,7 @@
 #include "usb/fifo.h"
 #include "usb/led.h"
 #include "frame_queue.h"
+#include "display_properties.h"
 
 // Descriptor transaction definitions
 #include "usb/descriptor.h"
@@ -280,23 +281,6 @@ static void callback_data_usb_frame(struct control_transfer_t* transfer);
 static void callback_cancel_usb_frame();
 
 #define VENDOR_REQUEST_DISPLAY_PROPERTIES 2
-enum display_property_t {
-    DP_END = 0 ///< Last field in TLV list with length 0; unprogrammed EEPROM defaults to 0
-  , DP_STATION_RANGE = 1
-  , DP_STRING_RANGE = 2
-  , DP_LED_TYPE = 3
-};
-enum display_led_type_t {
-    LED_TYPE_APA102 = 0
-  , LED_TYPE_WS2811 = 1
-};
-
-// TODO move TLV_DATA to its fixed EEPROM region as it is device dependent
-static const uint8_t DP_TLV_DATA[] PROGMEM = {
-    DP_STATION_RANGE, 2, 1, 78
-  , DP_LED_TYPE, 1, LED_TYPE_APA102
-};
-static const uint16_t DISPLAY_PROPERTIES_SIZE PROGMEM = sizeof(uint16_t) + sizeof(DP_TLV_DATA);
 
 static inline void process_vendor_request(struct control_transfer_t* transfer) {
   if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_VENDOR | REQ_REC_INTERFACE)) {
@@ -315,23 +299,24 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
   else if (transfer->req->bmRequestType == (REQ_DIR_IN | REQ_TYPE_VENDOR | REQ_REC_INTERFACE)) {
     if (transfer->req->bRequest == VENDOR_REQUEST_DISPLAY_PROPERTIES) {
       // Get requested length or clip at length of available data
+      uint16_t display_properties_size = sizeof(uint16_t) + get_tlv_length_E(DP_TLV_DATA);
       uint16_t remaining = transfer->req->wLength;
-      if (!(transfer->req->wLength < DISPLAY_PROPERTIES_SIZE)) {
-        remaining = DISPLAY_PROPERTIES_SIZE;
+      if (!(transfer->req->wLength < display_properties_size)) {
+        remaining = display_properties_size;
       }
 
       // Transmit data if at least 2 bytes are requested, otherwise stall
-      if (remaining >= sizeof(DISPLAY_PROPERTIES_SIZE)) {
+      if (remaining >= sizeof(display_properties_size)) {
         // Allocate buffer
         void* data_buffer = init_data_in(transfer, remaining);
         uint16_t** data_buffer_ptr = (uint16_t**) &data_buffer;
         if (data_buffer) {
           // Copy properties header: size
-          *(*data_buffer_ptr) = pgm_read_word(&DISPLAY_PROPERTIES_SIZE);
+          *(*data_buffer_ptr) = display_properties_size;
           ++(*data_buffer_ptr);
-          remaining -= sizeof(DISPLAY_PROPERTIES_SIZE);
+          remaining -= sizeof(display_properties_size);
           // Copy properties TLV fields (if there is any remaining space)
-          memcpy_P(data_buffer, DP_TLV_DATA, remaining);
+          eeprom_read_block(data_buffer, DP_TLV_DATA, remaining);
           transfer->stage = CTRL_DATA_IN;
         }
       }

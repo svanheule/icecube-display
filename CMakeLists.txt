@@ -83,6 +83,7 @@ include_directories(src)
 set(SOURCES
   src/avr_main.c
   src/display_driver.c
+  src/display_properties.c
   src/frame_buffer.c
   src/frame_queue.c
   src/render/boot_splash.c
@@ -158,11 +159,11 @@ endforeach()
 add_executable(icetop_display ${SOURCES} ${EVENT_OBJECTS})
 set_target_properties(icetop_display PROPERTIES
   LINK_FLAGS -Wl,-gc-sections
-  LINK_FLAGS -Wl,--section-start=.serialno=0x810000
+  LINK_FLAGS -Wl,--section-start=.serialno=0x810000,--section-start=.displayprop=0x810020
   SUFFIX ".elf"
 )
 target_compile_definitions(icetop_display
-  PUBLIC F_CPU=${AVR_TARGET_F_CPU}UL
+  PUBLIC F_CPU=${AVR_TARGET_F_CPU}UL DEVICE_LED_COUNT=${DEVICE_LED_COUNT}
 )
 if(ARDUINO)
   target_compile_definitions(
@@ -184,10 +185,11 @@ target_compile_options(icetop_display
 add_custom_command(
   TARGET icetop_display
   POST_BUILD
-  COMMAND avr-objcopy -O ihex -R .eeprom -R .serialno
+  COMMAND avr-objcopy -O ihex -R .eeprom -R .serialno -R .displayprop
         $<TARGET_FILE:icetop_display> icetop_display.hex
   COMMAND avr-objcopy -O ihex
         --change-section-lma .serialno=0 -j .serialno
+        --change-section-lma .displayprop=20 -j .displayprop
         $<TARGET_FILE:icetop_display> icetop_display.eep
 )
 
