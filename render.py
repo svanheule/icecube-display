@@ -3,14 +3,14 @@
 import time, threading, struct
 from icetopdisplay import DisplayComUsb
 from icetopdisplay import FormatAPA102 as LedFormat
-from icetopdisplay.geometry import pixel_to_station, station_to_pixel, LED_COUNT
 
 class Renderer:
-  def __init__(self, frame_rate=25):
+  def __init__(self, station_count, frame_rate=25):
     self._timer = None
     self.halt = True
     self._com = None
     self.interval = 1/frame_rate
+    self._station_count = station_count
 
   def start(self, displaycom):
     self._halt = False
@@ -52,25 +52,25 @@ class Renderer:
 class TestRenderer(Renderer):
   DECAY_LENGTH = 6
 
-  def __init__(self, frame_rate=25):
-    super().__init__(frame_rate)
+  def __init__(self, station_count, frame_rate=25):
+    super().__init__(station_count, frame_rate)
     self.position = 0
     self.direction = 1
 
   # Render frames with decaying brightness
   def next_frame(self):
-    data = numpy.zeros((LED_COUNT, 4))
+    data = numpy.zeros((self._station_count, 4))
 
     # Calculate LED brightness
     brightness = 0.5
     for tail in range(self.DECAY_LENGTH):
       led = self.position - self.direction*tail
-      if led in range(LED_COUNT):
+      if led in range(self._station_count):
         data[led] = LedFormat.float_to_led_data([brightness]*3)
       brightness /= 2
 
     # Update frame number
-    if self.position == LED_COUNT-1 and self.direction == 1:
+    if self.position == self._station_count-1 and self.direction == 1:
       self.direction = -1
     elif self.position == 0 and self.direction == -1:
       self.direction = 1
@@ -87,8 +87,8 @@ class EventRenderer(Renderer):
   TIME_RISE = 0.5 # in s
   TIME_DECAY = 3.5
 
-  def __init__(self, filename, frame_rate=25, overview_time=3):
-    super().__init__(frame_rate)
+  def __init__(self, filename, station_count, frame_rate=25, overview_time=3):
+    super().__init__(station_count, frame_rate)
     stations, charges, times = numpy.loadtxt(filename, skiprows=1, unpack=True)
 
     self.min_charge = min(charges)
@@ -103,9 +103,9 @@ class EventRenderer(Renderer):
 
     self.stations = {}
     for i,station in enumerate(stations):
-      # Discard infill stations
-      if station <= 78:
-        self.stations[station] = (charges[i], times[i])
+      # Discard unsupported stations, standard is [1,78], in-fill is [79-81]
+      if station <= self._station_count:
+        self.stations[int(station)] = (charges[i], times[i])
 
     self.stop_time = max(times) + self.TIME_DECAY
     self.overview_time = overview_time
@@ -124,9 +124,9 @@ class EventRenderer(Renderer):
     return numpy.array(colorsys.hsv_to_rgb(hue, saturation, value))
 
   def render_overview(self):
-    data = numpy.zeros((LED_COUNT, 3))
-    for led in range(LED_COUNT):
-      station = pixel_to_station(led)
+    data = numpy.zeros((self._station_count, 3))
+    for led in range(self._station_count):
+      station = led+1
       if station in self.stations:
         q0, t0 = self.stations[station]
         data[led] = self.led_value(q0, t0)
@@ -153,7 +153,7 @@ class EventRenderer(Renderer):
     for index,station in enumerate(self.stations):
       q0, t0 = self.stations[station]
       frame = int(25*(t0-self.TIME_RISE))
-      led = station_to_pixel(station)
+      led = station-1
       led_value = LedFormat.float_to_led_data(self.led_value(q0, t0))
       pulse = struct.pack(pulse_format, frame, led, *led_value)
       pulses.append(pulse)
@@ -166,9 +166,9 @@ class EventRenderer(Renderer):
 
   def next_frame(self):
     if self.display_time < self.stop_time:
-      data = numpy.zeros((LED_COUNT, 4))
-      for led in range(LED_COUNT):
-        station = pixel_to_station(led)
+      data = numpy.zeros((self._station_count, 4))
+      for led in range(self._station_count):
+        station = led+1
         if station in self.stations:
           q0, t0 = self.stations[station]
           data[led] = LedFormat.float_to_led_data(self.brightness_curve(self.display_time, t0)*self.colours[led])
@@ -212,17 +212,25 @@ if __name__ == "__main__":
     , type=argparse.FileType('wb')
     , help="Write a pre-rendered output to OUTPUT. See also `--no-display'."
   )
+  parser.add_argument(
+      "-l", "--led-count"
+    , nargs=1
+    , required=True
+    , type=int
+    , choices=[78,81]
+    , help="Number of IceTop stations or LEDs. Must be 78 or 81."
+  )
 
   args = parser.parse_args(sys.argv[1:])
   renderer = None
 
   if args.file is not None:
-    renderer = EventRenderer(args.file[0].name)
+    renderer = EventRenderer(args.file[0].name, args.led_count[0])
     if args.output is not None:
       pre_render = renderer.pre_render_event()
       args.output[0].write(pre_render)
   elif args.test:
-    renderer = TestRenderer()
+    renderer = TestRenderer(args.led_count[0])
   else:
     print("No renderer specified.")
     sys.exit(-1)

@@ -65,6 +65,10 @@ set(
   CACHE STRING "Device serial number, stored in the microcontroller's EEPROM"
 )
 set(
+  DEVICE_LED_COUNT "78"
+  CACHE STRING "Number of LEDs present in the display"
+)
+set(
   HW_REV 2
   CACHE STRING "Hardware revision"
 )
@@ -136,7 +140,7 @@ foreach(event ${EVENTS})
   add_custom_command(
     OUTPUT ${object_file}
     DEPENDS ${event_file} render.py
-    COMMAND ./render.py -n -f ${event_file} -o ${bin_file}
+    COMMAND ./render.py -n -l ${DEVICE_LED_COUNT} -f ${event_file} -o ${bin_file}
     COMMAND avr-objcopy -I binary -O elf32-avr
       --redefine-sym _binary_${symbol_long}_start=_binary_${symbol_short}_start
       --redefine-sym _binary_${symbol_long}_end=_binary_${symbol_short}_end
