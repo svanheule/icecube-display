@@ -62,6 +62,7 @@ static inline void write_byte(const uint8_t byte) {
   wait_write_finish();
 }
 
+#if LED_COUNT == 78
 static const uint8_t LED_TO_BUFFER[LED_COUNT] PROGMEM = {
               5,  4,  3,  2,  1,  0
           ,  6,  7,  8,  9, 10, 11, 12
@@ -74,6 +75,22 @@ static const uint8_t LED_TO_BUFFER[LED_COUNT] PROGMEM = {
         , 73, 72, 71, 70, 69, 68, 67
           , 74, 75, 76, 77
 };
+#elif LED_COUNT == 81
+static const uint8_t LED_TO_BUFFER[LED_COUNT] PROGMEM = {
+              5,  4,  3,  2,  1,  0
+          ,  6,  7,  8,  9, 10, 11, 12
+        , 20, 19, 18, 17, 16, 15, 14, 13
+      , 21, 22, 23, 24, 25, 26, 27, 28, 29
+    , 39, 38, 37, 80, 35, 79, 36, 78, 34, 33, 32, 31, 30
+  , 40, 41, 42, 43, 44, 45, 46, 47, 48, 49
+    , 58, 57, 56, 55, 54, 53, 52, 51, 50
+      , 59, 60, 61, 62, 63, 64, 65, 66
+        , 73, 72, 71, 70, 69, 68, 67
+          , 74, 75, 76, 77
+};
+#else
+#error Unsupported LED_COUNT value
+#endif
 
 
 /* # APA102C
