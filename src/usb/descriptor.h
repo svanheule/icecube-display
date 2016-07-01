@@ -30,6 +30,7 @@
 #include <stdbool.h>
 
 #include "usb/std.h"
+#include "memspace.h"
 
 /// List of recognised USB descriptors. Note that not all descriptors are required
 /// for full-speed-only devices.
@@ -42,13 +43,6 @@ enum usb_descriptor_type_t {
   , DESC_TYPE_DEVICE_QUALIFIER = 6 // High-speed USB descriptor, not used
   , DESC_TYPE_OTHER_SPEED_CONFIGURATION = 7 // High-speed USB, not used
   , DESC_TYPE_INTERFACE_POWER = 8 // USB power delivery, not used
-};
-
-/// Define which memory space the body of a USB descriptor is in.
-enum memspace_t {
-    MEMSPACE_RAM
-  , MEMSPACE_PROGMEM
-  , MEMSPACE_EEPROM
 };
 
 /// Common header used for all USB descriptors.

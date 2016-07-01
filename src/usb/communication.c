@@ -217,19 +217,7 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
               // Copy body
               body_length = head->header.bLength - HEADER_SIZE;
               len = bytes_left < body_length ? bytes_left : body_length;
-              switch (head->memspace) {
-                case MEMSPACE_RAM:
-                  memcpy(write_ptr, head->body, len);
-                  break;
-                case MEMSPACE_PROGMEM:
-                  memcpy_P(write_ptr, head->body, len);
-                  break;
-                case MEMSPACE_EEPROM:
-                  eeprom_read_block(write_ptr, head->body, len);
-                  break;
-                default:
-                  break;
-              }
+              memcpy_memspace(head->memspace, write_ptr, head->body, len);
 
               write_ptr += len;
               bytes_left -= len;

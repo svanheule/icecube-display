@@ -82,6 +82,7 @@ set(CMAKE_C_OUTPUT_EXTENSION ".o")
 include_directories(src)
 set(SOURCES
   src/avr_main.c
+  src/memspace.c
   src/display_driver.c
   src/display_properties.c
   src/frame_buffer.c
