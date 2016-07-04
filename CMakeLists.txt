@@ -189,8 +189,8 @@ add_custom_command(
   COMMAND avr-objcopy -O ihex -R .eeprom -R .serialno -R .displayprop
         $<TARGET_FILE:icetop_display> icetop_display.hex
   COMMAND avr-objcopy -O ihex
-        --change-section-lma .serialno=0 -j .serialno
-        --change-section-lma .displayprop=20 -j .displayprop
+        --change-section-lma .serialno=0x0 -j .serialno
+        --change-section-lma .displayprop=0x20 -j .displayprop
         $<TARGET_FILE:icetop_display> icetop_display.eep
 )
 
