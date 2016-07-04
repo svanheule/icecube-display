@@ -1,12 +1,30 @@
 #include "frame_buffer.h"
 #include <util/atomic.h>
+#include <stdlib.h>
 
 // List of statically allocated frame buffers
 #define BUFFER_LIST_LENGTH 3
 static struct frame_buffer_t buffer_list[BUFFER_LIST_LENGTH];
 
+// Dynamically allocated buffer memory
+static uint8_t* buffer_data;
+
 // Mask indicating which buffers are already handed out
 static uint8_t buffer_taken;
+
+size_t get_display_buffer_size() {
+  return sizeof(struct led_t)*get_led_count();
+}
+
+void init_display_buffers() {
+  const size_t buffer_size = get_display_buffer_size();
+  buffer_data = malloc(buffer_size*BUFFER_LIST_LENGTH);
+  if (buffer_data) {
+    for (uint8_t i = 0; i < BUFFER_LIST_LENGTH; ++i) {
+      buffer_list[i].buffer = (struct led_t*) (buffer_data + i*buffer_size);
+    }
+  }
+}
 
 // Frame memory management functions
 struct frame_buffer_t* create_frame() {
@@ -53,7 +71,7 @@ void destroy_frame(struct frame_buffer_t* frame) {
 void clear_frame(struct frame_buffer_t* frame_ptr) {
   if (frame_ptr) {
     struct led_t* write_ptr = frame_ptr->buffer;
-    struct led_t* frame_end = write_ptr + LED_COUNT;
+    struct led_t* frame_end = write_ptr + get_led_count();
 
     while (write_ptr != frame_end) {
       *(write_ptr++) = (struct led_t) {0, 0, 0, 0};

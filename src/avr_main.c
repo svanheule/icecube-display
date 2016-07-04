@@ -139,7 +139,7 @@ void init_timer() {
 }
 
 static inline void consume_frame(struct frame_buffer_t* frame) {
-  if (frame) {
+  if (frame && frame->buffer) {
     display_frame(frame);
     if (frame->flags & FRAME_FREE_AFTER_DRAW) {
       destroy_frame(frame);
@@ -148,8 +148,11 @@ static inline void consume_frame(struct frame_buffer_t* frame) {
 }
 
 int main () {
-  // Init display pin configuration and switches
+  // Must be run *before* using any other display functions
   init_display_properties();
+  // Initialise frame buffer memory before rendering
+  init_display_buffers();
+  // Init display pin configuration and switches
   init_display_driver();
   display_blank();
 

@@ -39,6 +39,7 @@
   */
 
 #include <stdint.h>
+#include <stddef.h>
 #include "display_properties.h"
 
 // Frame buffer size and structure definitions
@@ -57,7 +58,10 @@ struct led_t {
 
 /// Total frame byte count
 /// \ingroup led_display
-#define FRAME_LENGTH (sizeof(struct led_t)*LED_COUNT)
+size_t get_display_buffer_size();
+
+/// Initialise data storage for display frames.
+void init_display_buffers();
 
 /// Constants that can be used as metadata bit flags on a frame buffer.
 /// \ingroup led_display
@@ -72,12 +76,12 @@ enum frame_flag_t {
 /// \brief Object constisting of a frame buffer and a number of associated (bit)flags.
 /// \ingroup led_display
 struct frame_buffer_t {
-  /// Frame buffer LED data.
-  struct led_t buffer[LED_COUNT];
   /// Frame metadata as bit flags (see ::frame_flag_t)
   /// * flags(0): ::FRAME_FREE_AFTER_DRAW
   /// * flags(1): ::FRAME_DRAW_IN_PROGRESS
   enum frame_flag_t flags;
+  /// Frame buffer LED data.
+  struct led_t* buffer;
 };
 
 /// \name Frame buffer handling
