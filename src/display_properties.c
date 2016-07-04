@@ -1,22 +1,50 @@
 #include "display_properties.h"
+#include <avr/pgmspace.h>
 #include <avr/eeprom.h>
 
-const uint8_t DP_TLV_DATA[] = {
-    DP_STATION_RANGE, 2, 1, LED_COUNT
-  , DP_LED_TYPE, 1, LED_TYPE_APA102
-  , DP_END, 0
+uint16_t get_tlv_list_length_P(const struct dp_tlv_item_t* tlv_list) {
+  uint16_t total = 0;
+  enum display_property_type_t field_type = pgm_read_byte(&tlv_list->type);
+  while (field_type != DP_END) {
+    // Add header and item length to total length
+    total += 2 + pgm_read_byte(&tlv_list->length);
+    // Proceed to next item
+    ++tlv_list;
+    field_type = pgm_read_byte(&tlv_list->type);
+  }
+  return total;
+}
+
+struct dp_information_range_t {
+  uint8_t start;
+  uint8_t end;
 };
 
-uint16_t get_tlv_length_E(const void* tlv_data) {
-  const uint8_t* data = (const uint8_t*) tlv_data;
-  enum display_property_t field_type;
-  do {
-    field_type = eeprom_read_byte(data);
-    uint8_t field_length = eeprom_read_byte(data+1);
-    if (field_type != 0 && field_type != 0xff) {
-      data += 2 + field_length;
-    }
-  }
-  while (field_type != 0 && field_type != 0xff);
-  return data - (uint8_t*) tlv_data;
+static struct dp_information_range_t dp_info_range = {1, 0};
+static const uint8_t DP_LED_COUNT __attribute__((section(".displayprop"))) = DEVICE_LED_COUNT;
+
+void init_display_properties() {
+  // Read actual value from EEPROM
+  dp_info_range.end = eeprom_read_byte(&DP_LED_COUNT);
+}
+
+const uint8_t* get_led_count() {
+  return &dp_info_range.end;
+}
+
+static const enum display_information_type_t DP_INFO_TYPE PROGMEM = INFORMATION_IT_STATION;
+static const enum display_led_type_t DP_INFO_LED_TYPE PROGMEM = LED_TYPE_APA102;
+
+#define TLV_ENTRY(type, memspace, address) {type, sizeof(*address), memspace, address}
+#define TLV_END {DP_END, 0, MEMSPACE_NONE, 0}
+
+static const struct dp_tlv_item_t PROPERTIES_TLV_LIST[] PROGMEM = {
+    TLV_ENTRY(DP_LED_TYPE, MEMSPACE_PROGMEM, &DP_INFO_LED_TYPE)
+  , TLV_ENTRY(DP_INFORMATION_TYPE, MEMSPACE_PROGMEM, &DP_INFO_TYPE)
+  , TLV_ENTRY(DP_INFORMATION_RANGE, MEMSPACE_RAM, &dp_info_range)
+  , TLV_END
+};
+
+const struct dp_tlv_item_t* get_display_properties_P() {
+  return &(PROPERTIES_TLV_LIST[0]);
 }

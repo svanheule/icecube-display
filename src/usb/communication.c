@@ -287,7 +287,8 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
   else if (transfer->req->bmRequestType == (REQ_DIR_IN | REQ_TYPE_VENDOR | REQ_REC_INTERFACE)) {
     if (transfer->req->bRequest == VENDOR_REQUEST_DISPLAY_PROPERTIES) {
       // Get requested length or clip at length of available data
-      uint16_t display_properties_size = sizeof(uint16_t) + get_tlv_length_E(DP_TLV_DATA);
+      const struct dp_tlv_item_t* props_head = get_display_properties_P();
+      uint16_t display_properties_size = sizeof(uint16_t) + get_tlv_list_length_P(props_head);
       uint16_t remaining = transfer->req->wLength;
       if (!(transfer->req->wLength < display_properties_size)) {
         remaining = display_properties_size;
@@ -296,15 +297,33 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
       // Transmit data if at least 2 bytes are requested, otherwise stall
       if (remaining >= sizeof(display_properties_size)) {
         // Allocate buffer
-        void* data_buffer = init_data_in(transfer, remaining);
-        uint16_t** data_buffer_ptr = (uint16_t**) &data_buffer;
-        if (data_buffer) {
+        uint8_t* buffer = init_data_in(transfer, remaining);
+        if (buffer) {
           // Copy properties header: size
-          *(*data_buffer_ptr) = display_properties_size;
-          ++(*data_buffer_ptr);
+          *((uint16_t*) buffer) = display_properties_size;
+          buffer += sizeof(display_properties_size);
           remaining -= sizeof(display_properties_size);
           // Copy properties TLV fields (if there is any remaining space)
-          eeprom_read_block(data_buffer, DP_TLV_DATA, remaining);
+          struct dp_tlv_item_t item;
+          memcpy_P(&item, props_head, sizeof(struct dp_tlv_item_t));
+          while (remaining && item.type != DP_END) {
+            if (remaining--) {
+              *buffer++ = item.type;
+            }
+            if (remaining--) {
+              *buffer++ = item.length;
+            }
+            if (remaining) {
+              size_t copy_len = item.length < remaining ? item.length : remaining;
+              memcpy_memspace(item.memspace, (void*) buffer, item.data, copy_len);
+              buffer += copy_len;
+              remaining -= copy_len;
+            }
+            // Proceed to the next list item
+            ++props_head;
+            memcpy_P(&item, props_head, sizeof(struct dp_tlv_item_t));
+          }
+          // Finish by marking data as ready
           transfer->stage = CTRL_DATA_IN;
         }
       }

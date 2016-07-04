@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "display_driver.h"
+#include "display_properties.h"
 #include "render/demo.h"
 #include "render/test.h"
 #include "render/boot_splash.h"
@@ -148,6 +149,7 @@ static inline void consume_frame(struct frame_buffer_t* frame) {
 
 int main () {
   // Init display pin configuration and switches
+  init_display_properties();
   init_display_driver();
   display_blank();
 
