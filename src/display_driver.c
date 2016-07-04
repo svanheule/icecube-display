@@ -2,6 +2,35 @@
 #include <avr/pgmspace.h>
 #include <stdint.h>
 #include "display_driver.h"
+#include "display_properties.h"
+
+static const uint8_t LED_MAP_IT78[LED_COUNT_IT78] PROGMEM = {
+              5,  4,  3,  2,  1,  0
+          ,  6,  7,  8,  9, 10, 11, 12
+        , 20, 19, 18, 17, 16, 15, 14, 13
+      , 21, 22, 23, 24, 25, 26, 27, 28, 29
+    , 39, 38, 37, 36, 35, 34, 33, 32, 31, 30
+  , 40, 41, 42, 43, 44, 45, 46, 47, 48, 49
+    , 58, 57, 56, 55, 54, 53, 52, 51, 50
+      , 59, 60, 61, 62, 63, 64, 65, 66
+        , 73, 72, 71, 70, 69, 68, 67
+          , 74, 75, 76, 77
+};
+static const uint8_t LED_MAP_IT81[LED_COUNT_IT81] PROGMEM = {
+              5,  4,  3,  2,  1,  0
+          ,  6,  7,  8,  9, 10, 11, 12
+        , 20, 19, 18, 17, 16, 15, 14, 13
+      , 21, 22, 23, 24, 25, 26, 27, 28, 29
+    , 39, 38, 37, 80, 35, 79, 36, 78, 34, 33, 32, 31, 30
+  , 40, 41, 42, 43, 44, 45, 46, 47, 48, 49
+    , 58, 57, 56, 55, 54, 53, 52, 51, 50
+      , 59, 60, 61, 62, 63, 64, 65, 66
+        , 73, 72, 71, 70, 69, 68, 67
+          , 74, 75, 76, 77
+};
+
+static uint8_t led_count;
+static const uint8_t* led_mapping_P;
 
 void init_display_driver() {
 #if defined(CONTROLLER_ARDUINO)
@@ -36,6 +65,21 @@ void init_display_driver() {
   UBRR1L = (uint8_t) baud_rate_register;
 #undef SPI_BAUD_RATE
 #endif
+
+  // Load LED layout settings
+  led_count = *get_led_count();
+  switch (led_count) {
+    case LED_COUNT_IT78:
+      led_mapping_P = LED_MAP_IT78;
+      break;
+    case LED_COUNT_IT81:
+      led_mapping_P = LED_MAP_IT81;
+      break;
+    default:
+      led_count = 0;
+      led_mapping_P = 0;
+      break;
+  }
 }
 
 static inline void wait_write_finish () {
@@ -62,36 +106,6 @@ static inline void write_byte(const uint8_t byte) {
   wait_write_finish();
 }
 
-#if LED_COUNT == 78
-static const uint8_t LED_TO_BUFFER[LED_COUNT] PROGMEM = {
-              5,  4,  3,  2,  1,  0
-          ,  6,  7,  8,  9, 10, 11, 12
-        , 20, 19, 18, 17, 16, 15, 14, 13
-      , 21, 22, 23, 24, 25, 26, 27, 28, 29
-    , 39, 38, 37, 36, 35, 34, 33, 32, 31, 30
-  , 40, 41, 42, 43, 44, 45, 46, 47, 48, 49
-    , 58, 57, 56, 55, 54, 53, 52, 51, 50
-      , 59, 60, 61, 62, 63, 64, 65, 66
-        , 73, 72, 71, 70, 69, 68, 67
-          , 74, 75, 76, 77
-};
-#elif LED_COUNT == 81
-static const uint8_t LED_TO_BUFFER[LED_COUNT] PROGMEM = {
-              5,  4,  3,  2,  1,  0
-          ,  6,  7,  8,  9, 10, 11, 12
-        , 20, 19, 18, 17, 16, 15, 14, 13
-      , 21, 22, 23, 24, 25, 26, 27, 28, 29
-    , 39, 38, 37, 80, 35, 79, 36, 78, 34, 33, 32, 31, 30
-  , 40, 41, 42, 43, 44, 45, 46, 47, 48, 49
-    , 58, 57, 56, 55, 54, 53, 52, 51, 50
-      , 59, 60, 61, 62, 63, 64, 65, 66
-        , 73, 72, 71, 70, 69, 68, 67
-          , 74, 75, 76, 77
-};
-#else
-#error Unsupported LED_COUNT value
-#endif
-
 
 /* # APA102C
  * Transmit bytes with MSB first
@@ -103,7 +117,7 @@ static const uint8_t LED_TO_BUFFER[LED_COUNT] PROGMEM = {
  * * frame end: ceil(n/2) '1' bits, or ceil(n/2/8) 0xFF bytes
  */
 
-static void inline write_frame_header() {
+static inline void write_frame_header() {
   const uint8_t FRAME_HEADER = 0x00;
   for (uint8_t i = 0; i < 4; ++i) {
     write_byte(FRAME_HEADER);
@@ -112,7 +126,7 @@ static void inline write_frame_header() {
 
 static inline void write_frame_footer() {
   const uint8_t FRAME_FOOTER = 0xFF;
-  for (uint8_t i = 0; i < LED_COUNT; i+=16) {
+  for (uint8_t i = 0; i < led_count; i+=16) {
     write_byte(FRAME_FOOTER);
   }
 }
@@ -125,12 +139,12 @@ void display_frame(struct frame_buffer_t* frame) {
   // Start of frame
   write_frame_header();
 
-  const struct led_t* leds = &(frame->buffer[0]);
+  const struct led_t* leds = frame->buffer;
 
   // LED data
   uint8_t index;
-  for (uint8_t i = 0; i < LED_COUNT; ++i) {
-    index = pgm_read_byte(&LED_TO_BUFFER[i]);
+  for (uint8_t i = 0; i < led_count; ++i) {
+    index = pgm_read_byte(&led_mapping_P[i]);
     write_byte(LED_HEADER | leds[index].brightness);
     write_byte(leds[index].blue);
     write_byte(leds[index].green);
@@ -149,7 +163,7 @@ void display_blank() {
   write_frame_header();
 
   // LED data
-  for (uint8_t i = 0; i < LED_COUNT; ++i) {
+  for (uint8_t i = 0; i < led_count; ++i) {
     write_byte(LED_HEADER);
     write_byte(0);
     write_byte(0);

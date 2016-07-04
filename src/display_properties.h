@@ -28,6 +28,8 @@ enum display_led_type_t {
 #else
 #define LED_COUNT DEVICE_LED_COUNT
 #endif
+#define LED_COUNT_IT78 78
+#define LED_COUNT_IT81 81
 
 struct dp_tlv_item_t {
   enum display_property_type_t type;
