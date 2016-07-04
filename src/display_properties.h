@@ -43,7 +43,7 @@ uint16_t get_tlv_list_length_P(const struct dp_tlv_item_t* tlv_data);
 
 void init_display_properties();
 
-const uint8_t* get_led_count();
+uint8_t get_led_count();
 const uint8_t* get_led_mapping();
 
 

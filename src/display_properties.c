@@ -28,8 +28,8 @@ void init_display_properties() {
   dp_info_range.end = eeprom_read_byte(&DP_LED_COUNT);
 }
 
-const uint8_t* get_led_count() {
-  return &dp_info_range.end;
+uint8_t get_led_count() {
+  return dp_info_range.end;
 }
 
 static const enum display_information_type_t DP_INFO_TYPE PROGMEM = INFORMATION_IT_STATION;

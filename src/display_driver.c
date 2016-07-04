@@ -67,7 +67,7 @@ void init_display_driver() {
 #endif
 
   // Load LED layout settings
-  led_count = *get_led_count();
+  led_count = get_led_count();
   switch (led_count) {
     case LED_COUNT_IT78:
       led_mapping_P = LED_MAP_IT78;
