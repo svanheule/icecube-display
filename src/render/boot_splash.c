@@ -17,7 +17,7 @@ const struct renderer_t* get_boot_splash_renderer() {
   return &SPLASH_RENDERER;
 }
 
-static const uint8_t UGENT_LOGO[LED_COUNT] PROGMEM = {
+static const uint8_t UGENT_LOGO[LED_COUNT_IT78] PROGMEM = {
         0,0,0,0,0,0
      , 0,0,0,0,0,0,0
     , 1,1,1,1,1,1,1,1
@@ -38,8 +38,10 @@ void init_splash()  {
     ugent_frame = create_frame();
   }
   if (ugent_frame) {
+    const uint8_t led_count = get_led_count();
     struct led_t* led_ptr = ugent_frame->buffer;
-    for (uint8_t led = 0; led < LED_COUNT; ++led) {
+    uint8_t led = 0;
+    while (led < LED_COUNT_IT78) {
       if (pgm_read_byte(&UGENT_LOGO[led]) == 0) {
         *led_ptr = (struct led_t) {0, 0, 0, 0};
       }
@@ -47,6 +49,13 @@ void init_splash()  {
         *led_ptr = (struct led_t) {0x08, 10, 30, 96};
       }
       ++led_ptr;
+      ++led;
+    }
+    // Clear remaining LEDs
+    while (led < led_count) {
+      *led_ptr = (struct led_t) {0, 0, 0, 0};
+      ++led_ptr;
+      ++led;
     }
   }
 }

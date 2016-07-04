@@ -21,13 +21,6 @@ enum display_led_type_t {
   , LED_TYPE_WS2811 = 1
 };
 
-#if defined(__DOXYGEN__)
-/// Number of LEDs used in the display. This determines the frame buffer size.
-/// \ingroup led_display
-#define LED_COUNT
-#else
-#define LED_COUNT DEVICE_LED_COUNT
-#endif
 #define LED_COUNT_IT78 78
 #define LED_COUNT_IT81 81
 

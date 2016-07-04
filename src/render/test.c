@@ -35,7 +35,8 @@ struct frame_buffer_t* render_scan() {
       write_ptr[scan_frame+tail] = (struct led_t) {DEFAULT_BRIGHTNESS, 0x10, 0x10, 0x10};
     }
 
-    if ((scan_frame == LED_COUNT-TAIL_LENGTH) && (direction == COUNT_UP)) {
+    const uint8_t led_count = get_led_count();
+    if ((scan_frame == led_count-TAIL_LENGTH) && (direction == COUNT_UP)) {
       direction = COUNT_DOWN;
     }
     else if ((scan_frame == 0) && (direction == COUNT_DOWN)) {
@@ -63,7 +64,7 @@ struct station_t {
   int8_t v;
   int8_t w;
 };
-static const struct station_t STATION_VECTOR[LED_COUNT] PROGMEM = {
+static const struct station_t STATION_VECTOR[LED_COUNT_IT78] PROGMEM = {
     {0,0}, {1,0}, {2,0}, {3,0}, {4,0}, {5,0}
   , {0,1}, {1,1}, {2,1}, {3,1}, {4,1}, {5,1}, {6,1}
   , {0,2}, {1,2}, {2,2}, {3,2}, {4,2}, {5,2}, {6,2}, {7,2}
@@ -110,7 +111,8 @@ struct frame_buffer_t* render_ring() {
 
     uint8_t* buffer = (uint8_t*) frame->buffer;
 
-    for (uint8_t led = 0; led < LED_COUNT; ++led) {
+    // Draw only IT78 stations, in-fill stations are already cleared
+    for (uint8_t led = 0; led < LED_COUNT_IT78; ++led) {
       struct station_t station;
       memcpy_P(&station, STATION_VECTOR+led, sizeof(struct station_t));
       uint8_t d = station_distance(station, CENTRE);
