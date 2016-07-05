@@ -4,6 +4,7 @@
 #include "display_driver.h"
 #include "display_properties.h"
 
+// See pocket_icetop.dxf
 static const uint8_t LED_MAP_IT78[LED_COUNT_IT78] PROGMEM = {
               5,  4,  3,  2,  1,  0
           ,  6,  7,  8,  9, 10, 11, 12
@@ -16,6 +17,8 @@ static const uint8_t LED_MAP_IT78[LED_COUNT_IT78] PROGMEM = {
         , 73, 72, 71, 70, 69, 68, 67
           , 74, 75, 76, 77
 };
+
+// See pocket_icetop_large.dxf
 static const uint8_t LED_MAP_IT81[LED_COUNT_IT81] PROGMEM = {
               5,  4,  3,  2,  1,  0
           ,  6,  7,  8,  9, 10, 11, 12

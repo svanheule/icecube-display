@@ -120,14 +120,18 @@ upload the firmware using the `avrdude` command:
 
 ### ICSP firmware upgrade ###
 
-The device can also be programmed using the ICSP header on the board. To access this header, the
-bottom plate of the device needs to be removed. Pin 1 of the header is marked with a slightly offset
-angle, and is next to the `P3` marking.
+The device can also be programmed using the ICSP header on the board.
+Note that any normal firmware upgrade can be performed via USB, so using the ICSP port is not
+the recommended way of upgrading your display!
+To access the ICSP header, the bottom plate of the device needs to be removed.
+Pin 1 of the header is marked with a slightly offset angle, and is next to the `P3` marking.
 The VCC line of the ICSP header can be used to power the device, so make sure that the
 programmer's VCC line is either disconnected, or that the external power suppy is not used!
 
-With an ICSP programmer, it is recommended to use the cmake system to program the fuses and
-lock bits, the EEPROM, the program flash, and the bootloader flash. When performing the initial
-flash of the device after assembly, a complete chip erase should be performed beforehand to ensure
-the lock bits are reset and a new firmware can be flashed to the device.
+With an ICSP programmer, the flash and EEPROM will be erased prior to the device upgrade.
+It is recommended to configure the cmake system to generate the right EEPROM data and program
+the fuses and lock bits, the EEPROM, the program flash, and the bootloader flash.
+When performing the initial flash of the device after assembly, a complete chip erase should be
+performed beforehand to ensure the lock bits are reset and a new firmware can be flashed to the
+device.
 

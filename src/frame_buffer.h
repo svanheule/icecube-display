@@ -8,14 +8,14 @@
   *
   * \defgroup led_display LED display usage
   * \brief APA102 LED display implementation and usage.
-  * \details The LED display consists of a number (::LED_COUNT) of APA102 modules connected in
+  * \details The LED display consists of a number of APA102 modules connected in
   *   series. A frame buffer therefore contains 4×78 bytes of display data, plus one byte of flags.
   *   A pool of memory with room for multiple frames is pre-allocated and calling create_frame()
   *   will mark one the available frame buffers as used and return a pointer to it. This pointer
   *   can then be used to draw new frame contents, push it into the frame queue for display and
   *   release the memory with destroy_frame() when it is no longer of use.
   *
-  *   A frame buffer has room for ::LED_COUNT ::led_t objects. The order of these objects
+  *   A frame buffer has room for as many ::led_t objects as LEDs. The order of these objects
   *   corresponds to the IceTop station number, so frame_buffer_t::buffer[0] contains the data for
   *   station 1, frame_buffer_t::buffer[1] for station 2, etc.
   *   The contents of the frame are not written to the LED display in-order, but in alternating
