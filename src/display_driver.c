@@ -32,6 +32,14 @@ static const uint8_t LED_MAP_IT81[LED_COUNT_IT81] PROGMEM = {
 static uint8_t led_count;
 static const uint8_t* led_mapping_P;
 
+static uint8_t offset_c1;
+static uint8_t offset_c2;
+static uint8_t offset_c3;
+
+#define OFFSET_RED offsetof(struct led_t, red)
+#define OFFSET_GREEN offsetof(struct led_t, green)
+#define OFFSET_BLUE offsetof(struct led_t, blue)
+
 void init_display_driver() {
 #if defined(CONTROLLER_ARDUINO)
   /* On the Arduino's ATmega328p the hardware SPI port is used, located on port B.
@@ -80,6 +88,42 @@ void init_display_driver() {
       led_mapping_P = 0;
       break;
   }
+
+  enum display_led_color_order_t color_order = get_color_order();
+
+  switch (color_order) {
+    case LED_ORDER_BGR:
+      offset_c1 = OFFSET_BLUE;
+      offset_c2 = OFFSET_GREEN;
+      offset_c3 = OFFSET_RED;
+      break;
+    case LED_ORDER_BRG:
+      offset_c1 = OFFSET_BLUE;
+      offset_c2 = OFFSET_RED;
+      offset_c3 = OFFSET_GREEN;
+      break;
+    case LED_ORDER_GBR:
+      offset_c1 = OFFSET_GREEN;
+      offset_c2 = OFFSET_BLUE;
+      offset_c3 = OFFSET_RED;
+      break;
+    case LED_ORDER_GRB:
+      offset_c1 = OFFSET_GREEN;
+      offset_c2 = OFFSET_RED;
+      offset_c3 = OFFSET_BLUE;
+      break;
+    case LED_ORDER_RBG:
+      offset_c1 = OFFSET_RED;
+      offset_c2 = OFFSET_BLUE;
+      offset_c3 = OFFSET_GREEN;
+      break;
+    case LED_ORDER_RGB:
+      offset_c1 = OFFSET_RED;
+      offset_c2 = OFFSET_GREEN;
+      offset_c3 = OFFSET_BLUE;
+      break;
+  }
+
 }
 
 static inline void wait_write_finish () {
@@ -136,19 +180,19 @@ const uint8_t LED_HEADER = 0xE0;
 void display_frame(struct frame_buffer_t* frame) {
   frame->flags |= FRAME_DRAW_IN_PROGRESS;
 
+  const uint8_t* leds = (const uint8_t*) frame->buffer;
+
   // Start of frame
   write_frame_header();
 
-  const struct led_t* leds = frame->buffer;
-
   // LED data
-  uint8_t index;
-  for (uint8_t i = 0; i < led_count; ++i) {
-    index = pgm_read_byte(&led_mapping_P[i]);
-    write_byte(LED_HEADER | leds[index].brightness);
-    write_byte(leds[index].blue);
-    write_byte(leds[index].green);
-    write_byte(leds[index].red);
+  uint16_t index;
+  for (uint8_t station = 0; station < led_count; ++station) {
+    index = 4*pgm_read_byte(&led_mapping_P[station]);
+    write_byte(LED_HEADER | leds[index]);
+    write_byte(leds[index+offset_c1]);
+    write_byte(leds[index+offset_c2]);
+    write_byte(leds[index+offset_c3]);
   }
 
   // End of frame
