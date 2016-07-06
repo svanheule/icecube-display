@@ -14,7 +14,7 @@ _log.info("leddisplay loaded")
 
 try:
   # libusb1 support
-  from usb1 import USBContext, ENDPOINT_OUT, TYPE_VENDOR, RECIPIENT_INTERFACE
+  from usb1 import USBContext, ENDPOINT_IN, ENDPOINT_OUT, TYPE_VENDOR, RECIPIENT_INTERFACE
 except:
   USBContext = None
   _log.error("Failed to import python-libusb1")
@@ -23,6 +23,7 @@ from icecube.shovelart import PyArtist
 from icecube.shovelart import RangeSetting, ChoiceSetting, I3TimeColorMap
 from icecube.shovelart import PyQColor, TimeWindowColor, StepFunctionFloat
 from icecube.dataclasses import I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion
+import struct
 
 def merge_lists(left, right, key=lambda x: x):
     merged = []
@@ -49,9 +50,6 @@ def merge_lists(left, right, key=lambda x: x):
 
 
 class StationLed(object):
-    MAX_BRIGHTNESS = 2**5-1
-    DATA_LENGTH = 4
-
     def __init__(self, brightness, color):
         if not hasattr(brightness, "__call__"):
             self._brightness = (lambda time : brightness)
@@ -65,12 +63,7 @@ class StationLed(object):
 
     @classmethod
     def float_to_led_data(cls, rgb):
-        "APA102 data format: 5b global brightness, 3*8b RGB"
-        # Factor out brightness from colour
-        brightness = max(1./cls.MAX_BRIGHTNESS, max(rgb))
-        scaling = brightness / cls.MAX_BRIGHTNESS
-        rgb = [int(round(255 * (c**2.2)/brightness)) for c in rgb]
-        return [int(round(brightness*cls.MAX_BRIGHTNESS)), rgb[0], rgb[1], rgb[2]]
+        raise NotImplementedError
 
     def getValue(self, time):
         brightness = min(1.0, self._brightness(time)) # Clip brightness
@@ -79,10 +72,207 @@ class StationLed(object):
         value = [comp*brightness*alpha for comp in color.rgbF()]
         return self.float_to_led_data(value)
 
-class LedDisplay(PyArtist):
-    _LED_COUNT = 78
-    _FRAME_SIZE = _LED_COUNT*StationLed.DATA_LENGTH
+class LedAPA102(StationLed):
+    DATA_LENGTH = 4
+    MAX_BRIGHTNESS = 2**5-1
 
+    @classmethod
+    def float_to_led_data(cls, rgb):
+        "APA102 data format: 5b global brightness, 3*8b RGB"
+        # Factor out brightness from colour
+        brightness = max(1./cls.MAX_BRIGHTNESS, max(rgb))
+        scaling = brightness / cls.MAX_BRIGHTNESS
+        rgb = [int(round(255 * (c**2.2)/brightness)) for c in rgb]
+        return [int(round(brightness*cls.MAX_BRIGHTNESS)), rgb[0], rgb[1], rgb[2]]
+
+class LedWS2811(StationLed):
+    DATA_LENGTH = 3
+
+    @classmethod
+    def float_to_led_data(cls, rgb):
+        "WS2811/WS2812 data format: 3*8b RGB"
+        return [int(round(255 * (c**2.2))) for c in rgb]
+
+
+class TlvParser():
+    # TLV types
+    DP_INFORMATION_TYPE = 1
+    DP_INFORMATION_RANGE = 2
+    DP_LED_TYPE = 3
+
+    @staticmethod
+    def _tokenizeData(data):
+        tokens = []
+
+        i = 0
+        data = bytearray(data)
+        while i+1 < len(data):
+            field_type = data[i]
+            field_length = data[i+1]
+            field_value = bytearray()
+            i += 2
+            if field_length > 0:
+                field_value = data[i:i+field_length]
+                i += field_length
+            tokens.append((field_type, field_length, field_value))
+
+        return tokens
+
+    @classmethod
+    def _parseTokens(cls, display_properties, token_list):
+        for token in token_list:
+            t, l, v = token
+            if t == cls.DP_INFORMATION_TYPE and l == 1:
+                display_properties.info_type = v[0]
+            elif t == cls.DP_INFORMATION_RANGE and l == 2:
+                display_properties.addInformationRange(v[0], v[1])
+            elif t == cls.DP_LED_TYPE and l == 1:
+                display_properties.setLedType(v[0])
+
+    @classmethod
+    def parseData(cls, display_properties, data):
+        return cls._parseTokens(display_properties, cls._tokenizeData(data))
+
+
+class UsbDisplayProperties(object):
+    # Information types
+    INFO_TYPE_IT_STATION = 0
+    INFO_TYPE_IC_STRING = 1
+
+    # LED types
+    LED_TYPE_APA102 = 0
+    LED_TYPE_WS2811 = 1
+
+    def __init__(self, usb_device):
+        self.usb_device = usb_device
+        self.info_type = None
+        self.led_class = None
+        self._strings = list()
+        self._string_index = dict()
+
+    def setLedType(self, led_type):
+        if led_type == self.LED_TYPE_APA102:
+            self.led_class = LedAPA102
+        elif led_type == self.LED_TYPE_WS2811:
+            self.led_class = LedWS2811
+
+    def addInformationRange(self, start, end):
+        # Python ranges are endpoint-exclusive: [start, end)
+        # Ours are endpoint-inclusive: [start,end]
+        self._strings = merge_lists(self._strings, range(start, end+1))
+        self._string_index = {string: index for (index, string) in enumerate(self._strings)}
+
+    def canDisplayOMKey(self, om_key):
+        valid_dom = False
+        if self.info_type == self.INFO_TYPE_IC_STRING:
+            valid_dom = (om_key.om >= 1) and (om_key.om <= 60)
+        elif self.info_type == self.INFO_TYPE_IT_STATION:
+            valid_dom = (om_key >= 60) and (om_key.om <= 64)
+        return valid_dom and (om_key.string in self._strings)
+
+    def getFrameSize(self):
+        strings = len(self._strings)
+        bytes_per_led = self.led_class.DATA_LENGTH
+        if self.info_type == self.INFO_TYPE_IC_STRING:
+            return strings*60*bytes_per_led
+        elif self.info_type == self.INFO_TYPE_IT_STATION:
+            return strings*bytes_per_led
+        else:
+            return 0
+
+    def getLedIndex(self, om_key):
+        """
+        Only provide om_key values for which canDisplayOMKey() returns True.
+        Returns the buffer offset, modulo the LED data size.
+        The first LED is at offset 0, second at offset 1, etc.
+        """
+        offset = self._string_index[om_key.string]
+        if self.info_type == self.INFO_TYPE_IC_STRING:
+            dom_offset = om_key.om - 1
+            offset = 60*offset + dom_offset
+        return offset
+
+
+class DisplayConnection(object):
+    # USB control transfers
+    REQUEST_SEND_FRAME = 1
+    REQUEST_DISPLAY_PROPERTIES = 2
+
+    def __init__(self):
+        # Public field
+        self.device = None
+        # Private connection handle
+        self._usb_handle = None
+        # LED display properties
+        self._led_count = 0
+        self._led_class = None
+
+    def isConnected(self):
+        return self._usb_handle is not None
+
+    @classmethod
+    def enumerateDevices(cls):
+        usb_devices = []
+        if USBContext:
+            usb_context = USBContext()
+            for dev in usb_context.getDeviceList():
+                if dev.getVendorID() == 0x1CE3 and dev.getProductID() == 1:
+                    display = cls.queryDevice(dev)
+                    usb_devices.append(display)
+        return usb_devices
+
+    def connectDevice(self, device):
+        # Release current device before attempting new connection
+        self.close()
+        if not self._usb_handle and device:
+            bus = device.getBusNumber()
+            address = device.getDeviceAddress()
+            try:
+                self._usb_handle = device.open()
+                self._usb_handle.claimInterface(0)
+                _log.info("Opened device [usb:{:03d}-{:03d}]".format(bus, address))
+            except Exception as e:
+                print(e)
+                self.close() # Useful call?
+                self._usb_handle = None
+                _log.warning("Could not open device [usb:{:03d}-{:03d}]".format(bus, address))
+        # Return if connection was succesful
+        return self._usb_handle is not None
+
+    def close(self):
+        if self._usb_handle:
+            try:
+                self._usb_handle.releaseInterface(0)
+                self._usb_handle.close()
+            except:
+                pass
+            finally:
+                self._usb_handle = None
+                _log.info("Released USB display interface")
+
+    @classmethod
+    def queryDevice(cls, device):
+        properties = None
+        handle = device.open()
+        if handle:
+            VENDOR_IN = ENDPOINT_IN | TYPE_VENDOR | RECIPIENT_INTERFACE
+            # Read only properties header: properties length
+            data = handle.controlRead(VENDOR_IN, cls.REQUEST_DISPLAY_PROPERTIES, 0, 0, 2)
+            size = struct.unpack('<H', data)[0]
+            # Read full TLV list, skip header this time
+            data = handle.controlRead(VENDOR_IN, cls.REQUEST_DISPLAY_PROPERTIES, 0, 0, size)
+            properties = UsbDisplayProperties(device)
+            TlvParser.parseData(properties, data[2:])
+            handle.close()
+        return properties
+
+    def writeFrame(self, frame):
+        if self._usb_handle:
+            VENDOR_OUT = ENDPOINT_OUT | TYPE_VENDOR | RECIPIENT_INTERFACE
+            self._usb_handle.controlWrite(VENDOR_OUT, self.REQUEST_SEND_FRAME, 0, 0, frame)
+
+
+class LedDisplay(PyArtist):
     numRequiredKeys = 1
     _SETTING_DEVICE = "Device"
     _SETTING_COLOR_STATIC = "Static color"
@@ -97,27 +287,25 @@ class LedDisplay(PyArtist):
 
         # USB Device handle field
         self._usb_handle = None
-        self._stations = {}
+        self._leds = {}
 
-        self._usb_devices = []
-        usb_device_descriptions = []
-        if USBContext:
-            usb_context = USBContext()
-            for dev in usb_context.getDeviceList():
-                vendor_id = dev.getVendorID()
-                product_id = dev.getProductID()
-                if vendor_id  == 0x1CE3 and product_id == 1:
-                    self._usb_devices.append(dev)
-                    bus = dev.getBusNumber()
-                    port = dev.getDeviceAddress()
-                    description = "[usb:{:03d}-{:03d}] {}".format(bus, port, dev.getProduct())
-                    _log.debug("Added device {}".format(description))
-                    usb_device_descriptions.append(description)
-        if len(self._usb_devices) == 0:
-            self._usb_devices.append(None)
-            usb_device_descriptions.append("no devices detected")
+        self._usb_displays = DisplayConnection.enumerateDevices()
+        self._current_display = None
+        self._connection = DisplayConnection()
+        device_descriptions = []
+        if len(self._usb_displays) > 0:
+            for display in self._usb_displays:
+                bus = display.usb_device.getBusNumber()
+                address = display.usb_device.getDeviceAddress()
+                product = display.usb_device.getProduct()
+                description = "[usb:{:03d}-{:03d}] {}".format(bus, address, product)
+                device_descriptions.append(description)
+                _log.debug("Added device {}".format(description))
+        else:
+            self._usb_displays.append(None)
+            device_descriptions.append("no devices detected")
 
-        self.addSetting(self._SETTING_DEVICE, ChoiceSetting(usb_device_descriptions, 0))
+        self.addSetting(self._SETTING_DEVICE, ChoiceSetting(device_descriptions, 0))
         self.addSetting(self._SETTING_COLOR_STATIC, PyQColor.fromRgb(255, 0, 255))
         self.addSetting(self._SETTING_BRIGHTNESS_STATIC, RangeSetting(0.0, 1.0, 32, 0.5))
         self.addSetting(self._SETTING_COMPRESSION_POWER, RangeSetting(0.0, 1.0, 40, 0.18))
@@ -126,41 +314,22 @@ class LedDisplay(PyArtist):
         self.addSetting(self._SETTING_DURATION, RangeSetting(1.0, 5.0, 40, 5.0))
         self.addCleanupAction(self._cleanupDisplay)
 
-    def _connectDevice(self):
-        # Release current device before attempting new connection
-        self._releaseInterface()
-        if not self._usb_handle:
-            dev = self._usb_devices[self.setting(self._SETTING_DEVICE)]
-            if dev:
-                bus = dev.getBusNumber()
-                port = dev.getPortNumber()
-                try:
-                    self._usb_handle = dev.open()
-                    self._usb_handle.claimInterface(0)
-                    _log.info("Opened device [usb:{:03d}-{:03d}]".format(bus, port))
-                except:
-                    self._releaseInterface() # Useful call?
-                    self._usb_handle = None
-                    _log.warning("Could not open device [usb:{:03d}-{:03d}]".format(bus, port))
-
-    def _releaseInterface(self):
-        if self._usb_handle:
-            try:
-                self._usb_handle.releaseInterface(0)
-                self._usb_handle.close()
-            except:
-                pass
-            finally:
-                self._usb_handle = None
-                _log.info("Released USB display interface")
+    def _connectToDisplay(self, display):
+        # Close any old connection
+        if self._connection.isConnected():
+            self._connection.close()
+        # New connection
+        if display and self._connection.connectDevice(display.usb_device):
+            self._current_display = display
+        else:
+            self._current_display = None
 
     def _cleanupDisplay(self):
         _log.info("Clearing display")
-        self._connectDevice()
-        # Blank display and release USB device interface
-        if self._usb_handle:
-            self._writeFrame(bytes(bytearray(self._FRAME_SIZE)))
-        self._releaseInterface()
+        if self._connection.isConnected():
+            # Blank display and release USB device interface
+            self._connection.writeFrame(bytes(bytearray(self._current_display.getFrameSize())))
+            self._connection.close()
 
     def description(self):
         return "IceTop LED event display driver"
@@ -179,30 +348,31 @@ class LedDisplay(PyArtist):
 
     def _handleOMKeyMapTimed(self, output, omkey_pulses_map):
         color_map = self.setting(self._SETTING_COLOR)
+
         if self.setting(self._SETTING_INFINITE_DURATION):
             duration = None
         else:
             duration = 10**self.setting(self._SETTING_DURATION)
 
-        # content of station_pulses: {station : [(time, charge-like)]} {int : [(float, float)]}
-        station_pulses = {}
+        # content of led_pulses: {led : [(time, charge-like)]} {int : [(float, float)]}
+        led_pulses = {}
 
         for omkey, pulses in omkey_pulses_map:
-            station = omkey.string
-            om = omkey.om
-            _log.debug("Data available for DOM {}-{}".format(station, om))
-            if station <= 78 and om > 60 and om <= 64:
+            _log.debug("Data available for DOM {}-{}".format(omkey.string, omkey.om))
+            if self._current_display.canDisplayOMKey(omkey):
+                led = self._current_display.getLedIndex(omkey)
                 # Ensure we're dealing with a list of pulses
                 if not hasattr(pulses, "__len__"):
                     pulses = list(pulses)
 
                 if len(pulses) > 0:
-                    if station not in station_pulses:
-                        station_pulses[station] = pulses
+                    if led not in led_pulses:
+                        led_pulses[led] = pulses
                     else:
+                        # In case multiple DOMs are mapped onto the same LED, merge the pulses
                         # Merge two already sorted lists (merge sort)
-                        station_pulses[station] = merge_lists(
-                              station_pulses[station]
+                        led_pulses[led] = merge_lists(
+                              led_pulses[led]
                             , pulses
                             , key=lambda pulse : pulse.time
                         )
@@ -210,33 +380,33 @@ class LedDisplay(PyArtist):
         # Determine event normalisation
         max_sum_charges = 0.
         charges = {}
-        for station in station_pulses:
-            pulses = station_pulses[station]
+        for led in led_pulses:
+            pulses = led_pulses[led]
             t0 = pulses[0].time
             has_npe = hasattr(pulses[0], "npe")
             has_charge = hasattr(pulses[0], "charge")
 
             total_charge = 0.
             if has_charge:
-                charges[station] = [(pulse.time, pulse.charge) for pulse in pulses]
+                charges[led] = [(pulse.time, pulse.charge) for pulse in pulses]
                 total_charge += pulse.charge
             elif has_npe:
-                charges[station] = [(pulse.time, pulse.npe) for pulse in pulses]
+                charges[led] = [(pulse.time, pulse.npe) for pulse in pulses]
                 total_charge += pulse.npe
             else:
-                charges[station] = [(pulse.time, 1.0) for pulse in pulses]
+                charges[led] = [(pulse.time, 1.0) for pulse in pulses]
                 total_charge += 1.0
 
             if total_charge > max_sum_charges:
                 max_sum_charges = total_charge
 
         # Iterate second time for light curves
-        station_leds = {}
+        led_curves = {}
         normalisation = max_sum_charges
         power = self.setting(self._SETTING_COMPRESSION_POWER)
-        for station in charges:
+        for led in charges:
             brightness = StepFunctionFloat(0)
-            pulses = charges[station]
+            pulses = charges[led]
             t0 = pulses[0][0]
 
             if duration:
@@ -284,30 +454,36 @@ class LedDisplay(PyArtist):
                     accumulated_charge += q/normalisation
                     brightness.add(accumulated_charge**power, t)
 
-            station_leds[station] = StationLed(brightness.value, color.value)
+            led_curves[led] = self._current_display.led_class(brightness.value, color.value)
 
-        return station_leds
+        return led_curves
 
     def _handleOMKeyListStatic(self, output, omkey_list):
         color_static = self.setting(self._SETTING_COLOR_STATIC)
         brightness_static = self.setting(self._SETTING_BRIGHTNESS_STATIC)
+        display = self._current_display
 
-        station_leds = {}
+        led_curves = {}
 
         for omkey in omkey_list:
-            station = omkey.string
-            om = omkey.om
-            _log.debug("Data available for DOM {}-{}".format(station, om))
-            if station <= 78 and om > 60 and om <= 64:
-                if not station in station_leds:
-                    station_leds[station] = StationLed(brightness_static, color_static)
+            _log.debug("Data available for DOM {}-{}".format(omkey.string, omkey.om))
+            if self._current_display.canDisplayOMKey(omkey):
+                led = self._current_display.getLedIndex(omkey)
+                if led not in led_curves:
+                    led_curves[led] = self._current_display.led_class(
+                          brightness_static
+                        , color_static
+                    )
 
-        return station_leds
+        return led_curves
 
     def create(self, frame, output):
-        self._connectDevice()
+        # Connect to newly selected display, if any
+        new_display = self._usb_displays[self.setting(self._SETTING_DEVICE)]
+        if self._current_display != new_display:
+            self._connectToDisplay(new_display)
 
-        if self._usb_handle:
+        if self._current_display:
             (frame_key,) = self.keys()
             omkey_object = frame[frame_key]
 
@@ -320,34 +496,27 @@ class LedDisplay(PyArtist):
                     first_value = omkey_object[omkey_object.keys()[0]]
                     if hasattr(first_value, "__len__") and len(first_value) > 0:
                         if hasattr(first_value[0], "time"):
-                            self._stations = self._handleOMKeyMapTimed(output, omkey_object)
+                            self._leds = self._handleOMKeyMapTimed(output, omkey_object)
                     elif hasattr(first_value, "time"):
-                        self._stations = self._handleOMKeyMapTimed(output, omkey_object)
+                        self._leds = self._handleOMKeyMapTimed(output, omkey_object)
                     else:
-                        self._stations = self._handleOMKeyListStatic(output, omkey_object.keys())
+                        self._leds = self._handleOMKeyListStatic(output, omkey_object.keys())
             elif hasattr(omkey_object, "__len__"):
                 if len(omkey_object) > 0:
-                    self._stations = self._handleOMKeyListStatic(output, omkey_object)
+                    self._leds = self._handleOMKeyListStatic(output, omkey_object)
 
-            output.addPhantom(self._releaseInterface, self._updateDisplay)
+            output.addPhantom(self._cleanupEvent, self._updateEvent)
 
-    def _writeFrame(self, frame):
-        if self._usb_handle:
-            self._usb_handle.controlWrite(
-                  ENDPOINT_OUT | TYPE_VENDOR | RECIPIENT_INTERFACE
-                , 1
-                , 0
-                , 0
-                , frame
-            )
+    def _updateEvent(self, event_time):
+        data_length = self._current_display.led_class.DATA_LENGTH
+        frame = bytearray(self._current_display.getFrameSize())
 
-    def _updateDisplay(self, event_time):
-        frame = bytearray(self._FRAME_SIZE)
+        for led in self._leds:
+            led_value = self._leds[led].getValue(event_time)
+            frame[led*data_length:(led+1)*data_length] = led_value
 
-        for station in self._stations:
-            led = station - 1
-            led_value = self._stations[station].getValue(event_time)
-            frame[led*StationLed.DATA_LENGTH:(led+1)*StationLed.DATA_LENGTH] = led_value
+        if self._connection.isConnected():
+            self._connection.writeFrame(bytes(frame))
 
-        self._writeFrame(bytes(frame))
-
+    def _cleanupEvent(self):
+        pass
