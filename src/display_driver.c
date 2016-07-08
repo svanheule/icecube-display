@@ -129,7 +129,8 @@ void init_display_driver() {
 
 }
 
-static inline void wait_write_finish () {
+static inline void wait_write_finish() __attribute__((always_inline));
+static inline void wait_write_finish() {
   // Check transmission finished bit
 #if defined(CONTROLLER_ARDUINO)
   while ( !(SPSR & _BV(SPIF)) ) {}
@@ -138,6 +139,7 @@ static inline void wait_write_finish () {
 #endif
 }
 
+static inline void write_byte_no_block(const uint8_t byte) __attribute__((always_inline));
 static inline void write_byte_no_block(const uint8_t byte) {
 #if defined(CONTROLLER_ARDUINO)
   SPDR = byte;
@@ -146,6 +148,7 @@ static inline void write_byte_no_block(const uint8_t byte) {
 #endif
 }
 
+static inline void write_byte(const uint8_t byte) __attribute__((always_inline));
 static inline void write_byte(const uint8_t byte) {
   // Write next byte
   write_byte_no_block(byte);
@@ -164,6 +167,7 @@ static inline void write_byte(const uint8_t byte) {
  * * frame end: ceil(n/2) '1' bits, or ceil(n/2/8) 0xFF bytes
  */
 
+static inline void write_frame_header() __attribute__((always_inline));
 static inline void write_frame_header() {
   const uint8_t FRAME_HEADER = 0x00;
   for (uint8_t i = 0; i < 4; ++i) {
@@ -171,6 +175,7 @@ static inline void write_frame_header() {
   }
 }
 
+static inline void write_frame_footer() __attribute__((always_inline));
 static inline void write_frame_footer() {
   const uint8_t FRAME_FOOTER = 0xFF;
   for (uint8_t i = 0; i < led_count; i+=16) {
