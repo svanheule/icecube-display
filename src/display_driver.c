@@ -35,13 +35,21 @@ static const uint8_t LED_MAP_IT81[LED_COUNT_IT81] PROGMEM = {
 static uint8_t led_count;
 static const uint8_t* led_mapping_P;
 
-static uint8_t offset_c1;
-static uint8_t offset_c2;
-static uint8_t offset_c3;
+/* Pre-calculated differential offsets between LED color components.
+ * Since the LED chips might need the RGB data in a different order than the one that is stored
+ * in RAM, calculate and store the pointer differences in the required order.
+ * If an led_t object L is stored at address A, then L.red is stored at A+1, etc.
+ * The jump_c[1-3] variables store the differences between the transmitted RGB components.
+ * If the tranmission order is blue, green, red for example, jump_c[1-3] will be [3,-1,-1].
+ * This corresponds to reading the data at [A, A+3, A+2, A+1]
+ */
+static int8_t jump_c1;
+static int8_t jump_c2;
+static int8_t jump_c3;
 
-#define OFFSET_RED offsetof(struct led_t, red)
-#define OFFSET_GREEN offsetof(struct led_t, green)
-#define OFFSET_BLUE offsetof(struct led_t, blue)
+#define OFFSET_RED ((int8_t) offsetof(struct led_t, red))
+#define OFFSET_GREEN ((int8_t) offsetof(struct led_t, green))
+#define OFFSET_BLUE ((int8_t) offsetof(struct led_t, blue))
 
 void init_display_driver() {
 #if defined(CONTROLLER_ARDUINO)
@@ -96,34 +104,34 @@ void init_display_driver() {
 
   switch (color_order) {
     case LED_ORDER_BGR:
-      offset_c1 = OFFSET_BLUE;
-      offset_c2 = OFFSET_GREEN;
-      offset_c3 = OFFSET_RED;
+      jump_c1 = OFFSET_BLUE;
+      jump_c2 = OFFSET_GREEN-OFFSET_BLUE;
+      jump_c3 = OFFSET_RED-OFFSET_GREEN;
       break;
     case LED_ORDER_BRG:
-      offset_c1 = OFFSET_BLUE;
-      offset_c2 = OFFSET_RED;
-      offset_c3 = OFFSET_GREEN;
+      jump_c1 = OFFSET_BLUE;
+      jump_c2 = OFFSET_RED-OFFSET_GREEN;
+      jump_c3 = OFFSET_GREEN-OFFSET_RED;
       break;
     case LED_ORDER_GBR:
-      offset_c1 = OFFSET_GREEN;
-      offset_c2 = OFFSET_BLUE;
-      offset_c3 = OFFSET_RED;
+      jump_c1 = OFFSET_GREEN;
+      jump_c2 = OFFSET_BLUE-OFFSET_GREEN;
+      jump_c3 = OFFSET_RED-OFFSET_BLUE;
       break;
     case LED_ORDER_GRB:
-      offset_c1 = OFFSET_GREEN;
-      offset_c2 = OFFSET_RED;
-      offset_c3 = OFFSET_BLUE;
+      jump_c1 = OFFSET_GREEN;
+      jump_c2 = OFFSET_RED-OFFSET_GREEN;
+      jump_c3 = OFFSET_BLUE-OFFSET_RED;
       break;
     case LED_ORDER_RBG:
-      offset_c1 = OFFSET_RED;
-      offset_c2 = OFFSET_BLUE;
-      offset_c3 = OFFSET_GREEN;
+      jump_c1 = OFFSET_RED;
+      jump_c2 = OFFSET_BLUE-OFFSET_RED;
+      jump_c3 = OFFSET_GREEN-OFFSET_BLUE;
       break;
     case LED_ORDER_RGB:
-      offset_c1 = OFFSET_RED;
-      offset_c2 = OFFSET_GREEN;
-      offset_c3 = OFFSET_BLUE;
+      jump_c1 = OFFSET_RED;
+      jump_c2 = OFFSET_GREEN-OFFSET_RED;
+      jump_c3 = OFFSET_BLUE-OFFSET_GREEN;
       break;
   }
 
@@ -188,19 +196,25 @@ const uint8_t LED_HEADER = 0xE0;
 void display_frame(struct frame_buffer_t* frame) {
   frame->flags |= FRAME_DRAW_IN_PROGRESS;
 
+  // Transmit LED data
   const uint8_t* leds = (const uint8_t*) frame->buffer;
+  const uint8_t* led_P = led_mapping_P;
+  const uint8_t* led_end_P = led_mapping_P + led_count;
 
   // Start of frame
   write_frame_header();
 
-  // LED data
-  uint16_t index;
-  for (uint8_t station = 0; station < led_count; ++station) {
-    index = 4*pgm_read_byte(&led_mapping_P[station]);
-    write_byte(LED_HEADER | leds[index]);
-    write_byte(leds[index+offset_c1]);
-    write_byte(leds[index+offset_c2]);
-    write_byte(leds[index+offset_c3]);
+  while (led_P != led_end_P) {
+    // Calculate initial buffer position
+    const uint8_t* led_data = leds + sizeof(struct led_t)*pgm_read_byte(led_P++);
+    write_byte(LED_HEADER | *led_data);
+    // Jump to first, second, and third transmitted component
+    led_data += jump_c1;
+    write_byte(*led_data);
+    led_data += jump_c2;
+    write_byte(*led_data);
+    led_data += jump_c3;
+    write_byte(*led_data);
   }
 
   // End of frame
