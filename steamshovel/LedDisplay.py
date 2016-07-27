@@ -1,23 +1,15 @@
-import logging
-import time
+# Author: Sander Vanheule (Universiteit Gent) <sander.vanheule@ugent.be>
+# Steamshovel module used to render and display IceCube data to an LED display connected via USB
 
 # Initialise logging
-_log = logging.getLogger("shovelart.leddisplay")
-_log.setLevel(logging.INFO)
-_log_handler = logging.FileHandler("/tmp/shovelart-leddisplay.log", mode='w')
-_log_handler.setLevel(logging.INFO)
-_log_format = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-_log_handler.setFormatter(_log_format)
-_log.addHandler(_log_handler)
-
-_log.info("leddisplay loaded")
+from icecube.icetray import logging
 
 try:
   # libusb1 support
   from usb1 import USBContext, ENDPOINT_IN, ENDPOINT_OUT, TYPE_VENDOR, RECIPIENT_INTERFACE
 except:
   USBContext = None
-  _log.error("Failed to import python-libusb1")
+  logging.log_error("Failed to import python-libusb1", "LedDisplay")
 
 from icecube.shovelart import PyArtist
 from icecube.shovelart import RangeSetting, ChoiceSetting, I3TimeColorMap
@@ -146,6 +138,7 @@ class UsbDisplayProperties(object):
     def __init__(self, usb_device):
         self.usb_device = usb_device
         self.info_type = None
+        self.info_ranges = list()
         self.led_class = None
         self._strings = list()
         self._string_index = dict()
@@ -159,6 +152,7 @@ class UsbDisplayProperties(object):
     def addInformationRange(self, start, end):
         # Python ranges are endpoint-exclusive: [start, end)
         # Ours are endpoint-inclusive: [start,end]
+        self.info_ranges.append((start,end))
         self._strings = merge_lists(self._strings, range(start, end+1))
         self._string_index = {string: index for (index, string) in enumerate(self._strings)}
 
@@ -227,15 +221,15 @@ class DisplayConnection(object):
         if not self._usb_handle and device:
             bus = device.getBusNumber()
             address = device.getDeviceAddress()
+            dev_name = "[usb:{:03d}-{:03d}]".format(bus, address)
             try:
                 self._usb_handle = device.open()
                 self._usb_handle.claimInterface(0)
-                _log.info("Opened device [usb:{:03d}-{:03d}]".format(bus, address))
+                logging.log_debug("Opened device {}".format(dev_name), "LedDisplay")
             except Exception as e:
-                print(e)
                 self.close() # Useful call?
                 self._usb_handle = None
-                _log.warning("Could not open device [usb:{:03d}-{:03d}]".format(bus, address))
+                logging.log_warning("Could not open device {}".format(dev_name), "LedDisplay")
         # Return if connection was succesful
         return self._usb_handle is not None
 
@@ -248,7 +242,7 @@ class DisplayConnection(object):
                 pass
             finally:
                 self._usb_handle = None
-                _log.info("Released USB display interface")
+                logging.log_debug("Released USB display interface", "LedDisplay")
 
     @classmethod
     def queryDevice(cls, device):
@@ -295,12 +289,27 @@ class LedDisplay(PyArtist):
         device_descriptions = []
         if len(self._usb_displays) > 0:
             for display in self._usb_displays:
-                bus = display.usb_device.getBusNumber()
-                address = display.usb_device.getDeviceAddress()
-                product = display.usb_device.getProduct()
-                description = "[usb:{:03d}-{:03d}] {}".format(bus, address, product)
+                # Collect device info
+                info = {
+                      "bus": display.usb_device.getBusNumber()
+                    , "address": display.usb_device.getDeviceAddress()
+                    , "product": display.usb_device.getProduct()
+                    , "serial": display.usb_device.getSerialNumber()
+                    , "range_type": "ranges"
+                    , "ranges": ", ".join(["{}-{}".format(s,e) for (s,e) in display.info_ranges])
+                }
+                if display.info_type == UsbDisplayProperties.INFO_TYPE_IC_STRING:
+                    info["range_type"] = "strings"
+                elif display.info_type == UsbDisplayProperties.INFO_TYPE_IT_STATION:
+                    info["range_type"] = "stations"
+                # Log device
+                logging.log_info(
+                     "Found [usb:{bus:03d}-{address:03d}] {product} for {range_type} {ranges} (SN: {serial})".format(**info)
+                   , "LedDisplay"
+                )
+                # Add to list of descriptors
+                description = "{product} ({range_type} {ranges})".format(**info)
                 device_descriptions.append(description)
-                _log.debug("Added device {}".format(description))
         else:
             self._usb_displays.append(None)
             device_descriptions.append("no devices detected")
@@ -325,8 +334,8 @@ class LedDisplay(PyArtist):
             self._current_display = None
 
     def _cleanupDisplay(self):
-        _log.info("Clearing display")
         if self._connection.isConnected():
+            logging.log_debug("Clearing display", "LedDisplay")
             # Blank display and release USB device interface
             self._connection.writeFrame(bytes(bytearray(self._current_display.getFrameSize())))
             self._connection.close()
@@ -336,7 +345,10 @@ class LedDisplay(PyArtist):
 
     def isValidKey(self, frame, key_idx, key):
         key_type = frame.type_name(key)
-        _log.debug("key '{}' of type '{}' offered for key index {}".format(key, key_type, key_idx))
+        logging.log_trace(
+            "key '{}' of type '{}' offered for key index {}".format(key, key_type, key_idx)
+          , "LedDisplay"
+        )
         if key_idx == 0:
             # Key may be any container of OMKeys or a mask
             # copied from Bubbles.py
@@ -358,7 +370,10 @@ class LedDisplay(PyArtist):
         led_pulses = {}
 
         for omkey, pulses in omkey_pulses_map:
-            _log.debug("Data available for DOM {}-{}".format(omkey.string, omkey.om))
+            logging.log_trace(
+                "Data available for DOM {}-{}".format(omkey.string, omkey.om)
+              , "LedDisplay"
+            )
             if self._current_display.canDisplayOMKey(omkey):
                 led = self._current_display.getLedIndex(omkey)
                 # Ensure we're dealing with a list of pulses
@@ -466,7 +481,10 @@ class LedDisplay(PyArtist):
         led_curves = {}
 
         for omkey in omkey_list:
-            _log.debug("Data available for DOM {}-{}".format(omkey.string, omkey.om))
+            logging.log_trace(
+                "Data available for DOM {}-{}".format(omkey.string, omkey.om)
+              , "LedDisplay"
+            )
             if self._current_display.canDisplayOMKey(omkey):
                 led = self._current_display.getLedIndex(omkey)
                 if led not in led_curves:
