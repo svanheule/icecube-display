@@ -1,5 +1,8 @@
+# -*- coding: utf-8 -*-
 # Author: Sander Vanheule (Universiteit Gent) <sander.vanheule@ugent.be>
 # Steamshovel module used to render and display IceCube data to an LED display connected via USB
+
+__all__ = ["LedDisplay"]
 
 # Initialise logging
 from icecube.icetray import logging
@@ -18,6 +21,7 @@ from icecube.dataclasses import I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUn
 import struct
 
 def merge_lists(left, right, key=lambda x: x):
+    "Merge two already sorted lists into a single sorted list."
     merged = []
 
     # Pick smallest from top while both lists have items
@@ -41,8 +45,14 @@ def merge_lists(left, right, key=lambda x: x):
     return merged
 
 
-class StationLed(object):
+class DisplayLed(object):
+    "Class representing the color of an RGB LED with time dependent color and brightness."
+
     def __init__(self, brightness, color):
+        """Create a new DisplayLed object with given `brightness` and `color` values.
+        Both arguments may either be a function taking a single argument (time), or a static value.
+        :param brightness: Float in range [0,1] or a function that returns such a value.
+        :param color: PyQColor or a function that returns such a value."""
         if not hasattr(brightness, "__call__"):
             self._brightness = (lambda time : brightness)
         else:
@@ -55,38 +65,42 @@ class StationLed(object):
 
     @classmethod
     def float_to_led_data(cls, rgb):
+        "Convert a 3-tuple of floats to the binary RGB format required by the supported LED."
         raise NotImplementedError
 
     def getValue(self, time):
+        "Return a list of bytes containing the data provided to the LED."
         brightness = min(1.0, self._brightness(time)) # Clip brightness
         color = self._color(time)
         alpha = float(color.alpha)/255
         value = [comp*brightness*alpha for comp in color.rgbF()]
         return self.float_to_led_data(value)
 
-class LedAPA102(StationLed):
+class LedAPA102(DisplayLed):
+    "APA102 data format: 5b global brightness, 3×8b RGB (4 bytes total)"
     DATA_LENGTH = 4
     MAX_BRIGHTNESS = 2**5-1
 
     @classmethod
     def float_to_led_data(cls, rgb):
-        "APA102 data format: 5b global brightness, 3*8b RGB"
         # Factor out brightness from colour
         brightness = max(1./cls.MAX_BRIGHTNESS, max(rgb))
         scaling = brightness / cls.MAX_BRIGHTNESS
         rgb = [int(round(255 * (c**2.2)/brightness)) for c in rgb]
         return [int(round(brightness*cls.MAX_BRIGHTNESS)), rgb[0], rgb[1], rgb[2]]
 
-class LedWS2811(StationLed):
+class LedWS2811(DisplayLed):
+    "WS2811/WS2812 data format: 3×8b RGB"
     DATA_LENGTH = 3
 
     @classmethod
     def float_to_led_data(cls, rgb):
-        "WS2811/WS2812 data format: 3*8b RGB"
         return [int(round(255 * (c**2.2))) for c in rgb]
 
 
-class TlvParser():
+class TlvParser(object):
+    """Parser to interpret binary TLV data provided by a USB display's properties report.
+    TLV data consists of a series of (1 type byte, 1 length byte (value N), and N data bytes)."""
     # TLV types
     DP_INFORMATION_TYPE = 1
     DP_INFORMATION_RANGE = 2
@@ -94,6 +108,8 @@ class TlvParser():
 
     @staticmethod
     def _tokenizeData(data):
+        """This function accepts a byte buffer and returns a list of bytearray objects, each item
+        in the list containing one TLV field."""
         tokens = []
 
         i = 0
@@ -112,6 +128,8 @@ class TlvParser():
 
     @classmethod
     def _parseTokens(cls, display_properties, token_list):
+        """Takes a list of TLV fields (`token_list`) and stores the interpreted data in the
+        `display_properties` object."""
         for token in token_list:
             t, l, v = token
             if t == cls.DP_INFORMATION_TYPE and l == 1:
@@ -123,10 +141,13 @@ class TlvParser():
 
     @classmethod
     def parseData(cls, display_properties, data):
+        """Take a binary display properties report and store the contained information in
+        `display_properties."""
         return cls._parseTokens(display_properties, cls._tokenizeData(data))
 
 
 class UsbDisplayProperties(object):
+    "Object with USB display properties and some auxiliary functions."
     # Information types
     INFO_TYPE_IT_STATION = 0
     INFO_TYPE_IC_STRING = 1
@@ -144,12 +165,16 @@ class UsbDisplayProperties(object):
         self._string_index = dict()
 
     def setLedType(self, led_type):
+        """Set the display's LED type. UsbDisplayProperties will be set to contain the
+        corresponding DisplayLed class."""
         if led_type == self.LED_TYPE_APA102:
             self.led_class = LedAPA102
         elif led_type == self.LED_TYPE_WS2811:
             self.led_class = LedWS2811
 
     def addInformationRange(self, start, end):
+        """Add a range to the currently supported information ranges.
+        `start` and `end` are inclusive."""
         # Python ranges are endpoint-exclusive: [start, end)
         # Ours are endpoint-inclusive: [start,end]
         self.info_ranges.append((start,end))
@@ -157,6 +182,8 @@ class UsbDisplayProperties(object):
         self._string_index = {string: index for (index, string) in enumerate(self._strings)}
 
     def canDisplayOMKey(self, om_key):
+        """Check wether the display can display a certain DOM. Requires UsbDisplayProperties to be
+        set to a valid value. Otherwise this function will always return False."""
         valid_dom = False
         if self.info_type == self.INFO_TYPE_IC_STRING:
             valid_dom = (om_key.om >= 1) and (om_key.om <= 60)
@@ -165,6 +192,7 @@ class UsbDisplayProperties(object):
         return valid_dom and (om_key.string in self._strings)
 
     def getFrameSize(self):
+        "Return the size of a display frame in bytes."
         strings = len(self._strings)
         bytes_per_led = self.led_class.DATA_LENGTH
         if self.info_type == self.INFO_TYPE_IC_STRING:
@@ -175,11 +203,9 @@ class UsbDisplayProperties(object):
             return 0
 
     def getLedIndex(self, om_key):
-        """
-        Only provide om_key values for which canDisplayOMKey() returns True.
+        """Only provide om_key values for which canDisplayOMKey() returns True.
         Returns the buffer offset, modulo the LED data size.
-        The first LED is at offset 0, second at offset 1, etc.
-        """
+        The first LED is at offset 0, second at offset 1, etc."""
         offset = self._string_index[om_key.string]
         if self.info_type == self.INFO_TYPE_IC_STRING:
             dom_offset = om_key.om - 1
@@ -188,6 +214,8 @@ class UsbDisplayProperties(object):
 
 
 class DisplayConnection(object):
+    "Handle USB connection to display"
+
     # USB control transfers
     REQUEST_SEND_FRAME = 1
     REQUEST_DISPLAY_PROPERTIES = 2
@@ -202,10 +230,12 @@ class DisplayConnection(object):
         self._led_class = None
 
     def isConnected(self):
+        "Check if there is an active connection."
         return self._usb_handle is not None
 
     @classmethod
     def enumerateDevices(cls):
+        "Get a list of available devices. Returns a list of `usb1.Device` objects."
         usb_devices = []
         if USBContext:
             usb_context = USBContext()
@@ -216,6 +246,8 @@ class DisplayConnection(object):
         return usb_devices
 
     def connectDevice(self, device):
+        """Try to connect to a USB device.
+        :param usb1.USBDevice device: Device to connect with."""
         # Release current device before attempting new connection
         self.close()
         if not self._usb_handle and device:
@@ -234,6 +266,7 @@ class DisplayConnection(object):
         return self._usb_handle is not None
 
     def close(self):
+        "Close current USB connection, if any."
         if self._usb_handle:
             try:
                 self._usb_handle.releaseInterface(0)
@@ -246,6 +279,10 @@ class DisplayConnection(object):
 
     @classmethod
     def queryDevice(cls, device):
+        """Get display properties from the given device.
+        :param usb1.USBDevice device: Device to interrogate.
+        :return: A DisplayProperties object or None if device was not available.
+        """
         properties = None
         handle = device.open()
         if handle:
@@ -261,6 +298,8 @@ class DisplayConnection(object):
         return properties
 
     def writeFrame(self, frame):
+        """Write a full frame to the device using a control request.
+        :param bytes frame: Frame data to be displayed."""
         if self._usb_handle:
             VENDOR_OUT = ENDPOINT_OUT | TYPE_VENDOR | RECIPIENT_INTERFACE
             self._usb_handle.controlWrite(VENDOR_OUT, self.REQUEST_SEND_FRAME, 0, 0, frame)
@@ -359,6 +398,8 @@ class LedDisplay(PyArtist):
             return False
 
     def _handleOMKeyMapTimed(self, output, omkey_pulses_map):
+        """Parse a map of OMKey to pulse series.
+        :returns: A dict of LED buffer offsets to LedDisplay objects."""
         color_map = self.setting(self._SETTING_COLOR)
 
         if self.setting(self._SETTING_INFINITE_DURATION):
@@ -474,6 +515,8 @@ class LedDisplay(PyArtist):
         return led_curves
 
     def _handleOMKeyListStatic(self, output, omkey_list):
+        """Parse a map of OMKey to static values.
+        :returns: A dict of LED buffer offsets to LedDisplay objects."""
         color_static = self.setting(self._SETTING_COLOR_STATIC)
         brightness_static = self.setting(self._SETTING_BRIGHTNESS_STATIC)
         display = self._current_display
@@ -526,15 +569,15 @@ class LedDisplay(PyArtist):
             output.addPhantom(self._cleanupEvent, self._updateEvent)
 
     def _updateEvent(self, event_time):
-        data_length = self._current_display.led_class.DATA_LENGTH
-        frame = bytearray(self._current_display.getFrameSize())
-
-        for led in self._leds:
-            led_value = self._leds[led].getValue(event_time)
-            frame[led*data_length:(led+1)*data_length] = led_value
-
         if self._connection.isConnected():
+            data_length = self._current_display.led_class.DATA_LENGTH
+            frame = bytearray(self._current_display.getFrameSize())
+
+            for led in self._leds:
+                led_value = self._leds[led].getValue(event_time)
+                frame[led*data_length:(led+1)*data_length] = led_value
+
             self._connection.writeFrame(bytes(frame))
 
     def _cleanupEvent(self):
-        pass
+        self._leds = {}
