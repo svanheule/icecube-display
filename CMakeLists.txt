@@ -1,7 +1,12 @@
 # Cross-compiling can only be done with v2.6 or later
 # Used generator expressions require v3.0
-cmake_minimum_required(VERSION 3.0)
+# CMake policy 0065 (disable -rdynamic) requires v3.4
+cmake_minimum_required(VERSION 3.4)
 project(POCKET_ICETOP)
+
+if(POLICY CMP0065)
+  cmake_policy(SET CMP0065 NEW)
+endif()
 
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR avr)
@@ -18,10 +23,6 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 # For libraries and headers in the target directories:
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
-
-# Workaround so --export_dynamic isn't passed to linker
-set(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS "")
-set(CMAKE_SHARED_LIBRARY_LINK_CXX_FLAGS "")
 
 option(ARDUINO "Build image for Arduino development hardware" OFF)
 option(FUSES "Enable setting of fuses and lock bits (advanced feature, may brick your device)" OFF)
