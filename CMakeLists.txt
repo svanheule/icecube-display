@@ -87,6 +87,7 @@ set(SOURCES
   src/display_properties.c
   src/frame_buffer.c
   src/frame_queue.c
+  src/frame_timer.c
   src/render/boot_splash.c
   src/render/test.c
   src/render/demo.c
