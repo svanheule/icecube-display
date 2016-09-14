@@ -1,6 +1,5 @@
 #include "usb/device.h"
 #include "usb/led.h"
-#include <avr/io.h>
 
 // USB device state machine
 static enum usb_device_state_t device_state;
