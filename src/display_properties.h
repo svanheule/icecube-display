@@ -126,7 +126,7 @@ void init_display_properties();
   * \return The number of LEDs present in the display, or 0 if init_display_properties() has not
   *   been called yet.
   */
-uint8_t get_led_count();
+uint16_t get_led_count();
 
 /// The order in which the RGB data should be transmitted per LED.
 enum display_led_color_order_t get_color_order();
