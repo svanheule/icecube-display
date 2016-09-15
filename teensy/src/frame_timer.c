@@ -1,4 +1,5 @@
-#include <kinetis.h>
+#include "kinetis/io.h"
+#include "kinetis/pit.h"
 #include "frame_timer.h"
 
 // TODO Potentially merge this file with `avr/scr/frame_timer.c` 
@@ -10,27 +11,25 @@ static void (*callback)();
 
 void init_frame_timer(void (*timer_callback)()) {
   // Unfreeze PIT module
-  SIM_SCGC6 |= _BV(23); // enable PIT module clock
-  PIT_MCR = _BV(1);  //disable PIT module *after* enabling PIT module clock
-
-  PIT_TFLG0 = 1; // write 1 to clear possible pending interrupt
-
-  PIT_LDVAL0 = F_BUS/FPS - 1; // F_BUS = 48M if F_CPU = 48M
-  PIT_TCTRL0 = _BV(1); // enable timer interrupts
-  PIT_TCTRL0 = _BV(1)|_BV(0); // ... and enable timer
+  enable_pit_module();
 
   callback = timer_callback;
 
+  // Disable channel and clear pending interrupts
+  pit_channels[0].TCTRL = 0;
+  pit_channels[0].TFLG = 1; // write 1 to clear possible pending interrupt
+
   // Enable NVIC IRQ
-  NVIC_SET_PRIORITY(IRQ_PIT_CH0, 128);
   NVIC_ENABLE_IRQ(IRQ_PIT_CH0);
 
-  PIT_MCR = 0; // enable PIT module
+  pit_channels[0].LDVAL = F_BUS/FPS - 1; // F_BUS = 48M if F_CPU = 48M
+  pit_channels[0].TCTRL = _BV(1); // enable timer interrupts
+  pit_channels[0].TCTRL = _BV(1)|_BV(0); // ... and enable timer
 }
 
 // ISR must be visible to other modules, so don't declare this static
 void pit0_isr() {
-  PIT_TFLG0 = 1;
+  pit_channels[0].TFLG = 1;
   if (callback) {
     callback();
   }
