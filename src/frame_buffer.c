@@ -1,6 +1,7 @@
 #include "frame_buffer.h"
 #include <util/atomic.h>
 #include <stdlib.h>
+#include <string.h>
 
 // List of statically allocated frame buffers
 #define BUFFER_LIST_LENGTH 3
@@ -70,12 +71,7 @@ void destroy_frame(struct frame_buffer_t* frame) {
 // Commom frame operations
 void clear_frame(struct frame_buffer_t* frame_ptr) {
   if (frame_ptr) {
-    struct led_t* write_ptr = frame_ptr->buffer;
-    struct led_t* frame_end = write_ptr + get_led_count();
-
-    while (write_ptr != frame_end) {
-      *(write_ptr++) = (struct led_t) {0, 0, 0, 0};
-    }
+    memset(frame_ptr->buffer, 0, get_display_buffer_size());
   }
 }
 
