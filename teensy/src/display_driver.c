@@ -1,125 +1,54 @@
 #include <stdint.h>
+#include <stdbool.h>
+#include "kinetis/io.h"
+#include "kinetis/ftm.h"
+#include "kinetis/dma.h"
 
-#include <kinetis.h>
-#include "core_cm4.h"
+#include "display_driver.h"
+#include "display_properties.h"
 
-#define DMAMEM __attribute__ ((section(".dmabuffers"), used))
+#include "usb/led.h"
 
-// TODO Define in CMake/makefile
-#define F_LED 800000
-
-struct transfer_control_descriptor_t {
-  const volatile void* SADDR;
-  int16_t SOFF;
-  union {
-    uint16_t ATTR;
-    struct {
-      uint8_t ATTR_DST;
-      uint8_t ATTR_SRC;
-    };
-  };
-  union {
-    uint32_t NBYTES;
-    uint32_t NBYTES_MLNO;
-    uint32_t NBYTES_MLOFFNO;
-    uint32_t NBYTES_MLOFFYES;
-  };
-  int32_t SLAST;
-  volatile void* DADDR;
-  int16_t DOFF;
-  union {
-    uint16_t CITER;
-    uint16_t CITER_ELINKYES;
-    uint16_t CITER_ELINKNO;
-  };
-  int32_t DLASTSGA;
-  uint16_t CSR;
-  union {
-    uint16_t BITER;
-    uint16_t BITER_ELINKYES;
-    uint16_t BITER_ELINKNO;
-  };
-} __attribute__((packed));
-
-static volatile struct transfer_control_descriptor_t* const transfer_control_descriptor =
-    (volatile struct transfer_control_descriptor_t* const) 0x40009000;
-
-static void clear_channel_tcd(const uint8_t channel) {
-  transfer_control_descriptor[channel] = (struct transfer_control_descriptor_t) {
-    .SADDR=0,
-    .SOFF=0,
-    .ATTR=0,
-    .NBYTES=0,
-    .SLAST=0,
-    .DADDR=0,
-    .DOFF=0,
-    .CITER=0,
-    .DLASTSGA=0,
-    .CSR=0,
-    .BITER=0
-  };
-}
-
-struct ftm_channel_config_t {
-  uint32_t SC;
-  uint32_t VAL;
-} __attribute__((packed));
-
-struct ftm_config_t {
-  uint32_t SC;
-  uint32_t CNT;
-  uint32_t MOD;
-  struct ftm_channel_config_t channels[8];
-  uint32_t CNTIN;
-  uint32_t STATUS;
-  uint32_t MODE;
-  uint32_t SYNC;
-  uint32_t OUTINIT;
-  uint32_t OUTMASK;
-  uint32_t COMBINE;
-  uint32_t DEADTIME;
-  uint32_t EXTTRIG;
-  uint32_t POL;
-  uint32_t FMS;
-  uint32_t FILTER;
-  uint32_t FLTCTRL;
-  uint32_t QDCTRL;
-  uint32_t CONF;
-  uint32_t FLTPOL;
-  uint32_t SYNCONF;
-  uint32_t INVCTRL;
-  uint32_t SWOCTRL;
-  uint32_t PWMLOAD;
-} __attribute__((packed));
-
-static volatile struct ftm_config_t* const ftm_config = (volatile struct ftm_config_t*) 0x400B8000;
-
+// Buffer dimensions
 #define STRING_LENGTH 60
-#define MAX_PORT_COUNT 8
 #define SEGMENT_COUNT 4
+#define STRIP_LENGTH (STRING_LENGTH*SEGMENT_COUNT)
+
+#define MAX_PORT_COUNT 8
 
 #define BUFFER_STEP sizeof(struct led_t)
-#define STRIP_LENGTH (sizeof(struct led_t)*STRING_LENGTH)
+#define BUFFER_SIZE (MAX_PORT_COUNT*STRIP_LENGTH*sizeof(struct led_t))
 
-static uint8_t led_data[STRIP_LENGTH*(3*8)] DMAMEM;
-static const uint32_t len = sizeof(led_data);
+// Color order
+#define OFFSET_RED ((ptrdiff_t) offsetof(struct led_t, red))
+#define OFFSET_GREEN ((ptrdiff_t) offsetof(struct led_t, green))
+#define OFFSET_BLUE ((ptrdiff_t) offsetof(struct led_t, blue))
 
+static ptrdiff_t color_offset_initial;
+static ptrdiff_t delta_0;
+static ptrdiff_t delta_1;
+
+// DMA sources
+static uint8_t led_data[BUFFER_SIZE] DMAMEM;
 static uint8_t ones = 0xFF;
+
+// Defaoult FTM channel configuration
+static const uint32_t ftm_channel_output = _BV(5)|_BV(3);
 
 // OctoWS2811 init_display_driver
 void init_display_driver() {
   /** Based on OctoWS2811 code **/
 
-  // Initialise output port
-  SIM_SCGC5 |= _BV(12); // Enable port D clock
+  // Initialise data output port
+  ATOMIC_REGISTER_BIT_SET(SIM_SCGC5, 12); // Enable port D clock
+  PORTD_GPCLR = (0xFFFF<<16) | (1<<8); // Select ALT1 (GPIO) mode for all pins
+  PORTD_GPCHR = (0xFFFF<<16); // Disable all interrupts on port D
   GPIOD_PDDR = 0xFF; // Set all port pins as output
-  PORTD_GPCHR = (0xFF<<16); // Disable all interrupts on port D
-  PORTD_GPCLR = (0xFF<<16) | (1<<8); // Select ALT1 (GPIO) mode for all pins
   GPIOD_PCOR = 0xFF; // Clear all pin outputs
 
   // Initialise DMA
-  SIM_SCGC6 |= _BV(1); // SIM_SCGC6(1) DMA mux module
-  SIM_SCGC7 |= _BV(1); // SIM_SCGC7(1) DMA module
+  ATOMIC_REGISTER_BIT_SET(SIM_SCGC6, 1); // SIM_SCGC6(1) DMA mux module
+  ATOMIC_REGISTER_BIT_SET(SIM_SCGC7, 1); // SIM_SCGC7(1) DMA module
 
   DMA_CR = _BV(7);
   DMA_ERQ = 0;
@@ -129,49 +58,51 @@ void init_display_driver() {
   clear_channel_tcd(2);
 
   // Set all outputs high at start of pulse
-  transfer_control_descriptor[0].CSR = _BV(3);
-  transfer_control_descriptor[0].SADDR = &ones;
-  transfer_control_descriptor[0].DADDR = &GPIOD_PSOR;
-  transfer_control_descriptor[0].NBYTES = 1;
-  transfer_control_descriptor[0].BITER = len;
-  transfer_control_descriptor[0].CITER = len;
+  dma_tcd_list[0].CSR = _BV(3);
+  dma_tcd_list[0].SADDR = &ones;
+  dma_tcd_list[0].DADDR = &GPIOD_PSOR;
+  dma_tcd_list[0].NBYTES = 1;
+  dma_tcd_list[0].BITER = BUFFER_SIZE;
+  dma_tcd_list[0].CITER = BUFFER_SIZE;
 
   // Write bit values after time_0_high
   // SADDR, SOFF, SLAST and DADDR are set when initiating a frame write
-  transfer_control_descriptor[1].CSR = _BV(3);
-  transfer_control_descriptor[1].NBYTES = 1;
-  transfer_control_descriptor[1].BITER = len;
-  transfer_control_descriptor[1].CITER = len;
+  dma_tcd_list[1].CSR = _BV(3);
+  dma_tcd_list[1].NBYTES = 1;
+  dma_tcd_list[1].BITER = BUFFER_SIZE;
+  dma_tcd_list[1].CITER = BUFFER_SIZE;
 
   // Set all outputs low after time_1_high
-  transfer_control_descriptor[2].CSR = _BV(3) | _BV(1);
-  transfer_control_descriptor[2].SADDR = &ones;
-  transfer_control_descriptor[2].DADDR = &GPIOD_PCOR;
-  transfer_control_descriptor[2].NBYTES = 1;
-  transfer_control_descriptor[2].BITER = len;
-  transfer_control_descriptor[2].CITER = len;
+  dma_tcd_list[2].CSR = _BV(3) | _BV(1);
+  dma_tcd_list[2].SADDR = &ones;
+  dma_tcd_list[2].DADDR = &GPIOD_PCOR;
+  dma_tcd_list[2].NBYTES = 1;
+  dma_tcd_list[2].BITER = BUFFER_SIZE;
+  dma_tcd_list[2].CITER = BUFFER_SIZE;
 
   // Disable used DMA channels
   DMAMUX0_CHCFG0 = 0;
   DMAMUX0_CHCFG2 = 0;
   DMAMUX0_CHCFG1 = 0;
 
-  SIM_SCGC3 |= _BV(24); // SIM_SCGC3(24) for FTM2
+  ATOMIC_REGISTER_BIT_SET(SIM_SCGC3, 24); // SIM_SCGC3(24) for FTM2
 
   const uint16_t counter_total = (F_BUS / F_LED);
   const uint16_t count_0_high = 0.4/1.25*(F_BUS/F_LED);
   const uint16_t count_1_high = 0.8/1.25*(F_BUS/F_LED);
 
-  ftm_config->SC = 0;
-  ftm_config->MOD = counter_total-1;
+  ftm2_config->SC = 0;
+  ftm2_config->MOD = counter_total-1;
 
-  ftm_config->channels[0].SC = 0;
-  ftm_config->channels[1].SC = 0;
+  ftm2_config->channels[0].SC = ftm_channel_output;
+  ftm2_config->channels[1].SC = ftm_channel_output;
 
-  ftm_config->channels[0].VAL = count_0_high-1;
-  ftm_config->channels[1].VAL = count_1_high-1;
+  ftm2_config->channels[0].VAL = count_0_high-1;
+  ftm2_config->channels[1].VAL = count_1_high-1;
 
   // Configure port B(18) as FTM2_CH0 output to be able to trigger a DMA request on its rising edge
+  ATOMIC_REGISTER_BIT_SET(SIM_SCGC5, 10);
+  PORTD_GPCHR = (0xF<<16); // Disable all interrupts on port B
   PORTB_PCR18 = (1<<16) | (3<<8);
 
   // Enable DMA channels
@@ -179,14 +110,47 @@ void init_display_driver() {
   DMAMUX0_CHCFG1 = 34 | _BV(7); // Ch 34 = FTM2_CH0
   DMAMUX0_CHCFG2 = 35 | _BV(7); // Ch 34 = FTM2_CH1
 
-  // TODO Read color order and determine pointer differences
+  // Read color order and determine pointer differences
+  switch (get_color_order()) {
+    case LED_ORDER_BGR:
+      color_offset_initial = OFFSET_BLUE;
+      delta_0 = OFFSET_GREEN-OFFSET_BLUE;
+      delta_1 = OFFSET_RED-OFFSET_GREEN;
+      break;
+    case LED_ORDER_BRG:
+      color_offset_initial = OFFSET_BLUE;
+      delta_0 = OFFSET_RED-OFFSET_GREEN;
+      delta_1 = OFFSET_GREEN-OFFSET_RED;
+      break;
+    case LED_ORDER_GBR:
+      color_offset_initial = OFFSET_GREEN;
+      delta_0 = OFFSET_BLUE-OFFSET_GREEN;
+      delta_1 = OFFSET_RED-OFFSET_BLUE;
+      break;
+    case LED_ORDER_GRB:
+      color_offset_initial = OFFSET_GREEN;
+      delta_0 = OFFSET_RED-OFFSET_GREEN;
+      delta_1 = OFFSET_BLUE-OFFSET_RED;
+      break;
+    case LED_ORDER_RBG:
+      color_offset_initial = OFFSET_RED;
+      delta_0 = OFFSET_BLUE-OFFSET_RED;
+      delta_1 = OFFSET_GREEN-OFFSET_BLUE;
+      break;
+    case LED_ORDER_RGB:
+    default:
+      color_offset_initial = OFFSET_RED;
+      delta_0 = OFFSET_GREEN-OFFSET_RED;
+      delta_1 = OFFSET_BLUE-OFFSET_GREEN;
+      break;
+  }
 }
 
 void dma_ch2_isr() {
   // Clear the interrupt
   DMA_CINT = 2;
   // Halt the FTM clock and disable this IRQ
-  ftm_config->SC = 0;
+  ftm2_config->SC = 0;
   NVIC_DISABLE_IRQ(IRQ_DMA_CH2);
 
   // Set the outputs low if for whatever reason they aren't already.
@@ -197,8 +161,8 @@ void dma_ch2_isr() {
 
 static void start_dma_transfer() {
   // Disable clock and clear counter
-  ftm_config->SC = 0;
-  ftm_config->CNT = 0;
+  ftm2_config->SC = 0;
+  ftm2_config->CNT = 0;
 
   // Disable DMA channels and clear pending interrupts
   DMA_ERQ = 0;
@@ -206,20 +170,20 @@ static void start_dma_transfer() {
 
   // Interrupt enable, Edge-aligned PWM w/ clear output on match
   const uint32_t ftm_channel_dma_requests = _BV(6)|_BV(0);
-  const uint32_t ftm_channel_output = _BV(5)|_BV(3);
-  const uint32_t ftm_channel_interrupt_mask = _BV(7);
+  const uint32_t ftm_channel_interrupt_mask = _BV(7)|_BV(6);
 
   // Disable DMA request interrupts
-  ftm_config->channels[0].SC = ftm_channel_output;
-  ftm_config->channels[1].SC = ftm_channel_output;
+  ftm2_config->channels[0].SC = ftm_channel_output;
+  ftm2_config->channels[1].SC = ftm_channel_output;
 
   // Set FTM outputs to initial value (0's)
-  ftm_config->MODE |= _BV(1);
+  ATOMIC_REGISTER_BIT_SET(ftm2_config->MODE, 1);
 
   // Clear possible pending DMA requests to make sure they happen in the right order
   for (unsigned i = 0; i < 2; ++i) {
-    ftm_config->channels[i].SC &= ~ftm_channel_interrupt_mask;
-    ftm_config->channels[i].SC = ftm_channel_output | fmt_channel_dma_requests;
+    // Clear interrupt flag with read-modify-write cycle
+    ftm2_config->channels[i].SC &= ~ftm_channel_interrupt_mask;
+    ftm2_config->channels[i].SC = ftm_channel_output | ftm_channel_dma_requests;
   }
   PORTB_ISFR = _BV(18);
 
@@ -228,7 +192,8 @@ static void start_dma_transfer() {
   DMA_ERQ = _BV(2) | _BV(1) | _BV(0);
 
   // Start transfer by selecting FTM clock
-  ftm_config->SC = (1<<3);
+  ftm2_config->SC = (1<<3);
+
 }
 
 
@@ -247,12 +212,6 @@ static const struct port_map_t LED_MAP_FRONT[SEGMENT_COUNT] = {
 // TODO Define other led geometry mappings
 
 static const struct port_map_t* led_mapping = &(LED_MAP_FRONT[0]);
-
-struct led_t {
-  uint8_t r;
-  uint8_t g;
-  uint8_t b;
-} __attribute__((packed));
 
 // Store a 8b×8b matrix as two 32b little-endian integers
 union matrix_t {
@@ -276,7 +235,7 @@ static inline uint32_t swap_bits(uint32_t rows, uint8_t shift, uint32_t mask) {
   return rows ^ swapped_bits ^ (swapped_bits << shift);
 }
 
-union matrix_t transpose_matrix(union matrix_t m) {
+static union matrix_t transpose_matrix(union matrix_t m) {
   /* Transposing a matrix can be done recursively for matrices of size (2^n × 2^n).
    * 1. Divide the matrix T into four submatrices T[i,j], each of size (2^(n-1) × 2^(n-1)).
    * 2. Swap T[0,1] and T[1,0].
@@ -311,20 +270,12 @@ union matrix_t transpose_matrix(union matrix_t m) {
   return m;
 }
 
-#define OFFSET_R ((ptrdiff_t) offsetof(struct led_t, r))
-#define OFFSET_G ((ptrdiff_t) offsetof(struct led_t, g))
-#define OFFSET_B ((ptrdiff_t) offsetof(struct led_t, b))
 
-// Color order is currently hard-coded GRB
-static ptrdiff_t delta_0 = OFFSET_R - OFFSET_G;
-static ptrdiff_t delta_1 = OFFSET_B - OFFSET_R;
-
-static void copy_buffer(const void* restrict src, void* restrict dest) {
+static void copy_buffer(const void* restrict src, void* restrict dest, uint8_t used_port_count) {
   // Perform a linear write to the output buffer, at the expense of having to jump around
   // the input buffer *a lot*.
   union matrix_t* output = (union matrix_t*) dest;
 
-  const ptrdiff_t color_offset_initial = OFFSET_G;
   const ptrdiff_t color_offset_rewind = -(delta_0 + delta_1);
   ptrdiff_t delta_color_offset[sizeof(struct led_t)] = {delta_0, delta_1, 0};
 
@@ -340,33 +291,32 @@ static void copy_buffer(const void* restrict src, void* restrict dest) {
     const uint8_t* initial_position = ((const uint8_t*) src) + color_offset_initial;
     if (!is_odd) {
       // Pointer is always 'increment/decrement after', so initial value cannot be past-the-end
-      initial_position += STRIP_LENGTH - BUFFER_STEP;
+      initial_position += (STRING_LENGTH-1)*BUFFER_STEP;
     }
 
-    for (unsigned int port = 0; port < MAX_PORT_COUNT; ++port) {
+    for (unsigned int port = 0; port < used_port_count; ++port) {
       const uint8_t string = led_mapping[segment].ports[port];
-      input[port] = initial_position + STRIP_LENGTH*string;
+      input[port] = initial_position + STRING_LENGTH*BUFFER_STEP*string;
     }
 
     if (is_odd) {
-      input_0_end = input[0] + STRIP_LENGTH;
+      input_0_end = input[0] + STRING_LENGTH*BUFFER_STEP;
       delta_color_offset[2] = color_offset_rewind + BUFFER_STEP;
     }
     else {
-      input_0_end = input[0] - STRIP_LENGTH;
+      input_0_end = input[0] - STRING_LENGTH*BUFFER_STEP;
       delta_color_offset[2] = color_offset_rewind - BUFFER_STEP;
     }
 
     // Shuffle LED data from USB buffer format to OctoWS2811 format
     while (input[0] != input_0_end) {
       for (unsigned int color = 0; color < sizeof(struct led_t); ++color) {
-        const ptrdiff_t offset_next = delta_color_offset[color];
         // Gather data for all ports
-        for (unsigned int port = 0; port < MAX_PORT_COUNT; ++port) {
+        for (unsigned int port = 0; port < used_port_count; ++port) {
           // Copy 8 data bytes for the current color
           output->rows[port] = *input[port];
           // Jump to next color (possibly of the next LED)
-          input[port] += offset_next;
+          input[port] += delta_color_offset[color];
         }
 
         // Transpose bytes to correct output format
@@ -378,23 +328,23 @@ static void copy_buffer(const void* restrict src, void* restrict dest) {
 }
 
 void display_frame(struct frame_buffer_t* buffer) {
-  copy_buffer(buffer->buffer, &(led_data[0]));
+  copy_buffer(buffer->buffer, &(led_data[0]), MAX_PORT_COUNT);
 
   // Setup TCD to write buffer data
-  transfer_control_descriptor[1].SADDR = &(led_data[0]);
-  transfer_control_descriptor[1].SOFF = 1;
-  transfer_control_descriptor[1].SLAST = -len;
-  transfer_control_descriptor[1].DADDR = &GPIOD_PDOR;
+  dma_tcd_list[1].SADDR = &(led_data[0]);
+  dma_tcd_list[1].SOFF = 1;
+  dma_tcd_list[1].SLAST = -BUFFER_SIZE;
+  dma_tcd_list[1].DADDR = &GPIOD_PDOR;
 
   start_dma_transfer();
 }
 
 void display_blank() {
   // Setup TCD to write blank data
-  transfer_control_descriptor[1].SADDR = &ones;
-  transfer_control_descriptor[1].SOFF = 0;
-  transfer_control_descriptor[1].SLAST = 0;
-  transfer_control_descriptor[1].DADDR = &GPIOD_PCOR;
+  dma_tcd_list[1].SADDR = &ones;
+  dma_tcd_list[1].SOFF = 0;
+  dma_tcd_list[1].SLAST = 0;
+  dma_tcd_list[1].DADDR = &GPIOD_PCOR;
 
   start_dma_transfer();
 }
