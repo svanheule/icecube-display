@@ -68,6 +68,7 @@
 
 #include "usb/std.h"
 #include "usb/device.h"
+#include "usb/address.h"
 #include "usb/endpoint.h"
 #include "usb/configuration.h"
 #include "usb/fifo.h"
@@ -175,7 +176,6 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
       if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_STANDARD | REQ_REC_DEVICE)) {
         if (transfer->req->wIndex == 0 && transfer->req->wLength == 0) {
           // Set new address, but only enable *after* ZLP handshake
-          UDADDR = (uint8_t) (transfer->req->wValue & 0x7F);
           transfer->stage = CTRL_HANDSHAKE_OUT;
           transfer->callback_handshake = callback_set_address;
         }
@@ -250,7 +250,7 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
 static void callback_set_address(struct control_transfer_t* transfer) {
   // Enable new address
   const uint8_t address = (uint8_t) (transfer->req->wValue & 0x7F);
-  UDADDR |= _BV(ADDEN);
+  usb_set_address(address);
   if (address) {
     set_device_state(ADDRESSED);
   }

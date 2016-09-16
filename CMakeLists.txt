@@ -105,6 +105,7 @@ else()
     src/usb/communication.c
     src/usb/led.c
     src/usb/device.c
+    src/usb/address.c
     src/usb/endpoint.c
     src/usb/fifo.c
     src/usb/descriptor.c
