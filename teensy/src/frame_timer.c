@@ -4,9 +4,6 @@
 
 // TODO Potentially merge this file with `avr/scr/frame_timer.c` 
 
-// TODO Not hardcode the frame rate
-#define FPS 25
-
 static void (*callback)();
 
 void init_frame_timer(void (*timer_callback)()) {
@@ -22,7 +19,7 @@ void init_frame_timer(void (*timer_callback)()) {
   // Enable NVIC IRQ
   NVIC_ENABLE_IRQ(IRQ_PIT_CH0);
 
-  pit_channels[0].LDVAL = F_BUS/FPS - 1; // F_BUS = 48M if F_CPU = 48M
+  pit_channels[0].LDVAL = F_BUS/DEVICE_FPS - 1; // F_BUS = 48M if F_CPU = 48M
   pit_channels[0].TCTRL = _BV(1); // enable timer interrupts
   pit_channels[0].TCTRL = _BV(1)|_BV(0); // ... and enable timer
 }
