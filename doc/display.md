@@ -18,7 +18,7 @@ instrumented region of the detector, allowing it to detect air showers of lower 
 The picture below shows the geometry of the detector, as well as the 3 in-fill stations in gray.
 The LED display mimics this geometry, by putting each station on a regular hexagonal grid, instead
 of the slightly irregular grid of the actual detector.
-The in-fill stations have not been included in the display due to a lack of space for the LEDs.
+The in-fill stations have not been included in the small display due to a lack of space for the LEDs.
 
 \image html icetop-array.png "IceTop detector array layout"
 \image latex icetop-array.pdf "IceTop detector array layout" width=0.7\textwidth
@@ -27,7 +27,7 @@ The in-fill stations have not been included in the display due to a lack of spac
 
 The display has a number of input buttons and LEDs to interact with and relay status information to
 the user.
-The green *Power* LED indicates wether the display is receiving 5V power input.
+The green *Power* LED indicates whether the display is receiving 5V power input.
 The orange *USB activity* LED will light up when there is a USB connection, and blink when there
 is bus activity, e.g. when display data is transmitted.
 

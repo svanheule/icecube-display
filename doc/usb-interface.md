@@ -1,5 +1,4 @@
-@addtogroup usb_endpoint
-@{
+\addtogroup usb_endpoint
 ## USB communication ##
 
 The LED display is equiped with a USB port to provide the possibility of using a PC to display
@@ -14,8 +13,8 @@ very generic fashion, so any application can display (low resolution) RGB data a
 rates.
 
 ### Protocol specifics ###
-In a first implementation, the [default control endpoint](\ref usb_endpoint_control) is extended
-with one vendor specific command. See section 9.3 of the
+In a first implementation, the [default control endpoint](\ref usb_endpoint_control) is only
+extended with some vendor specific control commands. See section 9.3 of the
 [USB 2.0 specification](http://www.usb.org/developers/docs/usb20_docs/) for more details.
 
 Request name       | bmRequestType | bRequest | wValue | wIndex |   wLength
@@ -58,4 +57,3 @@ showing IceTop stations:
 
 \include usb.py
 
-@}
