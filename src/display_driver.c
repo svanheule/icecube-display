@@ -100,9 +100,7 @@ void init_display_driver() {
       break;
   }
 
-  enum display_led_color_order_t color_order = get_color_order();
-
-  switch (color_order) {
+  switch (get_color_order()) {
     case LED_ORDER_BGR:
       jump_c1 = OFFSET_BLUE;
       jump_c2 = OFFSET_GREEN-OFFSET_BLUE;
