@@ -80,6 +80,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+static inline uint8_t min(uint8_t a, uint8_t b) {
+  return a < b ? a : b;
+}
+
 /// \brief Constants used to indicate the default control endpoint's current state.
 /// \ingroup usb_endpoint_control
 enum control_stage_t {
@@ -202,7 +206,7 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
           // Send until requested size is reached OR all data is sent
           uint16_t list_length = get_list_total_length(head);
           uint16_t requested_length = transfer->req->wLength;
-          uint16_t bytes_left = requested_length < list_length ? requested_length : list_length;
+          uint16_t bytes_left = min(requested_length, list_length);
 
           if (init_data_in(transfer, bytes_left)) {
             const uint8_t HEADER_SIZE = sizeof(struct usb_descriptor_header_t);
@@ -210,13 +214,13 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
             uint8_t* write_ptr = (uint8_t*) transfer->data_in;
             while (head && bytes_left) {
               // Copy header
-              len = bytes_left < HEADER_SIZE ? bytes_left : HEADER_SIZE;
+              len = min(bytes_left, HEADER_SIZE);
               memcpy(write_ptr, &head->header, len);
               write_ptr += len;
               bytes_left -= len;
               // Copy body
               body_length = head->header.bLength - HEADER_SIZE;
-              len = bytes_left < body_length ? bytes_left : body_length;
+              len = min(bytes_left, body_length);
               memcpy_memspace(head->memspace, write_ptr, head->body, len);
 
               write_ptr += len;
@@ -316,7 +320,7 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
               *buffer++ = item.length;
             }
             if (remaining) {
-              size_t copy_len = item.length < remaining ? item.length : remaining;
+              size_t copy_len = min(item.length, remaining);
               memcpy_memspace(item.memspace, (void*) buffer, item.data, copy_len);
               buffer += copy_len;
               remaining -= copy_len;
@@ -436,7 +440,7 @@ ISR(USB_COM_vect) {
         // Send remaining transaction data
         uint16_t fifo_free = fifo_size() - fifo_byte_count();
         uint16_t transfer_left = control_transfer.data_in_length - control_transfer.data_in_done;
-        uint16_t length = transfer_left < fifo_free ? transfer_left : fifo_free;
+        uint16_t length = min(transfer_left, fifo_free);
         uint8_t* data = (uint8_t*) control_transfer.data_in + control_transfer.data_in_done;
         control_transfer.data_in_done += fifo_write(data, length);
         clear_in();
