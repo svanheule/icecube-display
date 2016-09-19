@@ -28,6 +28,8 @@ static ptrdiff_t color_offset_initial;
 static ptrdiff_t delta_0;
 static ptrdiff_t delta_1;
 
+static volatile bool frame_write_in_progress;
+
 // DMA sources
 static uint8_t led_data[BUFFER_SIZE] DMAMEM;
 static uint8_t ones = 0xFF;
@@ -144,6 +146,19 @@ void init_display_driver() {
       delta_1 = OFFSET_BLUE-OFFSET_GREEN;
       break;
   }
+
+  // PDB configuration for frame reset timer
+  ATOMIC_REGISTER_BIT_SET(SIM_SCGC6, 22); // Enable PDB clock
+  PDB0_SC = PDB_SC_PDBIE | PDB_SC_TRGSEL(15);
+  NVIC_ENABLE_IRQ(IRQ_PDB);
+  // 50 µs delay (equiv 20000/s) with 48MHz F_BUS: 2400 counts (no prescaler required)
+  const uint16_t reset_delay_counts = (F_BUS/20000);
+  PDB0_MOD = reset_delay_counts - 1;
+  PDB0_IDLY = reset_delay_counts - 1;
+
+  PDB0_SC = PDB_SC_PDBIE | PDB_SC_TRGSEL(15) | PDB_SC_LDOK | PDB_SC_PDBEN;
+
+  frame_write_in_progress = false;
 }
 
 void dma_ch2_isr() {
@@ -157,6 +172,14 @@ void dma_ch2_isr() {
   // This ensures that the LED string receives a RESET signal and
   // the next frame will be displayed properly.
   GPIOD_PDOR = 0;
+
+  // Trigger 50µs delay timer
+  ATOMIC_REGISTER_BIT_SET(PDB0_SC, 16);
+}
+
+void pdb_isr() {
+  ATOMIC_REGISTER_BIT_CLEAR(PDB0_SC, 6);
+  frame_write_in_progress = false;
 }
 
 static void start_dma_transfer() {
@@ -193,7 +216,6 @@ static void start_dma_transfer() {
 
   // Start transfer by selecting FTM clock
   ftm2_config->SC = (1<<3);
-
 }
 
 
@@ -327,25 +349,34 @@ static void copy_buffer(const void* restrict src, void* restrict dest, uint8_t u
   }
 }
 
+// TODO Make read-write cycles of frame_write_in_progress re-entrant
 void display_frame(struct frame_buffer_t* buffer) {
-  copy_buffer(buffer->buffer, &(led_data[0]), MAX_PORT_COUNT);
+  if (!frame_write_in_progress) {
+    frame_write_in_progress = true;
 
-  // Setup TCD to write buffer data
-  dma_tcd_list[1].SADDR = &(led_data[0]);
-  dma_tcd_list[1].SOFF = 1;
-  dma_tcd_list[1].SLAST = -BUFFER_SIZE;
-  dma_tcd_list[1].DADDR = &GPIOD_PDOR;
+    copy_buffer(buffer->buffer, &(led_data[0]), MAX_PORT_COUNT);
 
-  start_dma_transfer();
+    // Setup TCD to write buffer data
+    dma_tcd_list[1].SADDR = &(led_data[0]);
+    dma_tcd_list[1].SOFF = 1;
+    dma_tcd_list[1].SLAST = -BUFFER_SIZE;
+    dma_tcd_list[1].DADDR = &GPIOD_PDOR;
+
+    start_dma_transfer();
+  }
 }
 
 void display_blank() {
-  // Setup TCD to write blank data
-  dma_tcd_list[1].SADDR = &ones;
-  dma_tcd_list[1].SOFF = 0;
-  dma_tcd_list[1].SLAST = 0;
-  dma_tcd_list[1].DADDR = &GPIOD_PCOR;
+  if (!frame_write_in_progress) {
+    frame_write_in_progress = true;
 
-  start_dma_transfer();
+    // Setup TCD to write blank data
+    dma_tcd_list[1].SADDR = &ones;
+    dma_tcd_list[1].SOFF = 0;
+    dma_tcd_list[1].SLAST = 0;
+    dma_tcd_list[1].DADDR = &GPIOD_PCOR;
+
+    start_dma_transfer();
+  }
 }
 
