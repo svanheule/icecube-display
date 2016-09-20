@@ -6,11 +6,13 @@
 #include "usb/std.h"
 #include "usb/device.h"
 #include "usb/configuration.h"
-#include "usb/endpoint.h"
+
+#include "usb/led.h"
 #include "usb/fifo.h"
+#include "usb/endpoint.h"
+#include "usb/endpoint_0.h"
 #include "usb/descriptor.h"
 #include "frame_buffer.h"
-#include "usb/led.h"
 
 
 // Heavily based on LUFA code, stripped down to the specifics of the ATmega32U4.
@@ -77,14 +79,24 @@ bool is_remote_connected() {
 }
 
 #define FLAG_IS_SET(reg, flag) (reg & (1<<flag))
-#define CLEAR_USBINT(flag) USBINT &= ~(1<<flag)
-#define CLEAR_UDINT(flag) UDINT &= ~(1<<flag)
 #define CLEAR_FLAG(reg, flag) reg &= ~(1<<flag)
 #define SET_FLAG(reg, flag) reg |= (1<<flag)
 
+// USB low-level interrupts
+#define CLEAR_USBINT(flag) CLEAR_FLAG(USBINT ,flag)
+#define CLEAR_UDINT(flag) CLEAR_FLAG(UDINT, flag)
+
+#define vbus_change() (FLAG_IS_SET(USBINT, VBUSTI) && FLAG_IS_SET(USBCON, VBUSTE))
+
+#define DEVICE_ENABLED_AND_SET(interrupt) \
+    (FLAG_IS_SET(UDIEN, interrupt ## E) && FLAG_IS_SET(UDINT, interrupt ## I))
+#define end_of_reset() DEVICE_ENABLED_AND_SET(EORST)
+#define suspend() DEVICE_ENABLED_AND_SET(SUSP)
+#define wakeup() DEVICE_ENABLED_AND_SET(WAKEUP)
+
 ISR(USB_GEN_vect) {
   // VBUS transitions
-  if (FLAG_IS_SET(USBINT, VBUSTI) && FLAG_IS_SET(USBCON, VBUSTE)) {
+  if (vbus_change()) {
     CLEAR_USBINT(VBUSTI);
     if (FLAG_IS_SET(USBSTA, VBUS)) {
       // TODO reset all endpoints
@@ -105,7 +117,7 @@ ISR(USB_GEN_vect) {
   }
 
   // End-of-reset
-  if (FLAG_IS_SET(UDINT, EORSTI) && FLAG_IS_SET(UDIEN, EORSTE)) {
+  if (end_of_reset()) {
     CLEAR_UDINT(EORSTI);
     // After reset, wait for activity
     CLEAR_UDINT(WAKEUPI);
@@ -119,7 +131,7 @@ ISR(USB_GEN_vect) {
   }
 
   // Wake-up, suspend
-  if (FLAG_IS_SET(UDINT, SUSPI) && FLAG_IS_SET(UDIEN, SUSPE)) {
+  if (suspend()) {
     CLEAR_FLAG(UDIEN, SUSPE);
     CLEAR_UDINT(WAKEUPI);
     SET_FLAG(UDIEN, WAKEUPE);
@@ -129,7 +141,7 @@ ISR(USB_GEN_vect) {
     set_device_state(SUSPENDED);
   }
 
-  if (FLAG_IS_SET(UDINT, WAKEUPI) && FLAG_IS_SET(UDIEN, WAKEUPE)) {
+  if (wakeup()) {
     // Wake up device
     enable_pll();
     CLEAR_FLAG(USBCON, FRZCLK);
@@ -154,4 +166,145 @@ ISR(USB_GEN_vect) {
       set_device_state(POWERED);
     }
   }
+}
+
+
+// Communications interrupts
+#define CLI(flag) CLEAR_FLAG(UEINTX, flag)
+#define SEI(flag) SET_FLAG(UEIENX, flag)
+#define CEI(flag) CLEAR_FLAG(UEIENX, flag)
+
+static inline void clear_setup() {
+  CLI(RXSTPI);
+}
+static inline void clear_in() {
+  CLI(TXINI);
+}
+static inline void clear_out() {
+  CLI(RXOUTI);
+}
+
+#define ENDPOINT_ENABLED_AND_SET(interrupt) \
+    (FLAG_IS_SET(UEIENX, interrupt ## E) && FLAG_IS_SET(UEINTX, interrupt ## I))
+#define setup_received() ENDPOINT_ENABLED_AND_SET(RXSTP)
+#define out_received() ENDPOINT_ENABLED_AND_SET(RXOUT)
+#define transmit_ready() ENDPOINT_ENABLED_AND_SET(TXIN)
+
+ISR(USB_COM_vect) {
+  trip_led();
+
+  // Process USB transfers
+  if (FLAG_IS_SET(UEINT, 0)) {
+    endpoint_push(0);
+    static struct control_transfer_t control_transfer;
+    static struct usb_setup_packet_t setup_packet;
+
+    if (setup_received()) {
+      CEI(TXINE);
+      CEI(RXOUTE);
+
+      if (control_transfer.stage != CTRL_IDLE && control_transfer.stage != CTRL_STALL) {
+        cancel_control_transfer(&control_transfer);
+      }
+      control_transfer.callback_handshake = 0;
+      control_transfer.callback_data_out = 0;
+      control_transfer.callback_cancel = 0;
+      control_transfer.stage = CTRL_SETUP;
+
+      size_t read = fifo_read(&setup_packet, sizeof(struct usb_setup_packet_t));
+      if (read == sizeof(struct usb_setup_packet_t)) {
+        control_transfer.req = &setup_packet;
+        process_setup(&control_transfer);
+      }
+
+      if (
+           (control_transfer.stage == CTRL_DATA_IN)
+        || (control_transfer.stage == CTRL_HANDSHAKE_OUT)
+      ) {
+        SEI(TXINE);
+      }
+      else if (
+           (control_transfer.stage == CTRL_DATA_OUT)
+        || (control_transfer.stage == CTRL_HANDSHAKE_IN)
+      ) {
+        SEI(RXOUTE);
+      }
+      else {
+        SET_FLAG(UECONX, STALLRQ);
+      }
+
+      clear_setup();
+    }
+
+    if (transmit_ready()) {
+      if (control_transfer.stage == CTRL_DATA_IN) {
+        // Send remaining transaction data
+        uint16_t fifo_free = fifo_size() - fifo_byte_count();
+        uint16_t transfer_left = control_transfer.data_in_length - control_transfer.data_in_done;
+        uint16_t length = transfer_left < fifo_free ? transfer_left : fifo_free;
+        uint8_t* data = (uint8_t*) control_transfer.data_in + control_transfer.data_in_done;
+        control_transfer.data_in_done += fifo_write(data, length);
+        clear_in();
+        if (control_transfer.data_in_done == control_transfer.data_in_length) {
+          free(control_transfer.data_in);
+          control_transfer.data_in = 0;
+          control_transfer.stage = CTRL_HANDSHAKE_IN;
+          CEI(TXINE);
+        }
+      }
+      else if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
+        // Send ZLP handshake
+        clear_in();
+        if (control_transfer.callback_handshake) {
+          control_transfer.stage = CTRL_POST_HANDSHAKE;
+        }
+        else {
+          control_transfer.stage = CTRL_IDLE;
+          CEI(TXINE);
+        }
+      }
+      else if (control_transfer.stage == CTRL_POST_HANDSHAKE) {
+        control_transfer.callback_handshake(&control_transfer);
+        control_transfer.stage = CTRL_IDLE;
+        CEI(TXINE);
+      }
+      else {
+        CEI(TXINE);
+      }
+    }
+
+    if (out_received()) {
+      if (control_transfer.stage == CTRL_DATA_OUT) {
+        // Process incoming data
+        if (control_transfer.callback_data_out) {
+          control_transfer.callback_data_out(&control_transfer);
+        }
+        clear_out();
+        if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
+          SEI(TXINE);
+          CEI(RXOUTE);
+        }
+      }
+      else if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
+        // Acknowledge ZLP handshake
+        clear_out();
+        // Since acknowledging the handshake doesn't require waiting for the host, perform
+        // any callback immediately
+        if (control_transfer.callback_handshake) {
+          control_transfer.callback_handshake(&control_transfer);
+        }
+        control_transfer.stage = CTRL_IDLE;
+        CEI(RXOUTE);
+      }
+      else {
+        // Ignore data
+        clear_out();
+        CEI(RXOUTE);
+      }
+    }
+
+    // Restore endpoint number
+    endpoint_pop();
+  }
+
 }
