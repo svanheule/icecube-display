@@ -91,9 +91,9 @@ bool is_remote_connected() {
 
 #define DEVICE_ENABLED_AND_SET(interrupt) \
     (FLAG_IS_SET(UDIEN, interrupt ## E) && FLAG_IS_SET(UDINT, interrupt ## I))
-#define end_of_reset() DEVICE_ENABLED_AND_SET(EORST)
-#define suspend() DEVICE_ENABLED_AND_SET(SUSP)
-#define wakeup() DEVICE_ENABLED_AND_SET(WAKEUP)
+#define device_reset() DEVICE_ENABLED_AND_SET(EORST)
+#define requested_suspend() DEVICE_ENABLED_AND_SET(SUSP)
+#define requested_wakeup() DEVICE_ENABLED_AND_SET(WAKEUP)
 
 ISR(USB_GEN_vect) {
   // VBUS transitions
@@ -118,7 +118,7 @@ ISR(USB_GEN_vect) {
   }
 
   // End-of-reset
-  if (end_of_reset()) {
+  if (device_reset()) {
     CLEAR_UDINT(EORSTI);
     // After reset, wait for activity
     CLEAR_UDINT(WAKEUPI);
@@ -133,7 +133,7 @@ ISR(USB_GEN_vect) {
   }
 
   // Wake-up, suspend
-  if (suspend()) {
+  if (requested_suspend()) {
     CLEAR_FLAG(UDIEN, SUSPE);
     CLEAR_UDINT(WAKEUPI);
     SET_FLAG(UDIEN, WAKEUPE);
@@ -143,7 +143,7 @@ ISR(USB_GEN_vect) {
     set_device_state(SUSPENDED);
   }
 
-  if (wakeup()) {
+  if (requested_wakeup()) {
     // Wake up device
     enable_pll();
     CLEAR_FLAG(USBCON, FRZCLK);
@@ -176,21 +176,21 @@ ISR(USB_GEN_vect) {
 #define SEI(flag) SET_FLAG(UEIENX, flag)
 #define CEI(flag) CLEAR_FLAG(UEIENX, flag)
 
-static inline void clear_setup() {
+static inline void acknowledge_setup() {
   CLI(RXSTPI);
 }
-static inline void clear_in() {
+static inline void transmit_in_data() {
   CLI(TXINI);
 }
-static inline void clear_out() {
+static inline void acknowledge_out_data() {
   CLI(RXOUTI);
 }
 
-#define ENDPOINT_ENABLED_AND_SET(interrupt) \
+#define ENDPOINT_IRQ_ENABLED_AND_SET(interrupt) \
     (FLAG_IS_SET(UEIENX, interrupt ## E) && FLAG_IS_SET(UEINTX, interrupt ## I))
-#define setup_received() ENDPOINT_ENABLED_AND_SET(RXSTP)
-#define out_received() ENDPOINT_ENABLED_AND_SET(RXOUT)
-#define transmit_ready() ENDPOINT_ENABLED_AND_SET(TXIN)
+#define setup_received() ENDPOINT_IRQ_ENABLED_AND_SET(RXSTP)
+#define out_received() ENDPOINT_IRQ_ENABLED_AND_SET(RXOUT)
+#define transmit_ready() ENDPOINT_IRQ_ENABLED_AND_SET(TXIN)
 
 ISR(USB_COM_vect) {
   trip_led();
@@ -235,7 +235,7 @@ ISR(USB_COM_vect) {
         SET_FLAG(UECONX, STALLRQ);
       }
 
-      clear_setup();
+      acknowledge_setup();
     }
 
     if (transmit_ready()) {
@@ -246,7 +246,7 @@ ISR(USB_COM_vect) {
         uint16_t length = transfer_left < fifo_free ? transfer_left : fifo_free;
         uint8_t* data = (uint8_t*) control_transfer.data_in + control_transfer.data_in_done;
         control_transfer.data_in_done += fifo_write(data, length);
-        clear_in();
+        transmit_in_data();
         if (control_transfer.data_in_done == control_transfer.data_in_length) {
           free(control_transfer.data_in);
           control_transfer.data_in = 0;
@@ -256,7 +256,7 @@ ISR(USB_COM_vect) {
       }
       else if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
         // Send ZLP handshake
-        clear_in();
+        transmit_in_data();
         if (control_transfer.callback_handshake) {
           control_transfer.stage = CTRL_POST_HANDSHAKE;
         }
@@ -281,7 +281,7 @@ ISR(USB_COM_vect) {
         if (control_transfer.callback_data_out) {
           control_transfer.callback_data_out(&control_transfer);
         }
-        clear_out();
+        acknowledge_out_data();
         if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
           SEI(TXINE);
           CEI(RXOUTE);
@@ -289,7 +289,7 @@ ISR(USB_COM_vect) {
       }
       else if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
         // Acknowledge ZLP handshake
-        clear_out();
+        acknowledge_out_data();
         // Since acknowledging the handshake doesn't require waiting for the host, perform
         // any callback immediately
         if (control_transfer.callback_handshake) {
@@ -300,7 +300,7 @@ ISR(USB_COM_vect) {
       }
       else {
         // Ignore data
-        clear_out();
+        acknowledge_out_data();
         CEI(RXOUTE);
       }
     }
