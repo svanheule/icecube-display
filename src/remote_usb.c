@@ -6,6 +6,7 @@
 #include "usb/std.h"
 #include "usb/device.h"
 #include "usb/configuration.h"
+#include "usb/address.h"
 
 #include "usb/led.h"
 #include "usb/fifo.h"
@@ -125,6 +126,7 @@ ISR(USB_GEN_vect) {
     SET_FLAG(UDIEN, SUSPE);
 
     // Load default configuration
+    usb_set_address(0);
     if (set_configuration_index(0)) {
       set_device_state(DEFAULT);
     }
@@ -156,7 +158,7 @@ ISR(USB_GEN_vect) {
     if (get_configuration_index() > 0) {
       set_device_state(CONFIGURED);
     }
-    else if (FLAG_IS_SET(UDADDR, ADDEN)) {
+    else if (usb_get_address() != 0) {
       set_device_state(ADDRESSED);
     }
     else if (get_configuration_index() == 0) {
