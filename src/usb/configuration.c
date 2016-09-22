@@ -1,6 +1,5 @@
 #include "usb/configuration.h"
 #include "usb/endpoint.h"
-#include <avr/io.h>
 
 // Configuration list
 // 64B, single bank, control
