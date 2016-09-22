@@ -87,13 +87,15 @@ struct control_transfer_t {
   enum control_stage_t stage;
   /// Setup request that is currently being handled.
   const struct usb_setup_packet_t* req;
-  /// Data to be transmitted to the host.
+  /// Data to be transmitted to/from the host.
   void* data;
-  /// Total length of \a data_in.
+  /// Total length of \a data.
   uint16_t data_length;
-  /// Transmitted length of \a data_in.
+  /// Transmitted length of \a data.
   uint16_t data_done;
-  /// Function to be called when new data is received.
+  /// Function to be called when new data is received or sent.
+  /// When the transfer is completed, this callback should move the transfer
+  /// into the handshake phase.
   void (*callback_data)(struct control_transfer_t* transfer);
   /// Function to be called *after* the ZLP handshake is sent/received.
   void (*callback_handshake)(struct control_transfer_t* transfer);

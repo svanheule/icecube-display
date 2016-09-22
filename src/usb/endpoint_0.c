@@ -6,7 +6,6 @@
 #include "usb/address.h"
 #include "usb/endpoint.h"
 #include "usb/configuration.h"
-#include "usb/fifo.h"
 #include "frame_queue.h"
 #include "display_properties.h"
 
