@@ -178,7 +178,6 @@ static void callback_set_configuration(struct control_transfer_t* transfer) {
 
 #define VENDOR_REQUEST_PUSH_FRAME 1
 static struct frame_buffer_t* usb_frame;
-static uint8_t* usb_frame_buffer_ptr;
 static void callback_data_usb_frame(struct control_transfer_t* transfer);
 static void callback_cancel_usb_frame();
 
@@ -186,17 +185,19 @@ static void callback_cancel_usb_frame();
 
 static inline void process_vendor_request(struct control_transfer_t* transfer) {
   if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_VENDOR | REQ_REC_INTERFACE)) {
+    const size_t buffer_size = get_display_buffer_size();
     // If correct request and request length
     if (   transfer->req->bRequest == VENDOR_REQUEST_PUSH_FRAME
-        && transfer->req->wLength == get_display_buffer_size()
+        && transfer->req->wLength == buffer_size
     ) {
       usb_frame = create_frame();
       if (usb_frame) {
         usb_frame->flags = FRAME_FREE_AFTER_DRAW;
-        usb_frame_buffer_ptr = (uint8_t*) usb_frame->buffer;
-        transfer->stage = CTRL_DATA_OUT;
+        transfer->data = usb_frame->buffer;
+        transfer->data_length = buffer_size;
         transfer->callback_data = callback_data_usb_frame;
         transfer->callback_cancel = callback_cancel_usb_frame;
+        transfer->stage = CTRL_DATA_OUT;
       }
     }
   }
@@ -248,11 +249,8 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
 }
 
 static void callback_data_usb_frame(struct control_transfer_t* transfer) {
-  // Get frame data
-  usb_frame_buffer_ptr += fifo_read(usb_frame_buffer_ptr, fifo_size());
   // Push if all data was received
-  uint8_t* end_ptr = (uint8_t*) usb_frame->buffer + get_display_buffer_size();
-  if (usb_frame_buffer_ptr == end_ptr) {
+  if (transfer->data_length == transfer->data_done) {
     if(!push_frame(usb_frame)) {
       // Prevent memory leaks and dangling pointers
       destroy_frame(usb_frame);

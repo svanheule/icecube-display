@@ -170,6 +170,9 @@ ISR(USB_GEN_vect) {
   }
 }
 
+static inline uint16_t min(uint16_t a, uint16_t b) {
+  return a < b ? a : b;
+}
 
 // Communications interrupts
 #define CLI(flag) CLEAR_FLAG(UEINTX, flag)
@@ -274,7 +277,15 @@ ISR(USB_COM_vect) {
 
     if (out_received()) {
       if (control_transfer.stage == CTRL_DATA_OUT) {
-        // Process incoming data
+        // Copy incoming data
+        uint16_t left = control_transfer.data_length - control_transfer.data_done;
+        uint16_t size = min(left, fifo_size());
+
+        uint16_t read = fifo_read(control_transfer.data, size);
+        control_transfer.data = (uint8_t*) control_transfer.data + read;
+        control_transfer.data_done += read;
+
+        // Perform callback if any
         if (control_transfer.callback_data) {
           control_transfer.callback_data(&control_transfer);
         }
