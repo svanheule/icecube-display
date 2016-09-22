@@ -82,7 +82,7 @@ enum ep_bank_size_t {
   , EP_BANK_SIZE_32 = (2<<4)
   , EP_BANK_SIZE_64 = (3<<4)
   , EP_BANK_SIZE_128 = (4<<4)
-  , EP_BANK_SIZE_256 = (5<<5)
+  , EP_BANK_SIZE_256 = (5<<4)
   , EP_BANK_SIZE_512 = (6<<4)
 };
 
