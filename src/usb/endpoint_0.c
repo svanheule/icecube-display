@@ -195,6 +195,7 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
         usb_frame->flags = FRAME_FREE_AFTER_DRAW;
         transfer->data = usb_frame->buffer;
         transfer->data_length = buffer_size;
+        transfer->data_done = 0;
         transfer->callback_data = callback_data_usb_frame;
         transfer->callback_cancel = callback_cancel_usb_frame;
         transfer->stage = CTRL_DATA_OUT;
