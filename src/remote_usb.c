@@ -208,14 +208,11 @@ ISR(USB_COM_vect) {
       if (control_transfer.stage != CTRL_IDLE && control_transfer.stage != CTRL_STALL) {
         cancel_control_transfer(&control_transfer);
       }
-      control_transfer.callback_handshake = 0;
-      control_transfer.callback_data = 0;
-      control_transfer.callback_cancel = 0;
-      control_transfer.stage = CTRL_SETUP;
 
       size_t read = fifo_read(&setup_packet, sizeof(struct usb_setup_packet_t));
+      init_control_transfer(&control_transfer, &setup_packet);
+
       if (read == sizeof(struct usb_setup_packet_t)) {
-        control_transfer.req = &setup_packet;
         process_setup(&control_transfer);
       }
 

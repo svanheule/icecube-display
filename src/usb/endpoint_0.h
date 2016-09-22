@@ -113,6 +113,11 @@ struct control_transfer_t {
   */
 void process_setup(struct control_transfer_t* transfer);
 
+void init_control_transfer(
+      struct control_transfer_t* transfer
+    , const struct usb_setup_packet_t* setup
+);
+
 void cancel_control_transfer(struct control_transfer_t* transfer);
 
 #endif //USB_ENDPOINT_0_H

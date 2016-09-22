@@ -32,6 +32,16 @@ static void* init_data_in(struct control_transfer_t* transfer, size_t length) {
   return transfer->data;
 }
 
+void init_control_transfer(
+      struct control_transfer_t *transfer
+    , const struct usb_setup_packet_t *setup
+) {
+  transfer->callback_handshake = 0;
+  transfer->callback_data = 0;
+  transfer->stage = CTRL_SETUP;
+  transfer->req = setup;
+}
+
 void cancel_control_transfer(struct control_transfer_t* transfer) {
   transfer->stage = CTRL_STALL;
   // Call any cancel callbacks that may perform clean-up
