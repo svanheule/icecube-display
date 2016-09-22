@@ -179,21 +179,8 @@ static inline uint16_t min(uint16_t a, uint16_t b) {
 #define SEI(flag) SET_FLAG(UEIENX, flag)
 #define CEI(flag) CLEAR_FLAG(UEIENX, flag)
 
-static inline void acknowledge_setup() {
-  CLI(RXSTPI);
-}
-static inline void transmit_in_data() {
-  CLI(TXINI);
-}
-static inline void acknowledge_out_data() {
-  CLI(RXOUTI);
-}
-
 #define ENDPOINT_IRQ_ENABLED_AND_SET(interrupt) \
     (FLAG_IS_SET(UEIENX, interrupt ## E) && FLAG_IS_SET(UEINTX, interrupt ## I))
-#define setup_received() ENDPOINT_IRQ_ENABLED_AND_SET(RXSTP)
-#define out_received() ENDPOINT_IRQ_ENABLED_AND_SET(RXOUT)
-#define transmit_ready() ENDPOINT_IRQ_ENABLED_AND_SET(TXIN)
 
 ISR(USB_COM_vect) {
   trip_led();
@@ -204,7 +191,7 @@ ISR(USB_COM_vect) {
     static struct control_transfer_t control_transfer;
     static struct usb_setup_packet_t setup_packet;
 
-    if (setup_received()) {
+    if (ENDPOINT_IRQ_ENABLED_AND_SET(RXSTP)) {
       CEI(TXINE);
       CEI(RXOUTE);
 
@@ -235,10 +222,10 @@ ISR(USB_COM_vect) {
         SET_FLAG(UECONX, STALLRQ);
       }
 
-      acknowledge_setup();
+      CLI(RXSTPI);
     }
 
-    if (transmit_ready()) {
+    if (ENDPOINT_IRQ_ENABLED_AND_SET(TXIN)) {
       if (control_transfer.stage == CTRL_DATA_IN) {
         // Send remaining transaction data
         uint16_t fifo_free = fifo_size() - fifo_byte_count();
@@ -246,7 +233,7 @@ ISR(USB_COM_vect) {
         uint16_t length = transfer_left < fifo_free ? transfer_left : fifo_free;
         uint8_t* data = (uint8_t*) control_transfer.data + control_transfer.data_done;
         control_transfer.data_done += fifo_write(data, length);
-        transmit_in_data();
+        CLI(TXINI);
         if (control_transfer.data_done == control_transfer.data_length) {
           free(control_transfer.data);
           control_transfer.data = 0;
@@ -256,7 +243,7 @@ ISR(USB_COM_vect) {
       }
       else if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
         // Send ZLP handshake
-        transmit_in_data();
+        CLI(TXINI);
         if (control_transfer.callback_handshake) {
           control_transfer.stage = CTRL_POST_HANDSHAKE;
         }
@@ -275,7 +262,7 @@ ISR(USB_COM_vect) {
       }
     }
 
-    if (out_received()) {
+    if (ENDPOINT_IRQ_ENABLED_AND_SET(RXOUT)) {
       if (control_transfer.stage == CTRL_DATA_OUT) {
         // Copy incoming data
         uint16_t left = control_transfer.data_length - control_transfer.data_done;
@@ -289,7 +276,7 @@ ISR(USB_COM_vect) {
         if (control_transfer.callback_data) {
           control_transfer.callback_data(&control_transfer);
         }
-        acknowledge_out_data();
+        CLI(RXOUTI);
         if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
           SEI(TXINE);
           CEI(RXOUTE);
@@ -297,7 +284,7 @@ ISR(USB_COM_vect) {
       }
       else if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
         // Acknowledge ZLP handshake
-        acknowledge_out_data();
+        CLI(RXOUTI);
         // Since acknowledging the handshake doesn't require waiting for the host, perform
         // any callback immediately
         if (control_transfer.callback_handshake) {
@@ -308,7 +295,7 @@ ISR(USB_COM_vect) {
       }
       else {
         // Ignore data
-        acknowledge_out_data();
+        CLI(RXOUTI);
         CEI(RXOUTE);
       }
     }
