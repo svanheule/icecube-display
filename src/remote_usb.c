@@ -230,14 +230,18 @@ ISR(USB_COM_vect) {
         // Send remaining transaction data
         uint16_t fifo_free = fifo_size() - fifo_byte_count();
         uint16_t transfer_left = control_transfer.data_length - control_transfer.data_done;
-        uint16_t length = transfer_left < fifo_free ? transfer_left : fifo_free;
+        uint16_t length = min(transfer_left, fifo_free);
         uint8_t* data = (uint8_t*) control_transfer.data + control_transfer.data_done;
         control_transfer.data_done += fifo_write(data, length);
+
+        // Perform callback if any
+        // This should change the transfer stage at the end of the transfer!
+        if (control_transfer.callback_data) {
+          control_transfer.callback_data(&control_transfer);
+        }
         CLI(TXINI);
-        if (control_transfer.data_done == control_transfer.data_length) {
-          free(control_transfer.data);
-          control_transfer.data = 0;
-          control_transfer.stage = CTRL_HANDSHAKE_IN;
+
+        if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
           CEI(TXINE);
         }
       }

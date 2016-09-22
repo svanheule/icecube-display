@@ -22,12 +22,30 @@ static inline uint8_t min(uint8_t a, uint8_t b) {
 static void callback_set_address(struct control_transfer_t* transfer);
 static void callback_set_configuration(struct control_transfer_t* transfer);
 
+static void callback_default_data_in(struct control_transfer_t* transfer) {
+  if (transfer->data_done == transfer->data_length) {
+    free(transfer->data);
+    transfer->data = 0;
+    transfer->stage = CTRL_HANDSHAKE_IN;
+  }
+}
+
+static void callback_default_data_in_cancel(struct control_transfer_t* transfer) {
+  // Release untransmitted data
+  if (transfer->data) {
+    free(transfer->data);
+    transfer->data = 0;
+  }
+}
+
 static void* init_data_in(struct control_transfer_t* transfer, size_t length) {
   transfer->data = malloc(length);
   if (transfer->data) {
     transfer->stage = CTRL_DATA_IN;
     transfer->data_length = length;
     transfer->data_done = 0;
+    transfer->callback_data = callback_default_data_in;
+    transfer->callback_cancel = callback_default_data_in_cancel;
   }
   return transfer->data;
 }
@@ -38,21 +56,19 @@ void init_control_transfer(
 ) {
   transfer->callback_handshake = 0;
   transfer->callback_data = 0;
+  transfer->callback_cancel = 0;
+  transfer->data = 0;
+  transfer->data_length = 0;
   transfer->stage = CTRL_SETUP;
   transfer->req = setup;
 }
 
 void cancel_control_transfer(struct control_transfer_t* transfer) {
-  transfer->stage = CTRL_STALL;
   // Call any cancel callbacks that may perform clean-up
   if (transfer->callback_cancel) {
     transfer->callback_cancel();
   }
-  // Release untransmitted data
-  if (transfer->data) {
-    free(transfer->data);
-    transfer->data = 0;
-  }
+  transfer->stage = CTRL_STALL;
 }
 
 static inline void process_standard_request(struct control_transfer_t* transfer) {
