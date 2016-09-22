@@ -88,13 +88,13 @@ struct control_transfer_t {
   /// Setup request that is currently being handled.
   const struct usb_setup_packet_t* req;
   /// Data to be transmitted to the host.
-  void* data_in;
+  void* data;
   /// Total length of \a data_in.
-  uint16_t data_in_length;
+  uint16_t data_length;
   /// Transmitted length of \a data_in.
-  uint16_t data_in_done;
+  uint16_t data_done;
   /// Function to be called when new data is received.
-  void (*callback_data_out)(struct control_transfer_t* transfer);
+  void (*callback_data)(struct control_transfer_t* transfer);
   /// Function to be called *after* the ZLP handshake is sent/received.
   void (*callback_handshake)(struct control_transfer_t* transfer);
   /// Cleanup function to be called when the transfer is cancelled.

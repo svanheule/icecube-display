@@ -209,7 +209,7 @@ ISR(USB_COM_vect) {
         cancel_control_transfer(&control_transfer);
       }
       control_transfer.callback_handshake = 0;
-      control_transfer.callback_data_out = 0;
+      control_transfer.callback_data = 0;
       control_transfer.callback_cancel = 0;
       control_transfer.stage = CTRL_SETUP;
 
@@ -242,14 +242,14 @@ ISR(USB_COM_vect) {
       if (control_transfer.stage == CTRL_DATA_IN) {
         // Send remaining transaction data
         uint16_t fifo_free = fifo_size() - fifo_byte_count();
-        uint16_t transfer_left = control_transfer.data_in_length - control_transfer.data_in_done;
+        uint16_t transfer_left = control_transfer.data_length - control_transfer.data_done;
         uint16_t length = transfer_left < fifo_free ? transfer_left : fifo_free;
-        uint8_t* data = (uint8_t*) control_transfer.data_in + control_transfer.data_in_done;
-        control_transfer.data_in_done += fifo_write(data, length);
+        uint8_t* data = (uint8_t*) control_transfer.data + control_transfer.data_done;
+        control_transfer.data_done += fifo_write(data, length);
         transmit_in_data();
-        if (control_transfer.data_in_done == control_transfer.data_in_length) {
-          free(control_transfer.data_in);
-          control_transfer.data_in = 0;
+        if (control_transfer.data_done == control_transfer.data_length) {
+          free(control_transfer.data);
+          control_transfer.data = 0;
           control_transfer.stage = CTRL_HANDSHAKE_IN;
           CEI(TXINE);
         }
@@ -278,8 +278,8 @@ ISR(USB_COM_vect) {
     if (out_received()) {
       if (control_transfer.stage == CTRL_DATA_OUT) {
         // Process incoming data
-        if (control_transfer.callback_data_out) {
-          control_transfer.callback_data_out(&control_transfer);
+        if (control_transfer.callback_data) {
+          control_transfer.callback_data(&control_transfer);
         }
         acknowledge_out_data();
         if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {

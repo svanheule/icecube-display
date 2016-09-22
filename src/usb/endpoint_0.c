@@ -23,13 +23,13 @@ static void callback_set_address(struct control_transfer_t* transfer);
 static void callback_set_configuration(struct control_transfer_t* transfer);
 
 static void* init_data_in(struct control_transfer_t* transfer, size_t length) {
-  transfer->data_in = malloc(length);
-  if (transfer->data_in) {
+  transfer->data = malloc(length);
+  if (transfer->data) {
     transfer->stage = CTRL_DATA_IN;
-    transfer->data_in_length = length;
-    transfer->data_in_done = 0;
+    transfer->data_length = length;
+    transfer->data_done = 0;
   }
-  return transfer->data_in;
+  return transfer->data;
 }
 
 void cancel_control_transfer(struct control_transfer_t* transfer) {
@@ -39,9 +39,9 @@ void cancel_control_transfer(struct control_transfer_t* transfer) {
     transfer->callback_cancel();
   }
   // Release untransmitted data
-  if (transfer->data_in) {
-    free(transfer->data_in);
-    transfer->data_in = 0;
+  if (transfer->data) {
+    free(transfer->data);
+    transfer->data = 0;
   }
 }
 
@@ -55,15 +55,15 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
       if (init_data_in(transfer, 2)) {
         switch (transfer->req->bmRequestType) {
           case (REQ_DIR_IN | REQ_TYPE_STANDARD | REQ_REC_DEVICE):
-            *((uint16_t*) transfer->data_in) = DEVICE_STATUS_SELF_POWERED;
+            *((uint16_t*) transfer->data) = DEVICE_STATUS_SELF_POWERED;
             break;
           case (REQ_DIR_IN | REQ_TYPE_STANDARD | REQ_REC_INTERFACE):
-            *((uint16_t*) transfer->data_in) = 0;
+            *((uint16_t*) transfer->data) = 0;
             break;
           case (REQ_DIR_IN | REQ_TYPE_STANDARD | REQ_REC_ENDPOINT):
             // TODO Select the requested EP and return halted status
             // Currently no EP supports being halted, so always return 0
-            *((uint16_t*) transfer->data_in) = 0;
+            *((uint16_t*) transfer->data) = 0;
             break;
           default:
             cancel_control_transfer(transfer);
@@ -84,7 +84,7 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
     case GET_CONFIGURATION:
       if (transfer->req->bmRequestType == (REQ_DIR_IN | REQ_TYPE_STANDARD | REQ_REC_DEVICE)) {
         if(init_data_in(transfer, 1)) {
-          *((uint8_t*) transfer->data_in) = get_configuration_index();
+          *((uint8_t*) transfer->data) = get_configuration_index();
         }
       }
       break;
@@ -111,7 +111,7 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
           if (init_data_in(transfer, bytes_left)) {
             const uint8_t HEADER_SIZE = sizeof(struct usb_descriptor_header_t);
             uint8_t body_length, len;
-            uint8_t* write_ptr = (uint8_t*) transfer->data_in;
+            uint8_t* write_ptr = (uint8_t*) transfer->data;
             while (head && bytes_left) {
               // Copy header
               len = min(bytes_left, HEADER_SIZE);
@@ -185,7 +185,7 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
         usb_frame->flags = FRAME_FREE_AFTER_DRAW;
         usb_frame_buffer_ptr = (uint8_t*) usb_frame->buffer;
         transfer->stage = CTRL_DATA_OUT;
-        transfer->callback_data_out = callback_data_usb_frame;
+        transfer->callback_data = callback_data_usb_frame;
         transfer->callback_cancel = callback_cancel_usb_frame;
       }
     }
