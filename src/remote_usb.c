@@ -271,10 +271,8 @@ ISR(USB_COM_vect) {
         // Copy incoming data
         uint16_t left = control_transfer.data_length - control_transfer.data_done;
         uint16_t size = min(left, fifo_size());
-
-        uint16_t read = fifo_read(control_transfer.data, size);
-        control_transfer.data = (uint8_t*) control_transfer.data + read;
-        control_transfer.data_done += read;
+        uint8_t* data = (uint8_t*) control_transfer.data + control_transfer.data_done;
+        control_transfer.data_done += fifo_read(data, size);
 
         // Perform callback if any
         if (control_transfer.callback_data) {
