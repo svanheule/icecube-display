@@ -261,7 +261,7 @@ class DisplayConnection(object):
             except Exception as e:
                 self.close() # Useful call?
                 self._usb_handle = None
-                logging.log_warning("Could not open device {}".format(dev_name), "LedDisplay")
+                logging.log_warn("Could not open device {}".format(dev_name), "LedDisplay")
         # Return if connection was succesful
         return self._usb_handle is not None
 
