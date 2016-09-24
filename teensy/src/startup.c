@@ -29,8 +29,6 @@
  */
 
 #include "kinetis.h"
-#include "core_pins.h" // testing only
-#include "ser_print.h" // testing only
 
 
 // Flash Security Setting. On Teensy 3.2, you can lock the MK20 chip to prevent
