@@ -12,6 +12,27 @@
 
 #include <stdint.h>
 
+/// USB packet IDs
+/// \ingroup usb_endpoint
+enum usb_pid_t {
+    PID_OUT = 0x1
+  , PID_IN = 0x9
+  , PID_SOF = 0x5
+  , PID_SETUP = 0xD
+  , PID_DATA0 = 0x3
+  , PID_DATA1 = 0xB
+  , PID_DATA2 = 0x7
+  , PID_MDATA = 0xF
+  , PID_ACK = 0x2
+  , PID_NAK = 0xA
+  , PID_STALL = 0xE
+  , PIT_NYET = 0x6
+  , PID_PRE = 0xC
+  , PID_ERR = 0xC
+  , PID_SPLIT = 0x8
+  , PID_PING = 0x4
+};
+
 /// USB request codes defined in §9.4 of the specification.
 /// Not all requests are currently supported.
 /// \ingroup usb_endpoint_control
