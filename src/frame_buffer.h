@@ -50,11 +50,13 @@
   * \ingroup led_display
   */
 struct led_t {
+#if !defined(__MK20DX256__)
   uint8_t brightness; ///< Global brightness bits; only 5 LSB are valid.
+#endif
   uint8_t red; ///< 8 bit red component.
   uint8_t green; ///< 8 bit green component.
   uint8_t blue; ///< 8 bit blue component.
-};
+} __attribute__((packed));
 
 /// Total frame byte count
 /// \ingroup led_display
