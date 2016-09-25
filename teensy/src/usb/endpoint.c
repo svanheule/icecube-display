@@ -39,10 +39,10 @@ void endpoint_deconfigure(const uint8_t ep_num) {
 }
 
 void endpoint_stall(const uint8_t ep_num) {
-  ATOMIC_REGISTER_BIT_SET(*ENDPOINT_REGISTER_ADDRESS(ep_num), 1);
+  *ENDPOINT_REGISTER_ADDRESS(ep_num) |= _BV(1);
 }
 
 void endpoint_clear_stall(const uint8_t ep_num) {
-  ATOMIC_REGISTER_BIT_CLEAR(*ENDPOINT_REGISTER_ADDRESS(ep_num), 1);
+  *ENDPOINT_REGISTER_ADDRESS(ep_num) &= ~_BV(1);
 }
 

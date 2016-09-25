@@ -61,7 +61,6 @@ static struct buffer_descriptor_t* find_unused_tx_bd(uint8_t endpoint) {
   }
 }
 
-#define REGISTER_BIT_IS_SET(reg, bit) ( *(BITBAND_REGISTER_ADDRESS(&reg, bit)) )
 
 void init_remote() {
   // Based on PJCR code (cores/teensy3/usb_dev.c)
@@ -111,7 +110,6 @@ static inline uint8_t pop_token_status() {
   // Read token status
   const uint8_t status = USB0_STAT;
   // Clear token interrupt *after* reading status
-//  ATOMIC_REGISTER_BIT_SET(USB0_ISTAT, 3);
   USB0_ISTAT = USB_ISTAT_TOKDNE;
   return status;
 }
