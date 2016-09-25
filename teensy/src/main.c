@@ -1,5 +1,3 @@
-#include "usb/led.h"
-
 #include "frame_timer.h"
 #include "frame_buffer.h"
 #include "frame_queue.h"
@@ -130,9 +128,6 @@ static inline void consume_frame(struct frame_buffer_t* frame) {
 
 int main () {
   __disable_irq();
-  init_led();
-  set_led_state(LED_TRIP_FAST);
-
   // Must be run *before* using any other display functions
   init_display_properties();
 

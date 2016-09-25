@@ -85,8 +85,7 @@ void init_remote() {
   // Clear pending interrupts we care about
   USB0_ISTAT = 0xFF;
 
-//  init_led();
-//  set_led_state(LED_TRIP_FAST);
+  init_led();
 
   // Enable USB module
   USB0_CTL = USB_CTL_USBENSOFEN;
