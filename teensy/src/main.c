@@ -23,7 +23,7 @@ static volatile enum display_state_t display_state = DISPLAY_STATE_BOOT;
 static const struct renderer_t* volatile renderer = 0;
 // If boot splash duration is > 0, display splash first.
 // Otherwise go straight to idle.
-static uint8_t boot_splash_duration = 24;
+static uint8_t boot_splash_duration = 0;
 
 static inline const struct renderer_t* get_renderer() {
   switch (display_state) {
