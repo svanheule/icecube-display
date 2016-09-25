@@ -127,7 +127,6 @@ static inline void consume_frame(struct frame_buffer_t* frame) {
 }
 
 int main () {
-  __disable_irq();
   // Must be run *before* using any other display functions
   init_display_properties();
 
@@ -144,8 +143,6 @@ int main () {
   // Init display timer just before display loop
   draw_frame = 0;
   init_frame_timer(frame_timer_callback);
-
-  __enable_irq();
 
   // Main loop
   for (;;) {
