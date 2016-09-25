@@ -29,6 +29,9 @@ static uint8_t boot_splash_duration = 24;
 
 static inline const struct renderer_t* get_renderer() {
   switch (display_state) {
+#ifdef DEVICE_TEST_MODE
+    case DISPLAY_STATE_IDLE:
+#endif
     case DISPLAY_STATE_TEST_SNAKE:
       return get_test_renderer();
       break;
@@ -42,7 +45,9 @@ static inline const struct renderer_t* get_renderer() {
 /*      return get_boot_splash_renderer();*/
 /*      break;*/
     case DISPLAY_STATE_BOOT:
+#ifndef DEVICE_TEST_MODE
     case DISPLAY_STATE_IDLE:
+#endif
     case DISPLAY_STATE_EXTERNAL:
     default:
       return 0;
@@ -55,16 +60,12 @@ static inline void advance_display_state() {
   enum display_state_t new_state = display_state;
 
   if (display_state == DISPLAY_STATE_BOOT) {
-#if defined(BOOT_TEST_MODE)
-    new_state = DISPLAY_STATE_TEST_SNAKE;
-#else
     if (boot_splash_duration > 0) {
       new_state = DISPLAY_STATE_BOOT_SPLASH;
     }
     else {
       new_state = DISPLAY_STATE_IDLE;
     }
-#endif
   }
   else if (display_state == DISPLAY_STATE_BOOT_SPLASH) {
     if (boot_splash_duration > 0) {

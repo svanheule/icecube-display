@@ -113,7 +113,7 @@ target_compile_definitions(icecube_display
   PUBLIC DEVICE_FPS=${DEVICE_FPS}
 )
 if(TEST_MODE)
-  target_compile_definitions(icecube_display PUBLIC BOOT_TEST_MODE)
+  target_compile_definitions(icecube_display PUBLIC DEVICE_TEST_MODE)
 endif()
 
 target_compile_options(icecube_display
