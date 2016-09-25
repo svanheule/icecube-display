@@ -61,6 +61,13 @@ static struct buffer_descriptor_t* find_unused_tx_bd(uint8_t endpoint) {
   }
 }
 
+static void init_ep0_bdt() {
+  for (unsigned odd = 0; odd < 2; ++odd) {
+    buffer_descriptor_table[bdt_index(0, BDT_DIR_TX, odd)] = (struct buffer_descriptor_t) {0, 0};
+    buffer_descriptor_table[bdt_index(0, BDT_DIR_RX, odd)] =
+        (struct buffer_descriptor_t) {generate_buffer_descriptor(EP0_SIZE, 0), &ep0_rx_buffer[odd]};
+  }
+}
 
 void init_remote() {
   // Based on PJCR code (cores/teensy3/usb_dev.c)
@@ -148,15 +155,6 @@ static bool queue_in_zlp() {
   }
 
   return bd != 0;
-}
-
-static void init_ep0_bdt() {
-  endpoint_table[0].rx.even =
-      (struct buffer_descriptor_t) {generate_buffer_descriptor(EP0_SIZE, 0), &ep0_rx_buffer[0]};
-  endpoint_table[0].rx.odd =
-      (struct buffer_descriptor_t) {generate_buffer_descriptor(EP0_SIZE, 0), &ep0_rx_buffer[1]};
-  endpoint_table[0].tx.even.desc = 0;
-  endpoint_table[0].tx.odd.desc = 0;
 }
 
 
