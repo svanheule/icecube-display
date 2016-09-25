@@ -7,7 +7,7 @@ bool endpoint_configure(const struct ep_config_t* config) {
   uint8_t reg = 0;
 
   if (config->type == EP_TYPE_CONTROL && config->dir == EP_DIRECTION_BIDIR) {
-    reg = USB_ENDPT_EPTXEN | USB_ENDPT_EPRXEN;
+    reg = USB_ENDPT_EPTXEN | USB_ENDPT_EPRXEN | USB_ENDPT_EPHSHK;
   }
   else {
     // No handshaking for isochronous endpoints

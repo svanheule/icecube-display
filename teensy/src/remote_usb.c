@@ -169,10 +169,10 @@ void usb_isr() {
   // TODO VBUS transitions?
 
   if (IRQ_ENABLED_AND_SET(USBRST)) {
-    // Clear reset interrupt and suspend interrupt
-    USB0_ISTAT = USB_ISTAT_USBRST | USB_ISTAT_SLEEP;
-    // Enable suspend interrupt
-    USB0_INTEN |= USB_INTEN_SLEEPEN;
+    // Clear reset interrupt, suspend and token interrupt
+    USB0_ISTAT = USB_ISTAT_USBRST | USB_ISTAT_SLEEP | USB_ISTAT_TOKDNE;
+    // Enable suspend and token interrupt
+    USB0_INTEN |= USB_INTEN_SLEEPEN | USB_INTEN_TOKDNEEN;
 
     // Load default configuration
     usb_set_address(0);
@@ -189,9 +189,9 @@ void usb_isr() {
 
   // Wake-up, suspend
   if (IRQ_ENABLED_AND_SET(SLEEP)) {
-    // Clear and disable suspend interrupt
-    USB0_INTEN &= ~USB_INTEN_SLEEPEN;
-    USB0_ISTAT = USB_ISTAT_SLEEP;
+    // Clear and disable suspend and token interrupt
+    USB0_INTEN &= ~(USB_INTEN_SLEEPEN | USB_INTEN_TOKDNEEN);
+    USB0_ISTAT = USB_ISTAT_SLEEP | USB_ISTAT_TOKDNE;
     // Suspend transceiver
     USB0_USBCTRL |= USB_USBCTRL_SUSP;
     // Enable wakeup interrupt
@@ -207,8 +207,9 @@ void usb_isr() {
     USB0_USBTRC0 &= ~(USB_USBTRC_USBRESMEN | USB_USBTRC_USB_RESUME_INT);
     // Take transceiver out of suspend state
     USB0_USBCTRL &= ~USB_USBCTRL_SUSP;
-    // Enable suspend interrupt
-    USB0_INTEN |= USB_INTEN_SLEEPEN;
+    // Enable suspend and token interrupt
+    USB0_ISTAT = USB_ISTAT_SLEEP;
+    USB0_INTEN |= USB_INTEN_SLEEPEN | USB_INTEN_TOKDNEEN;
 
     // Track device state
     if (get_configuration_index() > 0) {
