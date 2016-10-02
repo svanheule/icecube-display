@@ -28,7 +28,6 @@ static struct buffer_descriptor_t* const buffer_descriptor_table =
 
 // Align buffers to word boundary, just to make sure nothing weird happens with the DMA transfers
 static alignas(4) uint8_t ep0_rx_buffer[2][EP0_SIZE];
-static uint8_t ep0_tx_data_toggle;
 
 // BDT entries are 8 bytes in size, so shift back address bits by 3 positions
 static inline ptrdiff_t bdt_index(uint8_t epnum, uint8_t tx, uint8_t odd) {
@@ -48,20 +47,17 @@ static inline uint32_t generate_buffer_descriptor(uint16_t length, uint8_t data_
   return base_desc | ((length & 0x3F) << BDT_DESC_BC) | (data_toggle << BDT_DESC_DATA01);
 }
 
-static struct buffer_descriptor_t* find_unused_tx_bd(uint8_t endpoint) {
-  const uint16_t even_index = bdt_index(endpoint, BDT_DIR_TX, 0);
-  if (buffer_descriptor_table[even_index].desc & _BV(BDT_DESC_OWN)) {
-    return &buffer_descriptor_table[even_index];
-  }
-  else if (buffer_descriptor_table[even_index ^ 1].desc & _BV(BDT_DESC_OWN)) {
-    return &buffer_descriptor_table[even_index ^ 1];
-  }
-  else {
-    return 0;
-  }
+static uint8_t ep0_tx_data_toggle;
+static uint8_t ep0_tx_buffer_toggle;
+
+static struct buffer_descriptor_t* get_tx_bd(uint8_t endpoint) {
+  const uint16_t index = bdt_index(endpoint, BDT_DIR_TX, ep0_tx_buffer_toggle);
+  ep0_tx_buffer_toggle ^= 1;
+  return &buffer_descriptor_table[index];
 }
 
 static void init_ep0_bdt() {
+  ep0_tx_buffer_toggle = 0;
   for (unsigned odd = 0; odd < 2; ++odd) {
     buffer_descriptor_table[bdt_index(0, BDT_DIR_TX, odd)] = (struct buffer_descriptor_t) {0, 0};
     buffer_descriptor_table[bdt_index(0, BDT_DIR_RX, odd)] =
@@ -125,7 +121,7 @@ static inline uint8_t pop_token_status() {
 //      directly to the frame buffer
 
 static uint16_t queue_in_data(void* buffer, const uint16_t max_length) {
-  struct buffer_descriptor_t* bd = find_unused_tx_bd(0);
+  struct buffer_descriptor_t* bd = get_tx_bd(0);
   uint16_t remaining = max_length;
 
   while (bd && remaining) {
@@ -139,14 +135,14 @@ static uint16_t queue_in_data(void* buffer, const uint16_t max_length) {
 
     // Toggle DATA0/1 field
     ep0_tx_data_toggle ^= 1;
-    bd = find_unused_tx_bd(0);
+    bd = get_tx_bd(0);
   }
 
   return max_length-remaining;
 }
 
 static bool queue_in_zlp() {
-  struct buffer_descriptor_t* bd = find_unused_tx_bd(0);
+  struct buffer_descriptor_t* bd = get_tx_bd(0);
 
   if (bd) {
     bd->desc = generate_buffer_descriptor(0, 1);
@@ -155,6 +151,10 @@ static bool queue_in_zlp() {
   }
 
   return bd != 0;
+}
+
+static void return_ep0_rx(struct buffer_descriptor_t* bd) {
+  bd->desc = generate_buffer_descriptor(EP0_SIZE, 0);
 }
 
 
@@ -175,10 +175,8 @@ void usb_isr() {
     // Load default configuration
     usb_set_address(0);
     if (set_configuration_index(0)) {
-      // After configuration, reset all data toggles to 0
+      // After configuration, reset all buffer toggles to 0, and initialise EP0 BDT entries
       USB0_CTL |= USB_CTL_ODDRST;
-
-      // Initialise EP0 BDT entries
       init_ep0_bdt();
 
       set_device_state(DEFAULT);
@@ -241,7 +239,7 @@ void usb_isr() {
       // The .data pointer will track the amount of queued data, so is ahead of .data_done
       static uint8_t* control_data_end;
 
-      enum usb_pid_t token_pid = get_token_pid(bdt_entry);
+      const enum usb_pid_t token_pid = get_token_pid(bdt_entry);
 
       if (token_pid == PID_SETUP) {
         // Cancel pending transfers
@@ -249,12 +247,12 @@ void usb_isr() {
           cancel_control_transfer(&control_transfer);
         }
 
+        // FIXME setup packet doesn't seem to get copied...
         memcpy(&setup_packet, bdt_entry->buffer, sizeof(struct usb_setup_packet_t));
+        return_ep0_rx(bdt_entry);
+
         init_control_transfer(&control_transfer, &setup_packet);
         process_setup(&control_transfer);
-
-        // Reinitialise RX buffers
-        init_ep0_bdt();
 
         // Always start with DATA1 after SETUP
         ep0_tx_data_toggle = 1;
@@ -310,20 +308,18 @@ void usb_isr() {
         }
       }
       else if (token_pid == PID_OUT) {
-        const uint8_t odd_buffer = bdt_index & 1;
-        void* new_buffer = ep0_rx_buffer[odd_buffer];
-
         if (control_transfer.stage == CTRL_DATA_OUT) {
           // Copy data to data buffer
           uint16_t left = control_transfer.data_length - control_transfer.data_done;
           uint16_t bytes_received = byte_count(bdt_entry);
+          // These values should be the same for the last transfer, but we want to
+          // avoid buffer overflows in case they aren't.
           uint16_t size = min(bytes_received, left);
 
           // Only copy back if we used the local buffer
-          if (bdt_entry->buffer == &ep0_rx_buffer[odd_buffer]) {
-            uint8_t* dest = (uint8_t*) control_transfer.data + control_transfer.data_done;
-            memcpy(dest, bdt_entry->buffer, size);
-          }
+          uint16_t dest_remaining = control_transfer.data_length - control_transfer.data_done;
+          uint8_t* dest = (uint8_t*) control_data_end - dest_remaining;
+          memcpy(dest, bdt_entry->buffer, size);
 
           // Keep EP0 FSM informed
           control_transfer.data_done += size;
@@ -340,13 +336,8 @@ void usb_isr() {
           else if (control_transfer.data != (void*) control_data_end) {
             // Queue more RX buffers
             uint16_t queue_left = control_data_end - (uint8_t*) control_transfer.data;
-            if (queue_left < EP0_SIZE) {
-              control_transfer.data = control_data_end;
-            }
-            else {
-//                new_buffer = control_transfer.data; // TODO Perform direct write to buffer
-              control_transfer.data = (uint8_t*) control_transfer.data + EP0_SIZE;
-            }
+            uint16_t rx_queued = min(queue_left, EP0_SIZE);
+            control_transfer.data = (uint8_t*) control_transfer.data + rx_queued;
           }
         }
         else if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
@@ -358,8 +349,7 @@ void usb_isr() {
         }
 
         // Hand BDT entry back
-        bdt_entry->buffer = new_buffer;
-        bdt_entry->desc = generate_buffer_descriptor(EP0_SIZE, 0);
+        return_ep0_rx(bdt_entry);
       }
     }
   }
