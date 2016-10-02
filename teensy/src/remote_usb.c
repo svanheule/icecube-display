@@ -234,8 +234,6 @@ void usb_isr() {
     const uint8_t endpoint = token_status >> 4;
     struct buffer_descriptor_t* bdt_entry = &buffer_descriptor_table[bdt_index];
 
-    return;
-
     if (endpoint == 0) {
       static struct control_transfer_t control_transfer;
       static struct usb_setup_packet_t setup_packet;
@@ -282,7 +280,6 @@ void usb_isr() {
         }
 
         // Clear TXSUSPEND/TOKENBUSY bit to resume operation
-//        ATOMIC_REGISTER_BIT_CLEAR(USB0_CTL, 5);
         USB0_CTL &= ~USB_CTL_TXSUSPENDTOKENBUSY;
       }
       else if (token_pid == PID_IN) {
