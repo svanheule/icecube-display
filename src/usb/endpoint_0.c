@@ -14,9 +14,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-static inline uint8_t min(uint8_t a, uint8_t b) {
-  return a < b ? a : b;
-}
+#define MACRO_MIN(type)\
+    static inline type##_t min_##type(type##_t a, type##_t b) { return a < b ? a : b; }
+
+MACRO_MIN(uint8)
+MACRO_MIN(uint16)
 
 static void callback_set_address(struct control_transfer_t* transfer);
 static void callback_set_configuration(struct control_transfer_t* transfer);
@@ -131,21 +133,22 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
           // Send until requested size is reached OR all data is sent
           uint16_t list_length = get_list_total_length(head);
           uint16_t requested_length = transfer->req->wLength;
-          uint16_t bytes_left = min(requested_length, list_length);
+          uint16_t bytes_left = min_uint16(requested_length, list_length);
 
           if (init_data_in(transfer, bytes_left)) {
             const uint8_t HEADER_SIZE = sizeof(struct usb_descriptor_header_t);
-            uint8_t body_length, len;
+            uint8_t body_length;
+            uint16_t len;
             uint8_t* write_ptr = (uint8_t*) transfer->data;
             while (head && bytes_left) {
               // Copy header
-              len = min(bytes_left, HEADER_SIZE);
+              len = min_uint16(bytes_left, HEADER_SIZE);
               memcpy(write_ptr, &head->header, len);
               write_ptr += len;
               bytes_left -= len;
               // Copy body
               body_length = head->header.bLength - HEADER_SIZE;
-              len = min(bytes_left, body_length);
+              len = min_uint16(bytes_left, body_length);
               memcpy_memspace(head->memspace, write_ptr, head->body, len);
 
               write_ptr += len;
@@ -247,7 +250,7 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
               *buffer++ = item.length;
             }
             if (remaining) {
-              size_t copy_len = min(item.length, remaining);
+              uint16_t copy_len = min_uint16(item.length, remaining);
               memcpy_memspace(item.memspace, (void*) buffer, item.data, copy_len);
               buffer += copy_len;
               remaining -= copy_len;
