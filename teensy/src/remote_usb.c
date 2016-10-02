@@ -259,24 +259,23 @@ void usb_isr() {
         // Always start with DATA1 after SETUP
         ep0_tx_data_toggle = 1;
 
-        switch (control_transfer.stage) {
-          case CTRL_DATA_IN:
-            // Start queueing data
-            control_data_end = (uint8_t*) control_transfer.data + control_transfer.data_length;
-            uint16_t queued = queue_in_data(control_transfer.data, control_transfer.data_length);
-            control_transfer.data = (uint8_t*) control_transfer.data + queued;
-            break;
-          case CTRL_HANDSHAKE_OUT:
-            queue_in_zlp();
-            break;
-          case CTRL_DATA_OUT:
-          case CTRL_HANDSHAKE_IN:
-            // Wait for OUT packet
-            break;
-          default:
-            // TODO Stall endpoint (via BDT?)
-            //endpoint_stall(0);
-            break;
+        if (control_transfer.stage == CTRL_DATA_IN) {
+          control_data_end = (uint8_t*) control_transfer.data + control_transfer.data_length;
+          uint16_t queued = queue_in_data(control_transfer.data, control_transfer.data_length);
+          control_transfer.data = (uint8_t*) control_transfer.data + queued;
+        }
+        else if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
+          queue_in_zlp();
+        }
+        else if (
+                 control_transfer.stage == CTRL_DATA_OUT
+              || control_transfer.stage == CTRL_HANDSHAKE_IN
+        ) {
+          // Wait for OUT packet
+        }
+        else {
+          // TODO Stall endpoint (via BDT?)
+          //endpoint_stall(0);
         }
 
         // Clear TXSUSPEND/TOKENBUSY bit to resume operation
