@@ -39,12 +39,12 @@ static inline uint8_t get_token_pid(const struct buffer_descriptor_t* descriptor
 }
 
 static inline uint16_t byte_count(const struct buffer_descriptor_t* descriptor) {
-  return (descriptor->desc >> 16) & 0x3F;
+  return (descriptor->desc >> 16) & 0x3FF;
 }
 
 static inline uint32_t generate_buffer_descriptor(uint16_t length, uint8_t data_toggle) {
   const uint32_t base_desc = _BV(BDT_DESC_OWN) | _BV(BDT_DESC_DTS);
-  return base_desc | ((length & 0x3F) << BDT_DESC_BC) | (data_toggle << BDT_DESC_DATA01);
+  return base_desc | ((length & 0x3FF) << BDT_DESC_BC) | (data_toggle << BDT_DESC_DATA01);
 }
 
 static uint8_t ep0_tx_data_toggle;
@@ -247,7 +247,6 @@ void usb_isr() {
           cancel_control_transfer(&control_transfer);
         }
 
-        // FIXME setup packet doesn't seem to get copied...
         memcpy(&setup_packet, bdt_entry->buffer, sizeof(struct usb_setup_packet_t));
         return_ep0_rx(bdt_entry);
 
