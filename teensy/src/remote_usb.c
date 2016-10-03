@@ -276,8 +276,8 @@ void usb_isr() {
           // Wait for OUT packet
         }
         else {
-          // TODO Stall endpoint (via BDT?)
-          //endpoint_stall(0);
+          // Stall endpoint
+          endpoint_stall(0);
         }
 
         // Clear TXSUSPEND/TOKENBUSY bit to resume operation
