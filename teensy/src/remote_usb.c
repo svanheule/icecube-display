@@ -52,8 +52,13 @@ static uint8_t ep0_tx_buffer_toggle;
 
 static struct buffer_descriptor_t* get_tx_bd(uint8_t endpoint) {
   const uint16_t index = bdt_index(endpoint, BDT_DIR_TX, ep0_tx_buffer_toggle);
-  ep0_tx_buffer_toggle ^= 1;
-  return &buffer_descriptor_table[index];
+  if (!(buffer_descriptor_table[index].desc & BDT_DESC_OWN)) {
+    ep0_tx_buffer_toggle ^= 1;
+    return &buffer_descriptor_table[index];
+  }
+  else {
+    return 0;
+  }
 }
 
 static void init_ep0_bdt() {
