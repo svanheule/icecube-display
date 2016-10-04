@@ -222,14 +222,16 @@ static void start_dma_transfer() {
 // LED strip to buffer offset mapping
 // Map format: STRIP[7:0] := string number
 struct port_map_t {
+  uint8_t ports_length;
   uint8_t ports[MAX_PORT_COUNT];
 };
 
+// TODO Move last column forward so port count on last segments can be decreased
 static const struct port_map_t LED_MAP_FRONT[SEGMENT_COUNT] = {
-    {{7, 8, 15, 14, 11, 19, 27, 18}}
-  , {{6, 22, 16, 2, 10, 26, 12, 28}}
-  , {{0, 3, 24, 21, 4, 20, 29, 25}}
-  , {{1, 9, 23, 13, 5, 0, 0, 17}}
+    {8, {7,  8, 15, 14, 11, 19, 27, 18}}
+  , {8, {6, 22, 16,  2, 10, 26, 12, 28}}
+  , {8, {0,  3, 24, 21,  4, 20, 29, 25}}
+  , {8, {1,  9, 23, 13,  5,  0,  0, 17}}
 };
 // TODO Define other led geometry mappings
 
@@ -293,7 +295,7 @@ static union matrix_t transpose_matrix(union matrix_t m) {
 }
 
 
-static void copy_buffer(const void* restrict src, void* restrict dest, uint8_t used_port_count) {
+static void copy_buffer(const void* restrict src, void* restrict dest) {
   // Perform a linear write to the output buffer, at the expense of having to jump around
   // the input buffer *a lot*.
   union matrix_t* output = (union matrix_t*) dest;
@@ -307,6 +309,7 @@ static void copy_buffer(const void* restrict src, void* restrict dest, uint8_t u
   const uint8_t* input_0_end;
 
   for (unsigned int segment = 0; segment < SEGMENT_COUNT; ++segment) {
+    const uint8_t used_port_count = led_mapping[segment].ports_length;
     // If even segment, LED data is in reverse order as DOM numbering starts at the top of a string
     const bool is_odd = segment % 2;
 
@@ -354,7 +357,9 @@ void display_frame(struct frame_buffer_t* buffer) {
   if (!frame_write_in_progress) {
     frame_write_in_progress = true;
 
-    copy_buffer(buffer->buffer, &(led_data[0]), MAX_PORT_COUNT);
+    buffer->flags |= FRAME_DRAW_IN_PROGRESS;
+    copy_buffer(buffer->buffer, &(led_data[0]));
+    buffer->flags &= ~FRAME_DRAW_IN_PROGRESS;
 
     // Setup TCD to write buffer data
     dma_tcd_list[1].SADDR = &(led_data[0]);
