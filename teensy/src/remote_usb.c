@@ -13,6 +13,8 @@
 #include <stdalign.h>
 #include <string.h>
 
+#define LSB_MASK(n) ((1<<n)-1)
+
 static inline uint16_t min(uint16_t a, uint16_t b) {
   return a < b ? a : b;
 }
@@ -35,16 +37,18 @@ static inline ptrdiff_t bdt_index(uint8_t epnum, uint8_t tx, uint8_t odd) {
 }
 
 static inline uint8_t get_token_pid(const struct buffer_descriptor_t* descriptor) {
-  return (descriptor->desc >> 2) & 0xF;
+  return (descriptor->desc >> 2) & LSB_MASK(4);
 }
 
 static inline uint16_t byte_count(const struct buffer_descriptor_t* descriptor) {
-  return (descriptor->desc >> 16) & 0x3FF;
+  return (descriptor->desc >> 16) & LSB_MASK(10);
 }
 
 static inline uint32_t generate_buffer_descriptor(uint16_t length, uint8_t data_toggle) {
   const uint32_t base_desc = _BV(BDT_DESC_OWN) | _BV(BDT_DESC_DTS);
-  return base_desc | ((length & 0x3FF) << BDT_DESC_BC) | (data_toggle << BDT_DESC_DATA01);
+  length &= LSB_MASK(10);
+  data_toggle &= 1;
+  return base_desc | (length << BDT_DESC_BC) | (data_toggle << BDT_DESC_DATA01);
 }
 
 static uint8_t ep0_tx_data_toggle;
