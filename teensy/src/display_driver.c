@@ -320,7 +320,7 @@ static void copy_buffer(const void* restrict src, void* restrict dest) {
     }
 
     for (unsigned int port = 0; port < used_port_count; ++port) {
-      const uint8_t string = led_mapping[segment].ports[port];
+      const uint8_t string = led_mapping[segment].ports[MAX_PORT_COUNT-1 - port];
       input[port] = initial_position + STRING_LENGTH*BUFFER_STEP*string;
     }
 
