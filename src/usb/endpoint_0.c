@@ -58,6 +58,7 @@ void init_control_transfer(
   transfer->callback_cancel = 0;
   transfer->data = 0;
   transfer->data_length = 0;
+  transfer->data_done = 0;
   transfer->stage = CTRL_SETUP;
   transfer->req = setup;
 }
