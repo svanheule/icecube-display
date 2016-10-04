@@ -242,6 +242,7 @@ void usb_isr() {
       static struct usb_setup_packet_t setup_packet;
       // Keep past-the-end pointer of data buffer to know when to stop queueing data
       // The .data pointer will track the amount of queued data, so is ahead of .data_done
+      static uint8_t* control_data;
       static uint8_t* control_data_end;
 
       const enum usb_pid_t token_pid = get_token_pid(bdt_entry);
@@ -261,19 +262,20 @@ void usb_isr() {
         // Always start with DATA1 after SETUP
         ep0_tx_data_toggle = 1;
 
-        if (control_transfer.stage == CTRL_DATA_IN) {
-          control_data_end = (uint8_t*) control_transfer.data + control_transfer.data_length;
-          uint16_t queued = queue_in_data(control_transfer.data, control_transfer.data_length);
-          control_transfer.data = (uint8_t*) control_transfer.data + queued;
+        const enum control_stage_t stage = control_transfer.stage;
+        if (stage == CTRL_DATA_IN || stage == CTRL_DATA_OUT) {
+          control_data = (uint8_t*) control_transfer.data;
+          control_data_end = control_data + control_transfer.data_length;
+          if (stage == CTRL_DATA_IN) {
+            control_data += queue_in_data(control_data, control_transfer.data_length);
+          }
         }
-        else if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
-          queue_in_zlp();
-        }
-        else if (
-                 control_transfer.stage == CTRL_DATA_OUT
-              || control_transfer.stage == CTRL_HANDSHAKE_IN
-        ) {
-          // Wait for OUT packet
+        else if (stage == CTRL_HANDSHAKE_IN || stage == CTRL_HANDSHAKE_OUT) {
+          control_data = 0;
+          control_data_end = 0;
+          if (stage == CTRL_HANDSHAKE_OUT) {
+            queue_in_zlp();
+          }
         }
         else {
           // Stall endpoint
@@ -292,15 +294,9 @@ void usb_isr() {
             control_transfer.callback_data(&control_transfer);
           }
 
-          if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
-            // Restore data buffer pointer and wait for OUT ZLP
-            control_transfer.data =
-                  (uint8_t*) control_transfer.data - control_transfer.data_length;
-          }
-          else if (control_transfer.data != (void*) control_data_end) {
-            uint16_t remaining = (uint8_t*) control_transfer.data - control_data_end;
-            uint16_t queued = queue_in_data(control_transfer.data, remaining);
-            control_transfer.data = (uint8_t*) control_transfer.data + queued;
+          if (control_data != (void*) control_data_end) {
+            uint16_t remaining = control_data - control_data_end;
+            control_data += queue_in_data(control_data, remaining);
           }
         }
         else if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
@@ -321,8 +317,7 @@ void usb_isr() {
           uint16_t size = min(bytes_received, left);
 
           // Only copy back if we used the local buffer
-          uint16_t dest_remaining = control_transfer.data_length - control_transfer.data_done;
-          uint8_t* dest = (uint8_t*) control_data_end - dest_remaining;
+          uint8_t* dest = (uint8_t*) control_data_end - left;
           memcpy(dest, bdt_entry->buffer, size);
 
           // Keep EP0 FSM informed
@@ -332,16 +327,12 @@ void usb_isr() {
           }
 
           if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
-            // Restore data pointer, queue IN ZLP handshake
-            control_transfer.data =
-                  (uint8_t*) control_transfer.data - control_transfer.data_length;
             queue_in_zlp();
           }
-          else if (control_transfer.data != (void*) control_data_end) {
+          else if (control_data != (void*) control_data_end) {
             // Queue more RX buffers
-            uint16_t queue_left = control_data_end - (uint8_t*) control_transfer.data;
-            uint16_t rx_queued = min(queue_left, EP0_SIZE);
-            control_transfer.data = (uint8_t*) control_transfer.data + rx_queued;
+            uint16_t queue_left = control_data_end - control_data;
+            control_data += min(queue_left, EP0_SIZE);
           }
         }
         else if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
