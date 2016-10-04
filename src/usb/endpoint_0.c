@@ -130,11 +130,8 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
         struct descriptor_list_t* old_head;
         if (head) {
           // Send until requested size is reached OR all data is sent
-          uint16_t list_length = get_list_total_length(head);
-          uint16_t requested_length = transfer->req->wLength;
-          uint16_t bytes_left = min(requested_length, list_length);
-
-          uint8_t* buffer = init_data_in(transfer, requested_length);
+          uint16_t bytes_left = min(transfer->req->wLength, get_list_total_length(head));
+          uint8_t* buffer = init_data_in(transfer, bytes_left);
 
           if (buffer) {
             const uint8_t HEADER_SIZE = sizeof(struct usb_descriptor_header_t);
