@@ -174,7 +174,7 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
 
 static void callback_set_address(struct control_transfer_t* transfer) {
   // Enable new address
-  const uint8_t address = (uint8_t) (transfer->req->wValue & 0x7F);
+  const uint8_t address = (uint8_t) transfer->req->wValue;
   usb_set_address(address);
   if (address) {
     set_device_state(ADDRESSED);
