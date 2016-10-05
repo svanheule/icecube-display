@@ -100,6 +100,6 @@ struct usb_setup_packet_t {
   uint16_t wValue; ///< Request value, interpretation is specific to bRequest's value.
   uint16_t wIndex; ///< Request index, interpretation is specific to bRequest's value
   uint16_t wLength; ///< Data length of the request.
-};
+} __attribute__((packed));
 
 #endif // USB_STD_H

@@ -49,7 +49,7 @@ enum usb_descriptor_type_t {
 struct usb_descriptor_header_t {
   uint8_t bLength; ///< Total byte size of the descriptor.
   uint8_t bDescriptorType; ///< Type of the descriptor; see ::usb_descriptor_type_t.
-};
+} __attribute__((packed));
 
 /** \brief Calculate the total size of a USB descriptor
   * \details This function performs the same calculation as usb_descriptor_body_size(), but adds
@@ -121,7 +121,7 @@ struct usb_descriptor_body_device_t {
   uint8_t iProduct;
   uint8_t iSerialNumber;
   uint8_t bNumConfigurations;
-};
+} __attribute__((packed));
 
 /// Configuration descriptor body
 struct usb_descriptor_body_configuration_t {
@@ -131,7 +131,7 @@ struct usb_descriptor_body_configuration_t {
   uint8_t iConfiguration;
   uint8_t bmAttributes;
   uint8_t bMaxPower;
-};
+} __attribute__((packed));
 
 /// Interface descriptor body
 struct usb_descriptor_body_interface_t {
@@ -142,7 +142,7 @@ struct usb_descriptor_body_interface_t {
   uint8_t bInterfaceSubClass;
   uint8_t bInterfaceProtocol;
   uint8_t iInterface;
-};
+} __attribute__((packed));
 
 /// Endpoint descriptor body
 struct usb_descriptor_body_endpoint_t {
@@ -150,6 +150,6 @@ struct usb_descriptor_body_endpoint_t {
   uint8_t bmAttributes;
   uint16_t wMaxPacketSize;
   uint8_t bInterval;
-};
+} __attribute__((packed));
 
 #endif
