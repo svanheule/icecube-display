@@ -71,6 +71,14 @@ void cancel_control_transfer(struct control_transfer_t* transfer) {
   transfer->stage = CTRL_STALL;
 }
 
+void control_mark_data_done(struct control_transfer_t* transfer, uint16_t length) {
+  transfer->data_done += length;
+
+  if (transfer->callback_data) {
+    transfer->callback_data(transfer);
+  }
+}
+
 static inline void process_standard_request(struct control_transfer_t* transfer) {
   switch (transfer->req->bRequest) {
     case GET_STATUS:

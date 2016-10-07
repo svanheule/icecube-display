@@ -122,5 +122,7 @@ void init_control_transfer(
 
 void cancel_control_transfer(struct control_transfer_t* transfer);
 
+void control_mark_data_done(struct control_transfer_t* transfer, uint16_t length);
+
 #endif //USB_ENDPOINT_0_H
 
