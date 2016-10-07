@@ -234,10 +234,7 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
       // Get requested length or clip at length of available data
       const struct dp_tlv_item_t* props_head = get_display_properties_P();
       uint16_t display_properties_size = sizeof(uint16_t) + get_tlv_list_length_P(props_head);
-      uint16_t remaining = transfer->req->wLength;
-      if (!(transfer->req->wLength < display_properties_size)) {
-        remaining = display_properties_size;
-      }
+      uint16_t remaining = min(transfer->req->wLength, display_properties_size);
 
       // Transmit data if at least 2 bytes are requested, otherwise stall
       if (remaining >= sizeof(display_properties_size)) {
