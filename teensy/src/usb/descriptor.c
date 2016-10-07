@@ -121,46 +121,46 @@ static void descriptor_list_append(
 
 // Descriptor transaction definitions
 static const struct usb_descriptor_body_device_t BODY_DEVICE = {
-    0x0200
-  , 0
-  , 0
-  , 0
-  , 64
-  , 0x1ce3
-  , 0x0002
-  , 0x0010
-  , 1
-  , 2
-  , 0
-  , 1
+    .bcdUSB = 0x0200
+  , .bDeviceClass = 0
+  , .bDeviceSubClass = 0
+  , .bDeviceProtocol = 0
+  , .bMaxPacketSize = 64
+  , .idVendor = 0x1ce3
+  , .idProduct = 0x0002
+  , .bcdDevice = 0x0010
+  , .iManufacturer = 1
+  , .iProduct = 2
+  , .iSerialNumber = 4
+  , .bNumConfigurations = 1
 };
 
 static const struct usb_descriptor_body_configuration_t BODY_CONFIG = {
-    0 // to be filled in at runtime
-  , 1
-  , 1
-  , 0
-  , _BV(7) | _BV(6)
-  , 25
+    .wTotalLength = 0 // to be filled in at runtime
+  , .bNumInterfaces = 1
+  , .bConfigurationValue = 1
+  , .iConfiguration = 0
+  , .bmAttributes = _BV(7)
+  , .bMaxPower = 25
 };
 
 static const struct usb_descriptor_body_interface_t BODY_INTERFACE = {
-    0
-  , 0
-  , 0
-  , 0xFF
-  , 0
-  , 0
-  , 3
+    .bInterfaceNumber = 0
+  , .bAlternateSetting = 0
+  , .bNumEndPoints = 0
+  , .bInterfaceClass = 0xFF
+  , .bInterfaceSubClass = 0
+  , .bInterfaceProtocol = 0
+  , .iInterface = 3
 };
 
 static const char16_t STR_MANUFACTURER[] = u"Ghent University";
 static const char16_t STR_PRODUCT[] = u"IceCube event display";
 //extern const char16_t STR_SERIAL_NUMBER[];
+static const char16_t STR_SERIAL_NUMBER[] = u"ICD-IC-01-000";
 static const char16_t STR_IFACE_DESCR[] = u"Steamshovel display";
 
 #define LANG_ID_EN_US 0x0409
-#define STRING_COUNT 3
 
 struct string_pointer_t {
   const char16_t* const p;
@@ -168,12 +168,13 @@ struct string_pointer_t {
 };
 
 static const uint16_t LANG_IDS[] = {LANG_ID_EN_US, 0x0000};
-static const struct string_pointer_t STR_EN_US[STRING_COUNT] = {
+static const struct string_pointer_t STR_EN_US[] = {
     {STR_MANUFACTURER, MEMSPACE_PROGMEM}
   , {STR_PRODUCT, MEMSPACE_PROGMEM}
   , {STR_IFACE_DESCR, MEMSPACE_PROGMEM}
-//  , {STR_SERIAL_NUMBER, MEMSPACE_PROGMEM}
+  , {STR_SERIAL_NUMBER, MEMSPACE_PROGMEM}
 };
+static const uint8_t STRING_COUNT = sizeof(STR_EN_US)/sizeof(struct string_pointer_t);
 
 static struct usb_descriptor_body_configuration_t descriptor_config;
 

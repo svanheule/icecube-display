@@ -28,7 +28,7 @@ bool endpoint_configure(const struct ep_config_t* config) {
     }
   }
 
-  // Memory is currently allocated in remote_dummy.c
+  // Memory is currently allocated in remote_usb.c
 
   *ENDPOINT_REGISTER_ADDRESS(config->num) = reg;
   return reg != 0;

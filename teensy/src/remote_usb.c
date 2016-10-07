@@ -29,48 +29,38 @@ static struct buffer_descriptor_t* const buffer_descriptor_table =
     (struct buffer_descriptor_t*) &endpoint_table[0];
 
 // Align buffers to word boundary, just to make sure nothing weird happens with the DMA transfers
-static alignas(4) uint8_t ep0_rx_buffer[2][EP0_SIZE];
+static alignas(4) uint8_t ep0_rx_buffer[EP0_SIZE];
 
 // BDT entries are 8 bytes in size, so shift back address bits by 3 positions
-static inline ptrdiff_t bdt_index(uint8_t epnum, uint8_t tx, uint8_t odd) {
+static inline ptrdiff_t get_bdt_index(uint8_t epnum, uint8_t tx, uint8_t odd) {
   return (epnum << 2) | (tx << 1) | odd;
 }
 
 static inline uint8_t get_token_pid(const struct buffer_descriptor_t* descriptor) {
-  return (descriptor->desc >> 2) & LSB_MASK(4);
+  return (descriptor->desc >> BDT_DESC_PID) & LSB_MASK(4);
 }
 
 static inline uint16_t byte_count(const struct buffer_descriptor_t* descriptor) {
-  return (descriptor->desc >> 16) & LSB_MASK(10);
+  return (descriptor->desc >> BDT_DESC_BC) & LSB_MASK(10);
 }
 
 static inline uint32_t generate_buffer_descriptor(uint16_t length, uint8_t data_toggle) {
   const uint32_t base_desc = _BV(BDT_DESC_OWN) | _BV(BDT_DESC_DTS);
   length &= LSB_MASK(10);
-  data_toggle &= 1;
+  data_toggle &= LSB_MASK(1);
   return base_desc | (length << BDT_DESC_BC) | (data_toggle << BDT_DESC_DATA01);
 }
 
 static uint8_t ep0_tx_data_toggle;
-static uint8_t ep0_tx_buffer_toggle;
-
-static struct buffer_descriptor_t* get_tx_bd(uint8_t endpoint) {
-  const uint16_t index = bdt_index(endpoint, BDT_DIR_TX, ep0_tx_buffer_toggle);
-  if (!(buffer_descriptor_table[index].desc & BDT_DESC_OWN)) {
-    ep0_tx_buffer_toggle ^= 1;
-    return &buffer_descriptor_table[index];
-  }
-  else {
-    return 0;
-  }
-}
+static uint8_t ep0_rx_data_toggle;
 
 static void init_ep0_bdt() {
-  ep0_tx_buffer_toggle = 0;
-  for (unsigned odd = 0; odd < 2; ++odd) {
-    buffer_descriptor_table[bdt_index(0, BDT_DIR_TX, odd)] = (struct buffer_descriptor_t) {0, 0};
-    buffer_descriptor_table[bdt_index(0, BDT_DIR_RX, odd)] =
-        (struct buffer_descriptor_t) {generate_buffer_descriptor(EP0_SIZE, 0), &ep0_rx_buffer[odd]};
+  for (unsigned odd = 0; odd < 1; ++odd) {
+    buffer_descriptor_table[get_bdt_index(0, BDT_DIR_TX, odd)].desc = 0;
+
+    struct buffer_descriptor_t* rx = &buffer_descriptor_table[get_bdt_index(0, BDT_DIR_RX, odd)];
+    rx->desc = generate_buffer_descriptor(EP0_SIZE, odd);
+    rx->buffer = &ep0_rx_buffer;
   }
 }
 
@@ -109,7 +99,6 @@ void init_remote() {
   // Enable interrupts, no OTG interrupts, no error interrupts
   USB0_INTEN = USB_INTEN_SLEEPEN | USB_INTEN_USBRSTEN;
   USB0_OTGICR = 0;
-  USB0_ERREN = 0;
 
   NVIC_ENABLE_IRQ(IRQ_USBOTG);
 }
@@ -129,43 +118,32 @@ static inline uint8_t pop_token_status() {
 // TODO When receiving a display frame, use the BDT entries to write the RXOUT data
 //      directly to the frame buffer
 
-static uint16_t queue_in_data(void* buffer, const uint16_t max_length) {
-  struct buffer_descriptor_t* bd = get_tx_bd(0);
-  uint16_t remaining = max_length;
+static uint16_t queue_in(const void* data, uint16_t max_length, uint8_t data01) {
+  struct buffer_descriptor_t* bd = &buffer_descriptor_table[get_bdt_index(0, BDT_DIR_TX, 0)];
+  bool buffer_available = !(bd->desc & _BV(BDT_DESC_OWN));
 
-  while (bd && remaining) {
+  if (buffer_available) {
+    uint16_t packet_size = min(max_length, EP0_SIZE);
     // Send remaining transaction data
-    uint16_t packet_size = min(remaining, EP0_SIZE);
-    bd->desc = generate_buffer_descriptor(packet_size, ep0_tx_data_toggle);
-    bd->buffer = buffer;
-
-    buffer = (uint8_t*) buffer + packet_size;
-    remaining -= packet_size;
-
-    // Toggle DATA0/1 field
-    ep0_tx_data_toggle ^= 1;
-    bd = get_tx_bd(0);
+    bd->desc = generate_buffer_descriptor(packet_size, data01);
+    bd->buffer = (void*) data;
+    ep0_tx_data_toggle = data01 ^ 1;
+    return packet_size;
   }
-
-  return max_length-remaining;
-}
-
-static bool queue_in_zlp() {
-  struct buffer_descriptor_t* bd = get_tx_bd(0);
-
-  if (bd) {
-    bd->desc = generate_buffer_descriptor(0, 1);
-    bd->buffer = 0;
-    ep0_tx_data_toggle = 0;
+  else {
+    return 0;
   }
-
-  return bd != 0;
 }
 
-static void return_ep0_rx(struct buffer_descriptor_t* bd) {
-  bd->desc = generate_buffer_descriptor(EP0_SIZE, 0);
+static void return_ep0_rx(struct buffer_descriptor_t* bd, uint8_t data01) {
+  bd->desc = generate_buffer_descriptor(EP0_SIZE, data01);
+  ep0_rx_data_toggle = data01;
 }
 
+static inline void abort_transfer(struct control_transfer_t* transfer) {
+  endpoint_stall(0);
+  cancel_control_transfer(transfer);
+}
 
 #define IRQ_ENABLED_AND_SET(interrupt) \
     (USB0_INTEN & USB_INTEN_ ## interrupt ## EN) && (USB0_ISTAT & USB_ISTAT_ ## interrupt)
@@ -181,13 +159,13 @@ void usb_isr() {
     // Enable suspend and token interrupt
     USB0_INTEN |= USB_INTEN_SLEEPEN | USB_INTEN_TOKDNEEN;
 
+    // Reset all buffer toggles to 0
+    USB0_CTL |= USB_CTL_ODDRST;
+    init_ep0_bdt();
+
     // Load default configuration
     usb_set_address(0);
     if (set_configuration_index(0)) {
-      // After configuration, reset all buffer toggles to 0, and initialise EP0 BDT entries
-      USB0_CTL |= USB_CTL_ODDRST;
-      init_ep0_bdt();
-
       set_device_state(DEFAULT);
     }
   }
@@ -231,8 +209,6 @@ void usb_isr() {
     }
   }
 
-  // TODO STALL interrupts: catch stall interrupts to clear EP0 stalls?
-
   if (IRQ_ENABLED_AND_SET(TOKDNE)) {
     trip_led();
 
@@ -245,7 +221,7 @@ void usb_isr() {
       static struct control_transfer_t control_transfer;
       static struct usb_setup_packet_t setup_packet;
       // Keep past-the-end pointer of data buffer to know when to stop queueing data
-      // The .data pointer will track the amount of queued data, so is ahead of .data_done
+      // control_data will track the amount of queued data, so is ahead of .data_done
       static uint8_t* control_data;
       static uint8_t* control_data_end;
 
@@ -256,51 +232,53 @@ void usb_isr() {
         if (control_transfer.stage != CTRL_IDLE && control_transfer.stage != CTRL_STALL) {
           cancel_control_transfer(&control_transfer);
         }
+        buffer_descriptor_table[get_bdt_index(0, BDT_DIR_TX, 0)].desc = 0;
+        buffer_descriptor_table[get_bdt_index(0, BDT_DIR_TX, 1)].desc = 0;
 
-        memcpy(&setup_packet, bdt_entry->buffer, sizeof(struct usb_setup_packet_t));
-        return_ep0_rx(bdt_entry);
+        // Always start with DATA1 after SETUP
+        ep0_tx_data_toggle = 1;
+
+        setup_packet = *(const struct usb_setup_packet_t*) bdt_entry->buffer;
+        // Wait for DATA1 OUT transfer.
+        // This will be either first OUT data packet or the IN status stage (handshake)
+        return_ep0_rx(bdt_entry, 1);
 
         init_control_transfer(&control_transfer, &setup_packet);
         process_setup(&control_transfer);
 
-        // Always start with DATA1 after SETUP
-        ep0_tx_data_toggle = 1;
+        // Clear TXSUSPEND/TOKENBUSY bit to resume operation
+        USB0_CTL &= ~USB_CTL_TXSUSPENDTOKENBUSY;
 
         const enum control_stage_t stage = control_transfer.stage;
         if (stage == CTRL_DATA_IN || stage == CTRL_DATA_OUT) {
           control_data = (uint8_t*) control_transfer.data;
           control_data_end = control_data + control_transfer.data_length;
           if (stage == CTRL_DATA_IN) {
-            control_data += queue_in_data(control_data, control_transfer.data_length);
+            // Queue at most two packets
+            control_data += queue_in(control_data, control_transfer.data_length, 1);
+            if (control_data != control_data_end) {
+              control_data += queue_in(control_data, control_data_end-control_data, 0);
+            }
           }
         }
-        else if (stage == CTRL_HANDSHAKE_IN || stage == CTRL_HANDSHAKE_OUT) {
+        else if (stage == CTRL_HANDSHAKE_OUT) {
           control_data = 0;
           control_data_end = 0;
-          if (stage == CTRL_HANDSHAKE_OUT) {
-            queue_in_zlp();
-          }
+          // Queue ZLP handshake
+          queue_in(0, 0, 1);
         }
-        else {
-          // Stall endpoint
-          endpoint_stall(0);
+        else { // All other states are invalid at this point
+          abort_transfer(&control_transfer);
         }
-
-        // Clear TXSUSPEND/TOKENBUSY bit to resume operation
-        USB0_CTL &= ~USB_CTL_TXSUSPENDTOKENBUSY;
       }
       else if (token_pid == PID_IN) {
         if (control_transfer.stage == CTRL_DATA_IN) {
           // IN data has been transmitted. Read BD to see how much was transmitted
-          control_transfer.data_done += byte_count(bdt_entry);
+          control_mark_data_done(&control_transfer, byte_count(bdt_entry));
 
-          if (control_transfer.callback_data) {
-            control_transfer.callback_data(&control_transfer);
-          }
-
-          if (control_data != (void*) control_data_end) {
+          if (control_data != control_data_end) {
             uint16_t remaining = control_data - control_data_end;
-            control_data += queue_in_data(control_data, remaining);
+            control_data += queue_in(control_data, remaining, ep0_tx_data_toggle);
           }
         }
         else if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
@@ -309,6 +287,9 @@ void usb_isr() {
             control_transfer.callback_handshake(&control_transfer);
           }
           control_transfer.stage = CTRL_IDLE;
+        }
+        else {
+          abort_transfer(&control_transfer);
         }
       }
       else if (token_pid == PID_OUT) {
@@ -321,34 +302,39 @@ void usb_isr() {
           uint16_t size = min(bytes_received, left);
 
           // Only copy back if we used the local buffer
-          uint8_t* dest = (uint8_t*) control_data_end - left;
+          uint8_t* dest = control_data_end - left;
           memcpy(dest, bdt_entry->buffer, size);
 
-          // Keep EP0 FSM informed
-          control_transfer.data_done += size;
-          if (control_transfer.callback_data) {
-            control_transfer.callback_data(&control_transfer);
-          }
+          control_mark_data_done(&control_transfer, size);
 
           if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
-            queue_in_zlp();
+            queue_in(0, 0, 1);
+            return_ep0_rx(bdt_entry, 0);
           }
-          else if (control_data != (void*) control_data_end) {
+          else if (control_data != control_data_end) {
             // Queue more RX buffers
             uint16_t queue_left = control_data_end - control_data;
             control_data += min(queue_left, EP0_SIZE);
+            return_ep0_rx(bdt_entry, ep0_rx_data_toggle^1);
           }
         }
         else if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
-          // Reception of OUT packet means the transaction is finished
-          if (control_transfer.callback_handshake) {
-            control_transfer.callback_handshake(&control_transfer);
+          // Reception of OUT DATA1 packet means the transaction is finished
+          if (bdt_entry->desc & _BV(BDT_DESC_DATA01)) {
+            if (control_transfer.callback_handshake) {
+              control_transfer.callback_handshake(&control_transfer);
+            }
+            control_transfer.stage = CTRL_IDLE;
+            return_ep0_rx(bdt_entry, 0);
           }
-          control_transfer.stage = CTRL_IDLE;
+          else {
+            return_ep0_rx(bdt_entry, 1);
+          }
         }
-
-        // Hand BDT entry back
-        return_ep0_rx(bdt_entry);
+        else {
+          abort_transfer(&control_transfer);
+          return_ep0_rx(bdt_entry, 0);
+        }
       }
     }
   }

@@ -12,6 +12,7 @@
 #define BDT_DESC_NINC 4
 #define BDT_DESC_DTS 3
 #define BDT_DESC_STALL 2
+#define BDT_DESC_PID 2
 
 struct buffer_descriptor_t {
   uint32_t desc;
