@@ -42,7 +42,7 @@ set(
   DEVICE_ICECUBE_STRING_END "0"
   CACHE STRING "Number of the last normal IceCube string"
 )
-set_property(CACHE DEVICE_ICECUBE_STRING_START PROPERTY STRINGS "30" "50" "78")
+set_property(CACHE DEVICE_ICECUBE_STRING_END PROPERTY STRINGS "30" "50" "78")
 set(
   DEVICE_HAS_DEEPCORE OFF
   CACHE BOOL "Whether this display segment contains the DeepCore strings"
