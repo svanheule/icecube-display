@@ -213,7 +213,7 @@ if(NOT ("${PROGRAMMER_ID}" STREQUAL ""))
 
   add_custom_target(
     upload
-    ${PROGRAM_COMMAND} -U flash:w:icetop_display.hex
+    ${PROGRAM_COMMAND} -u -U flash:w:icetop_display.hex
     DEPENDS icetop_display
     COMMENT "Upload new program file"
   )
