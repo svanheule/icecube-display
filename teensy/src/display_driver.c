@@ -226,14 +226,34 @@ struct port_map_t {
   uint8_t ports[MAX_PORT_COUNT];
 };
 
+// TODO Revise LED layout: see with other groups on used layouts
 // TODO Move last column forward so port count on last segments can be decreased
 static const struct port_map_t LED_MAP_FRONT[SEGMENT_COUNT] = {
-    {8, {7,  8, 15, 14, 11, 19, 27, 18}}
-  , {8, {6, 22, 16,  2, 10, 26, 12, 28}}
-  , {8, {0,  3, 24, 21,  4, 20, 29, 25}}
-  , {8, {1,  9, 23, 13,  5,  0,  0, 17}}
+    {8, { 7,  8, 15, 14, 11, 19, 27, 18}}
+  , {8, { 6, 22, 16,  2, 10, 26, 12, 28}}
+  , {8, { 0,  3, 24, 21,  4, 20, 29, 25}}
+  , {8, { 1,  9, 23, 13,  5,  0,  0, 17}}
 };
-// TODO Define other led geometry mappings
+
+static const struct port_map_t LED_MAP_CENTER_DEEPCORE[SEGMENT_COUNT] = {
+    {7, { 3, 13, 14, 16,  6, 23, 24,  0}}
+  , {7, { 2, 12, 15, 17,  7, 22, 21,  0}}
+  , {7, { 1, 11,  5, 18,  8, 27, 20,  0}}
+  , {7, { 0, 10,  4, 19,  9, 26, 25,  0}}
+};
+static const struct port_map_t LED_MAP_CENTER_NO_DEEPCORE[SEGMENT_COUNT] = {
+    {5, { 3, 13, 14, 16,  6,  0,  0,  0}}
+  , {5, { 2, 12, 15, 17,  7,  0,  0,  0}}
+  , {5, { 1, 11,  5, 18,  8,  0,  0,  0}}
+  , {5, { 0, 10,  4, 19,  9,  0,  0,  0}}
+};
+
+static const struct port_map_t LED_MAP_BACK[SEGMENT_COUNT] = {
+    {8, {10, 18, 19, 11, 13, 21, 14,  6}}
+  , {8, { 1, 17, 26, 12,  5, 22, 15,  7}}
+  , {8, { 0, 24, 27,  3,  4, 23, 16,  8}}
+  , {4, { 9, 25, 20,  2,  0,  0,  0,  0}}
+};
 
 static const struct port_map_t* led_mapping = &(LED_MAP_FRONT[0]);
 
