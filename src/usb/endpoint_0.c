@@ -29,7 +29,7 @@ static void callback_default_data_in(struct control_transfer_t* transfer) {
   }
 }
 
-static void callback_default_data_in_cancel(struct control_transfer_t* transfer) {
+static void callback_default_cancel(struct control_transfer_t* transfer) {
   // Release untransmitted data
   if (transfer->data) {
     free(transfer->data);
@@ -44,7 +44,7 @@ static void* init_data_in(struct control_transfer_t* transfer, size_t length) {
     transfer->data_length = length;
     transfer->data_done = 0;
     transfer->callback_data = callback_default_data_in;
-    transfer->callback_cancel = callback_default_data_in_cancel;
+    transfer->callback_cancel = callback_default_cancel;
   }
   return transfer->data;
 }
