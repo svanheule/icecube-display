@@ -240,7 +240,9 @@ class DisplayConnection(object):
         if USBContext:
             usb_context = USBContext()
             for dev in usb_context.getDeviceList():
-                if dev.getVendorID() == 0x1CE3 and dev.getProductID() == 1:
+                vendorID = dev.getVendorID()
+                productID = dev.getProductID()
+                if vendorID == 0x1CE3 and (productID == 1 or productID == 2):
                     display = cls.queryDevice(dev)
                     usb_devices.append(display)
         return usb_devices
@@ -302,7 +304,11 @@ class DisplayConnection(object):
         :param bytes frame: Frame data to be displayed."""
         if self._usb_handle:
             VENDOR_OUT = ENDPOINT_OUT | TYPE_VENDOR | RECIPIENT_INTERFACE
-            self._usb_handle.controlWrite(VENDOR_OUT, self.REQUEST_SEND_FRAME, 0, 0, frame)
+            try:
+                self._usb_handle.controlWrite(VENDOR_OUT, self.REQUEST_SEND_FRAME, 0, 0, frame)
+            except Exception as e:
+                logging.log_error("Could not write frame to display: {}".format(e))
+                self.close()
 
 
 class LedDisplay(PyArtist):
@@ -417,6 +423,7 @@ class LedDisplay(PyArtist):
             )
             if self._current_display.canDisplayOMKey(omkey):
                 led = self._current_display.getLedIndex(omkey)
+                logging.log_trace("Placing data at buffer index {}".format(led), "LedDisplay")
                 # Ensure we're dealing with a list of pulses
                 if not hasattr(pulses, "__len__"):
                     pulses = list(pulses)
