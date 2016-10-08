@@ -66,7 +66,7 @@ void init_control_transfer(
 void cancel_control_transfer(struct control_transfer_t* transfer) {
   // Call any cancel callbacks that may perform clean-up
   if (transfer->callback_cancel) {
-    transfer->callback_cancel();
+    transfer->callback_cancel(transfer);
   }
   transfer->stage = CTRL_STALL;
 }

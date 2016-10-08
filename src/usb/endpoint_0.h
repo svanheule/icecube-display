@@ -100,7 +100,7 @@ struct control_transfer_t {
   /// Function to be called *after* the ZLP handshake is sent/received.
   void (*callback_handshake)(struct control_transfer_t* transfer);
   /// Cleanup function to be called when the transfer is cancelled.
-  void (*callback_cancel)();
+  void (*callback_cancel)(struct control_transfer_t* transfer);
 };
 
 /** \brief Process setup request for control transfers
