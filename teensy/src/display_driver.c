@@ -3,11 +3,11 @@
 #include "kinetis/io.h"
 #include "kinetis/ftm.h"
 #include "kinetis/dma.h"
+#include <avr/eeprom.h>
 
 #include "display_driver.h"
 #include "display_properties.h"
 
-#include "usb/led.h"
 
 // Buffer dimensions
 #define STRING_LENGTH 60
@@ -27,6 +27,47 @@
 static ptrdiff_t color_offset_initial;
 static ptrdiff_t delta_0;
 static ptrdiff_t delta_1;
+
+// LED strip to buffer offset mapping
+struct port_map_t {
+  uint8_t ports_length;
+  uint8_t ports[MAX_PORT_COUNT];
+};
+
+// TODO Revise LED layout: see with other groups on used layouts
+// TODO Move last column forward so port count on last segments can be decreased
+#define PORTMAP __attribute__((section(".portmap"),used))
+static const struct port_map_t LED_MAP[SEGMENT_COUNT] PORTMAP = {
+#if (DEVICE_ICECUBE_STRING_START == 1)
+  // Front segment
+    {8, { 7,  8, 15, 14, 11, 19, 27, 18}}
+  , {8, { 6, 22, 16,  2, 10, 26, 12, 28}}
+  , {8, { 0,  3, 24, 21,  4, 20, 29, 25}}
+  , {8, { 1,  9, 23, 13,  5,  0,  0, 17}}
+#elif (DEVICE_ICECUBE_STRING_START == 31)
+#if (DEVICE_HAS_DEEPCORE == 0)
+  // Middle segment without DeepCore
+    {5, { 3, 13, 14, 16,  6,  0,  0,  0}}
+  , {5, { 2, 12, 15, 17,  7,  0,  0,  0}}
+  , {5, { 1, 11,  5, 18,  8,  0,  0,  0}}
+  , {5, { 0, 10,  4, 19,  9,  0,  0,  0}}
+#else
+  // Middle segment with DeepCore
+    {7, { 3, 13, 14, 16,  6, 23, 24,  0}}
+  , {7, { 2, 12, 15, 17,  7, 22, 21,  0}}
+  , {7, { 1, 11,  5, 18,  8, 27, 20,  0}}
+  , {7, { 0, 10,  4, 19,  9, 26, 25,  0}}
+#endif
+#else
+  // Back segment
+    {8, {10, 18, 19, 11, 13, 21, 14,  6}}
+  , {8, { 1, 17, 26, 12,  5, 22, 15,  7}}
+  , {8, { 0, 24, 27,  3,  4, 23, 16,  8}}
+  , {4, { 9, 25, 20,  2,  0,  0,  0,  0}}
+#endif
+};
+
+static struct port_map_t led_mapping[SEGMENT_COUNT];
 
 static volatile bool frame_write_in_progress;
 
@@ -147,6 +188,10 @@ void init_display_driver() {
       break;
   }
 
+#if USE_EEPROM == 1
+  eeprom_read_block(&led_mapping, &LED_MAP, sizeof(LED_MAP));
+#endif
+
   // PDB configuration for frame reset timer
   ATOMIC_REGISTER_BIT_SET(SIM_SCGC6, 22); // Enable PDB clock
   PDB0_SC = PDB_SC_PDBIE | PDB_SC_TRGSEL(15);
@@ -217,45 +262,6 @@ static void start_dma_transfer() {
   // Start transfer by selecting FTM clock
   ftm2_config->SC = (1<<3);
 }
-
-
-// LED strip to buffer offset mapping
-// Map format: STRIP[7:0] := string number
-struct port_map_t {
-  uint8_t ports_length;
-  uint8_t ports[MAX_PORT_COUNT];
-};
-
-// TODO Revise LED layout: see with other groups on used layouts
-// TODO Move last column forward so port count on last segments can be decreased
-static const struct port_map_t LED_MAP_FRONT[SEGMENT_COUNT] = {
-    {8, { 7,  8, 15, 14, 11, 19, 27, 18}}
-  , {8, { 6, 22, 16,  2, 10, 26, 12, 28}}
-  , {8, { 0,  3, 24, 21,  4, 20, 29, 25}}
-  , {8, { 1,  9, 23, 13,  5,  0,  0, 17}}
-};
-
-static const struct port_map_t LED_MAP_CENTER_DEEPCORE[SEGMENT_COUNT] = {
-    {7, { 3, 13, 14, 16,  6, 23, 24,  0}}
-  , {7, { 2, 12, 15, 17,  7, 22, 21,  0}}
-  , {7, { 1, 11,  5, 18,  8, 27, 20,  0}}
-  , {7, { 0, 10,  4, 19,  9, 26, 25,  0}}
-};
-static const struct port_map_t LED_MAP_CENTER_NO_DEEPCORE[SEGMENT_COUNT] = {
-    {5, { 3, 13, 14, 16,  6,  0,  0,  0}}
-  , {5, { 2, 12, 15, 17,  7,  0,  0,  0}}
-  , {5, { 1, 11,  5, 18,  8,  0,  0,  0}}
-  , {5, { 0, 10,  4, 19,  9,  0,  0,  0}}
-};
-
-static const struct port_map_t LED_MAP_BACK[SEGMENT_COUNT] = {
-    {8, {10, 18, 19, 11, 13, 21, 14,  6}}
-  , {8, { 1, 17, 26, 12,  5, 22, 15,  7}}
-  , {8, { 0, 24, 27,  3,  4, 23, 16,  8}}
-  , {4, { 9, 25, 20,  2,  0,  0,  0,  0}}
-};
-
-static const struct port_map_t* led_mapping = &(LED_MAP_FRONT[0]);
 
 // Store a 8b×8b matrix as two 32b little-endian integers
 union matrix_t {
@@ -328,7 +334,8 @@ static void copy_buffer(const void* restrict src, void* restrict dest) {
   // Current last position for port 0; all ports need the same amount of data any way.
   const uint8_t* input_0_end;
 
-  for (unsigned int segment = 0; segment < SEGMENT_COUNT; ++segment) {
+  unsigned int segment = 0;
+  while (segment < SEGMENT_COUNT && led_mapping[segment].ports_length > 0) {
     const uint8_t used_port_count = led_mapping[segment].ports_length;
     // If even segment, LED data is in reverse order as DOM numbering starts at the top of a string
     const bool is_odd = segment % 2;
@@ -369,6 +376,8 @@ static void copy_buffer(const void* restrict src, void* restrict dest) {
         output++;
       }
     }
+
+    segment++;
   }
 }
 

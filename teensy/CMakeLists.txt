@@ -30,6 +30,10 @@ set(TARGET_F_CPU 48000000)
 set(TARGET_F_LED   800000)
 
 set(
+  USE_EEPROM ON
+  CACHE BOOL "If the display's EEPROM is not yet programmed, set this variable to OFF"
+)
+set(
   DEVICE_SERIAL "ICD-IC-001-0000"
   CACHE STRING "Device serial number, stored in the microcontroller's EEPROM"
 )
@@ -89,24 +93,25 @@ set(SOURCES
 configure_file(src/usb/serial.c.in serial.c)
 list(APPEND SOURCES "${CMAKE_BINARY_DIR}/serial.c")
 
-# AVR compatibility source files from PJRC
+# modified source files from PJRC
 list(APPEND SOURCES
   src/startup.c
-  cores/teensy3/eeprom.c
+  src/eeprom.c
 )
 
-set(PATH_LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/cores/teensy3)
+set(PATH_LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/src)
 
 # Build program and generate associated hex file
 add_executable(icecube_display ${SOURCES})
 set_target_properties(icecube_display PROPERTIES
-  LINK_FLAGS "-Wl,-gc-sections,-no-wchar-size-warning,--section-start=.serialno=0x14000000,--section-start=.displayprop=0x14000020 -T ${PATH_LINKER_SCRIPT}/${TARGET_DEVICE}.ld --specs=nano.specs"
+  LINK_FLAGS "-Wl,-gc-sections,-no-wchar-size-warning -T ${PATH_LINKER_SCRIPT}/${TARGET_DEVICE}.ld --specs=nano.specs"
   SUFFIX ".elf"
 )
 target_compile_definitions(icecube_display
   PUBLIC __$<UPPER_CASE:${TARGET_DEVICE}>__
   PUBLIC F_CPU=${TARGET_F_CPU}UL
   PUBLIC F_LED=${TARGET_F_LED}UL
+  PUBLIC USE_EEPROM=$<BOOL:${USE_EEPROM}>
   PUBLIC DEVICE_ICECUBE_STRING_START=${DEVICE_ICECUBE_STRING_START}
   PUBLIC DEVICE_ICECUBE_STRING_END=${DEVICE_ICECUBE_STRING_END}
   PUBLIC DEVICE_HAS_DEEPCORE=$<BOOL:${DEVICE_HAS_DEEPCORE}>
@@ -125,11 +130,9 @@ target_compile_options(icecube_display
 add_custom_command(
   TARGET icecube_display
   POST_BUILD
-  COMMAND arm-none-eabi-objcopy -O ihex -R .eeprom -R .serialno -R .displayprop
+  COMMAND arm-none-eabi-objcopy -O ihex -R .eeprom
         $<TARGET_FILE:icecube_display> icecube_display.hex
-  COMMAND arm-none-eabi-objcopy -O ihex
-        --change-section-lma .serialno=0x0 -j .serialno
-        --change-section-lma .displayprop=0x20 -j .displayprop
+  COMMAND arm-none-eabi-objcopy -O ihex --change-section-lma .eeprom=0x0 -j .eeprom
         $<TARGET_FILE:icecube_display> icecube_display.eep
 )
 
