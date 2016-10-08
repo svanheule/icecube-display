@@ -162,8 +162,7 @@ endforeach()
 # Build program and generate associated hex file
 add_executable(icetop_display ${SOURCES} ${EVENT_OBJECTS})
 set_target_properties(icetop_display PROPERTIES
-  LINK_FLAGS -Wl,-gc-sections
-  LINK_FLAGS -Wl,--section-start=.serialno=0x810000,--section-start=.displayprop=0x810020
+  LINK_FLAGS -Wl,-gc-sections,--section-start=.serialno=0x810000,--section-start=.displayprop=0x810020
   SUFFIX ".elf"
 )
 target_compile_definitions(icetop_display
