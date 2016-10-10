@@ -277,7 +277,7 @@ void usb_isr() {
           control_mark_data_done(&control_transfer, byte_count(bdt_entry));
 
           if (control_data != control_data_end) {
-            uint16_t remaining = control_data - control_data_end;
+            uint16_t remaining = control_data_end - control_data;
             control_data += queue_in(control_data, remaining, ep0_tx_data_toggle);
           }
         }
