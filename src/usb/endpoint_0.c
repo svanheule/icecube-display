@@ -212,11 +212,22 @@ static void callback_cancel_usb_frame();
 
 #define VENDOR_REQUEST_DISPLAY_PROPERTIES 2
 
+#define VENDOR_REQUEST_EEPROM_WRITE 3
+#define VENDOR_REQUEST_EEPROM_READ 4
+#if defined(__MK20DX256__)
+extern uint8_t __eeprom_start[];
+#elif defined(__AVR_ARCH__) && __AVR_ARCH__ == 5
+static uint8_t* const __eeprom_start = (uint8_t*) 0x810000;
+#endif
+const uint16_t EEPROM_SIZE = E2END + 1;
+static void callback_data_eeprom_write(struct control_transfer_t* transfer);
+static void callback_handshake_eeprom_write(struct control_transfer_t* transfer);
+
+
 static inline void process_vendor_request(struct control_transfer_t* transfer) {
   if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_VENDOR | REQ_REC_INTERFACE)) {
-    const size_t buffer_size = get_display_buffer_size();
-    // If correct request and request length
     if (transfer->req->bRequest == VENDOR_REQUEST_PUSH_FRAME) {
+      const size_t buffer_size = get_display_buffer_size();
       if (!usb_frame) {
         usb_frame = create_frame();
         if (usb_frame) {
@@ -231,6 +242,19 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
         transfer->data_done = 0;
         transfer->callback_data = callback_data_usb_frame;
         transfer->callback_cancel = callback_cancel_usb_frame;
+        transfer->stage = CTRL_DATA_OUT;
+      }
+    }
+    else if (transfer->req->bRequest == VENDOR_REQUEST_EEPROM_WRITE
+          && transfer->req->wIndex + transfer->req->wLength <= EEPROM_SIZE)
+    {
+      transfer->data = malloc(transfer->req->wLength);
+      if (transfer->data) {
+        transfer->data_length = transfer->req->wLength;
+        transfer->data_done = 0;
+        transfer->callback_data = callback_data_eeprom_write;
+        transfer->callback_handshake = callback_handshake_eeprom_write;
+        transfer->callback_cancel = callback_default_cancel;
         transfer->stage = CTRL_DATA_OUT;
       }
     }
@@ -276,6 +300,14 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
         }
       }
     }
+    else if (transfer->req->bRequest == VENDOR_REQUEST_EEPROM_READ
+          && transfer->req->wLength == EEPROM_SIZE)
+    {
+      uint8_t* buffer = init_data_in(transfer, EEPROM_SIZE);
+      if (buffer) {
+        eeprom_read_block(buffer, (void*) __eeprom_start, EEPROM_SIZE);
+      }
+    }
   }
 }
 
@@ -303,6 +335,21 @@ static void callback_cancel_usb_frame() {
     usb_frame = 0;
     usb_frame_buffer = 0;
     usb_frame_done = 0;
+  }
+}
+
+static void callback_data_eeprom_write(struct control_transfer_t *transfer) {
+  if (transfer->data_done == transfer->data_length) {
+    transfer->stage = CTRL_HANDSHAKE_OUT;
+  }
+}
+
+static void callback_handshake_eeprom_write(struct control_transfer_t *transfer) {
+  if (transfer->data) {
+    uint8_t* dest = (uint8_t*) __eeprom_start + transfer->req->wIndex;
+    eeprom_update_block(transfer->data, dest, transfer->data_length);
+    free(transfer->data);
+    transfer->data = 0;
   }
 }
 
