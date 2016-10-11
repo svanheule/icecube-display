@@ -36,15 +36,14 @@ struct port_map_t {
 };
 
 // TODO Revise LED layout: see with other groups on used layouts
-// TODO Move last column forward so port count on last segments can be decreased
 #define PORTMAP __attribute__((section(".portmap"),used))
 static const struct port_map_t LED_MAP[SEGMENT_COUNT] PORTMAP = {
 #if (DEVICE_ICECUBE_STRING_START == 1)
   // Front segment
-    {8, { 7,  8, 15, 14, 11, 19, 27, 18}}
-  , {8, { 6, 22, 16,  2, 10, 26, 12, 28}}
-  , {8, { 0,  3, 24, 21,  4, 20, 29, 25}}
-  , {8, { 1,  9, 23, 13,  5,  0,  0, 17}}
+    {8, { 7,  8, 15, 14, 18, 11, 19, 27}}
+  , {8, { 6, 22, 16,  2, 28, 10, 26, 12}}
+  , {8, { 0,  3, 24, 21, 25,  4, 20, 29}}
+  , {6, { 1,  9, 23, 13, 17,  5,  0,  0}}
 #elif (DEVICE_ICECUBE_STRING_START == 31)
 #if (DEVICE_HAS_DEEPCORE == 0)
   // Middle segment without DeepCore
