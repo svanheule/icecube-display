@@ -3,9 +3,6 @@
 
 #include "kinetis/io.h"
 
-// #define copied from cores/teensy3/WProgram.h
-#define DMAMEM __attribute__ ((section(".dmabuffers"), used))
-
 struct transfer_control_descriptor_t {
   const volatile void* SADDR;
   int16_t SOFF;

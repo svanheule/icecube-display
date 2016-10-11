@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdbool.h>
+#include <stdalign.h>
 #include "kinetis/io.h"
 #include "kinetis/ftm.h"
 #include "kinetis/dma.h"
@@ -72,8 +73,9 @@ static struct port_map_t led_mapping[SEGMENT_COUNT];
 static volatile bool frame_write_in_progress;
 
 // DMA sources
-static uint8_t led_data[BUFFER_SIZE] DMAMEM;
-static uint8_t ones = 0xFF;
+#define DISPMEM __attribute__ ((section(".displaybuffer")))
+static alignas(4) uint8_t ones DISPMEM;
+static alignas(4) uint8_t led_data[BUFFER_SIZE] DISPMEM;
 
 // Defaoult FTM channel configuration
 static const uint32_t ftm_channel_output = _BV(5)|_BV(3);
@@ -99,6 +101,9 @@ void init_display_driver() {
   clear_channel_tcd(0);
   clear_channel_tcd(1);
   clear_channel_tcd(2);
+
+  // Initialise ones to 0xFF since the .displaybuffer section is not initialised
+  ones = 0xFF;
 
   // Set all outputs high at start of pulse
   dma_tcd_list[0].CSR = _BV(3);

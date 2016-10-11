@@ -31,8 +31,9 @@
 MEMORY
 {
 	FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 256K
-	EEPROM(rw!x) : ORIGIN = 0x14000000, LENGTH = 2K
-	RAM  (rwx) : ORIGIN = 0x1FFF8000, LENGTH = 64K
+	EEPROM (rw!x) : ORIGIN = 0x14000000, LENGTH = 2K
+	RAM_L (rwx) : ORIGIN = 0x1FFF8000, LENGTH = 32K
+	RAM (rwx) : ORIGIN = 0x20000000, LENGTH = 32K
 }
 
 
@@ -75,21 +76,10 @@ SECTIONS
 		KEEP(*(.portmap))
 	} > EEPROM
 
-	.usbdescriptortable (NOLOAD) : {
-		/* . = ORIGIN(RAM); */
-		. = ALIGN(512);
-		*(.usbdescriptortable*)
-	} > RAM
-
-	.dmabuffers (NOLOAD) : {
+	.displaybuffer (NOLOAD) : {
 		. = ALIGN(4);
-		*(.dmabuffers*)
-	} > RAM
-
-	.usbbuffers (NOLOAD) : {
-		. = ALIGN(4);
-		*(.usbbuffers*)
-	} > RAM
+		*(.displaybuffer*)
+	} > RAM_L
 
 	.data : AT (_etext) {
 		. = ALIGN(4);
