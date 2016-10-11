@@ -162,7 +162,7 @@ void init_display_driver() {
       break;
     case LED_ORDER_BRG:
       color_offset_initial = OFFSET_BLUE;
-      delta_0 = OFFSET_RED-OFFSET_GREEN;
+      delta_0 = OFFSET_RED-OFFSET_BLUE;
       delta_1 = OFFSET_GREEN-OFFSET_RED;
       break;
     case LED_ORDER_GBR:
