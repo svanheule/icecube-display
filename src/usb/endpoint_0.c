@@ -300,12 +300,15 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
         }
       }
     }
-    else if (transfer->req->bRequest == VENDOR_REQUEST_EEPROM_READ
-          && transfer->req->wLength == EEPROM_SIZE)
+    else if (transfer->req->bRequest == VENDOR_REQUEST_EEPROM_READ)
     {
-      uint8_t* buffer = init_data_in(transfer, EEPROM_SIZE);
-      if (buffer) {
-        eeprom_read_block(buffer, (void*) __eeprom_start, EEPROM_SIZE);
+      uint16_t length = min(EEPROM_SIZE, transfer->req->wLength);
+      uint16_t offset = transfer->req->wIndex;
+      if (offset <= EEPROM_SIZE && length + offset <= EEPROM_SIZE) {
+        uint8_t* buffer = init_data_in(transfer, length);
+        if (buffer) {
+          eeprom_read_block(buffer, (uint8_t*) __eeprom_start + offset, length);
+        }
       }
     }
   }

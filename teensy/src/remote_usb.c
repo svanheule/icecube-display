@@ -273,12 +273,29 @@ void usb_isr() {
       }
       else if (token_pid == PID_IN) {
         if (control_transfer.stage == CTRL_DATA_IN) {
+          static bool queue_extra_zlp;
           // IN data has been transmitted. Read BD to see how much was transmitted
           control_mark_data_done(&control_transfer, byte_count(bdt_entry));
 
           if (control_data != control_data_end) {
             uint16_t remaining = control_data_end - control_data;
             control_data += queue_in(control_data, remaining, ep0_tx_data_toggle);
+            if (control_data_end == control_data) {
+              // When the amount of transmitted data is less then the amount of requested data,
+              // a packet smaller than wMaxPacketSize has to be sent. In case the data size is an
+              // exact multiple of the endpoint buffer size, queue an extra ZLP.
+              bool small_transfer = control_transfer.data_length < control_transfer.req->wLength;
+              bool buffer_aligned = (control_transfer.data_length % EP0_SIZE) == 0;
+              queue_extra_zlp = small_transfer && buffer_aligned;
+            }
+            else {
+              queue_extra_zlp = false;
+            }
+          }
+          else if (queue_extra_zlp) {
+              // Queue extra ZLP to signal request length underrun
+              queue_in(0, 0, ep0_tx_data_toggle);
+              queue_extra_zlp = false;
           }
         }
         else if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
@@ -287,9 +304,6 @@ void usb_isr() {
             control_transfer.callback_handshake(&control_transfer);
           }
           control_transfer.stage = CTRL_IDLE;
-        }
-        else {
-          abort_transfer(&control_transfer);
         }
       }
       else if (token_pid == PID_OUT) {
@@ -330,10 +344,6 @@ void usb_isr() {
           else {
             return_ep0_rx(bdt_entry, 1);
           }
-        }
-        else {
-          abort_transfer(&control_transfer);
-          return_ep0_rx(bdt_entry, 0);
         }
       }
     }

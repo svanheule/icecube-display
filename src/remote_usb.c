@@ -242,8 +242,19 @@ ISR(USB_COM_vect) {
         CLI(TXINI);
 
         if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
-          CEI(TXINE);
+          // Make sure an the last packet of a short transfers is not just the size of the
+          // endpoint buffer
+          bool short_transfer = control_transfer.data_length < control_transfer.req->wLength;
+          bool aligned_transfer = (control_transfer.data_length % fifo_size()) == 0;
+          if (!(short_transfer && aligned_transfer)) {
+            CEI(TXINE);
+          }
         }
+      }
+      else if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
+        // If interrupt was left enabled, send extra ZLP
+        CLI(TXINI);
+        CEI(TXINE);
       }
       else if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
         // Send ZLP handshake
