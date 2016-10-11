@@ -135,8 +135,14 @@ static uint16_t queue_in(const void* data, uint16_t max_length, uint8_t data01) 
   }
 }
 
-static void return_ep0_rx(struct buffer_descriptor_t* bd, uint8_t data01) {
-  bd->desc = generate_buffer_descriptor(EP0_SIZE, data01);
+static void return_ep0_rx(
+      struct buffer_descriptor_t* bd
+    , void* buffer
+    , uint16_t length
+    , uint8_t data01
+) {
+  bd->buffer = buffer;
+  bd->desc = generate_buffer_descriptor(length, data01);
   ep0_rx_data_toggle = data01;
 }
 
@@ -241,7 +247,8 @@ void usb_isr() {
         setup_packet = *(const struct usb_setup_packet_t*) bdt_entry->buffer;
         // Wait for DATA1 OUT transfer.
         // This will be either first OUT data packet or the IN status stage (handshake)
-        return_ep0_rx(bdt_entry, 1);
+        void* rx_buffer = &ep0_rx_buffer[0];
+        uint16_t rx_len = EP0_SIZE;
 
         init_control_transfer(&control_transfer, &setup_packet);
         process_setup(&control_transfer);
@@ -256,9 +263,11 @@ void usb_isr() {
           if (stage == CTRL_DATA_IN) {
             // Queue at most two packets
             control_data += queue_in(control_data, control_transfer.data_length, 1);
-            if (control_data != control_data_end) {
-              control_data += queue_in(control_data, control_data_end-control_data, 0);
-            }
+          }
+          else {
+            rx_buffer = control_data;
+            rx_len = min(rx_len, control_transfer.data_length);
+            control_data += rx_len;
           }
         }
         else if (stage == CTRL_HANDSHAKE_OUT) {
@@ -270,6 +279,8 @@ void usb_isr() {
         else { // All other states are invalid at this point
           abort_transfer(&control_transfer);
         }
+
+        return_ep0_rx(bdt_entry, rx_buffer, rx_len, 1);
       }
       else if (token_pid == PID_IN) {
         if (control_transfer.stage == CTRL_DATA_IN) {
@@ -317,19 +328,23 @@ void usb_isr() {
 
           // Only copy back if we used the local buffer
           uint8_t* dest = control_data_end - left;
-          memcpy(dest, bdt_entry->buffer, size);
+          if (dest != bdt_entry->buffer) {
+            memcpy(dest, bdt_entry->buffer, size);
+          }
 
           control_mark_data_done(&control_transfer, size);
 
           if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
             queue_in(0, 0, 1);
-            return_ep0_rx(bdt_entry, 0);
+            return_ep0_rx(bdt_entry, ep0_rx_buffer, EP0_SIZE, 0);
           }
           else if (control_data != control_data_end) {
             // Queue more RX buffers
             uint16_t queue_left = control_data_end - control_data;
-            control_data += min(queue_left, EP0_SIZE);
-            return_ep0_rx(bdt_entry, ep0_rx_data_toggle^1);
+            uint16_t queued = min(queue_left, EP0_SIZE);
+
+            return_ep0_rx(bdt_entry, control_data, queued, ep0_rx_data_toggle^1);
+            control_data += queued;
           }
         }
         else if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
@@ -339,11 +354,14 @@ void usb_isr() {
               control_transfer.callback_handshake(&control_transfer);
             }
             control_transfer.stage = CTRL_IDLE;
-            return_ep0_rx(bdt_entry, 0);
+            return_ep0_rx(bdt_entry, ep0_rx_buffer, EP0_SIZE, 0);
           }
           else {
-            return_ep0_rx(bdt_entry, 1);
+            return_ep0_rx(bdt_entry, ep0_rx_buffer, EP0_SIZE, 1);
           }
+        }
+        else {
+          return_ep0_rx(bdt_entry, ep0_rx_buffer, EP0_SIZE, 1);
         }
       }
     }
