@@ -368,15 +368,17 @@ static void copy_buffer(const void* restrict src, void* restrict dest) {
     while (input[0] != input_0_end) {
       for (unsigned int color = 0; color < sizeof(struct led_t); ++color) {
         // Gather data for all ports
+        union matrix_t m;
+
         for (unsigned int port = 0; port < used_port_count; ++port) {
           // Copy 8 data bytes for the current color
-          output->rows[MAX_PORT_COUNT-1 - port] = *input[port];
+          m.rows[MAX_PORT_COUNT-1 - port] = *input[port];
           // Jump to next color (possibly of the next LED)
           input[port] += delta_color_offset[color];
         }
 
         // Transpose bytes to correct output format
-        *output = transpose_matrix(*output);
+        *output = transpose_matrix(m);
         output++;
       }
     }
@@ -390,9 +392,9 @@ void display_frame(struct frame_buffer_t* buffer) {
   if (!frame_write_in_progress) {
     frame_write_in_progress = true;
 
-    buffer->flags |= FRAME_DRAW_IN_PROGRESS;
+    ATOMIC_SRAM_BIT_SET(buffer->flags, 2);
     copy_buffer(buffer->buffer, &(led_data[0]));
-    buffer->flags &= ~FRAME_DRAW_IN_PROGRESS;
+    ATOMIC_SRAM_BIT_CLEAR(buffer->flags, 2);
 
     // Setup TCD to write buffer data
     dma_tcd_list[1].SADDR = &(led_data[0]);
