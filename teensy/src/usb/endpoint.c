@@ -1,4 +1,4 @@
-#include "usb/endpoint_kinetis.h"
+#include "usb/endpoint.h"
 #include "kinetis/io.h"
 
 #define ENDPOINT_REGISTER_ADDRESS(i) ((volatile uint8_t*)(&(USB0_ENDPT0) + 4*i))

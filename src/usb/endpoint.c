@@ -1,35 +1,94 @@
 #include "usb/endpoint.h"
+#include "avr/endpoint_stack.h"
 #include <avr/io.h>
 
 #define EP_TYPE_MASK (3<<6)
 #define EP_DIR_MASK 1
 
-bool endpoint_configure(const struct ep_hw_config_t* config) {
+#define AVR_EP_TYPE_CONTROL 0
+#define AVR_EP_TYPE_ISOCHRONOUS (1<<EPTYPE0)
+#define AVR_EP_TYPE_BULK (2<<EPTYPE0)
+#define AVR_EP_TYPE_INTERRUPT (3<<EPTYPE0)
+
+#define AVR_EP_DIR_IN 1
+#define AVR_EP_DIR_OUT 0
+
+/* TODO Endpoint 1-5 FIFO double banking
+ * An endpoint can use either one or two buffers. Using only one bank saves memory,
+ * but also requires the buffer to be emptied before the endpoint can resume operation.
+ * With two banks, the buffers are used in a ping-pong fashion, allowing for simultaneous use
+ * of the buffers by the endpoint hardware and the firmware. While one buffer is used by the
+ * hardware, the firmware can read/write to the other. This may allow for higher throughputs as
+ * the endpoint doesn't have to wait for the firmware to finish to transmit or receive more data.
+ */
+
+bool endpoint_configure(const struct ep_config_t* config) {
+  // EP numbers larger than 5 are not supported
+  if (config->num > 5) {
+    return false;
+  }
+
   // Select endpoint number
   endpoint_push(config->num);
-  // Activate endpoint
-  UECONX = _BV(EPEN);
-  // Deconfigure/reset endpoint
-  UECFG1X = 0;
-  // Configure endpoint
-  UECFG0X = config->config_type;
-  UECFG1X = config->config_bank | _BV(ALLOC);
-  // Enable appropriate interrupts
-  switch ((config->config_type & EP_TYPE_MASK) >> 6) {
+  uint8_t log2_bank_size = 0;
+  uint16_t bank_size = (config->size-1) / 8;
+  while (bank_size) {
+    ++log2_bank_size;
+    bank_size >>= 1;
+  }
+
+  bool config_ok = true;
+  uint8_t cfg0 = 0;
+  uint8_t cfg1 = ((log2_bank_size & 0x7) << EPSIZE0);
+
+  switch (config->type) {
     case EP_TYPE_CONTROL:
-      UEIENX = _BV(RXSTPE);
+      cfg0 = AVR_EP_TYPE_CONTROL;
+      break;
+    case EP_TYPE_BULK:
+      cfg0 = AVR_EP_TYPE_BULK;
+      break;
+    case EP_TYPE_INTERRUPT:
+      cfg0 = AVR_EP_TYPE_INTERRUPT;
       break;
     case EP_TYPE_ISOCHRONOUS:
-    case EP_TYPE_BULK:
-    case EP_TYPE_INTERRUPT:
-      if ((config->config_type & EP_DIR_MASK) == EP_DIR_OUT) {
-        UEIENX = _BV(RXOUTE);
-      }
-      break;
-    default:
+      cfg0 = AVR_EP_TYPE_ISOCHRONOUS;
       break;
   }
-  bool config_ok = UESTA0X & _BV(CFGOK);
+
+  if (config->type == EP_TYPE_CONTROL) {
+    if (config->dir != EP_DIRECTION_BIDIR) {
+      config_ok = false;
+    }
+  }
+  else {
+    if (config->dir == EP_DIRECTION_IN) {
+      cfg0 |= AVR_EP_DIR_IN;
+    }
+    else if (config->dir == EP_DIRECTION_BIDIR) {
+      config_ok = false;
+    }
+  }
+
+  if (config_ok) {
+    // Activate endpoint
+    UECONX = _BV(EPEN);
+    // Deconfigure/reset endpoint
+    UECFG1X = 0;
+    // Configure endpoint
+    UECFG0X = cfg0;
+    UECFG1X = cfg1 | _BV(ALLOC);
+
+    // Enable appropriate interrupts
+    if (config->type == EP_TYPE_CONTROL) {
+      UEIENX = _BV(RXSTPE);
+    }
+    else if (config->dir == EP_DIRECTION_OUT) {
+      UEIENX = _BV(RXOUTE);
+    }
+
+    config_ok = UESTA0X & _BV(CFGOK);
+  }
   // Make room in stack
   endpoint_pop();
   // Return configuration status
@@ -45,29 +104,14 @@ void endpoint_deconfigure(const uint8_t ep_num) {
   endpoint_pop();
 }
 
-static uint8_t ep_stack[EP_STACK_DEPTH];
-static uint8_t ep_stack_index = 0;
-
-bool endpoint_push(const uint8_t ep_num) {
-  if (ep_stack_index < EP_STACK_DEPTH) {
-    // Put currently selected endpoint number on the stack
-    ep_stack[ep_stack_index++] = UENUM;
-    // Select new endpoint number
-    UENUM = ep_num;
-    return true;
-  }
-  else {
-    return false;
-  }
+void endpoint_stall(const uint8_t ep_num) {
+  endpoint_push(ep_num);
+  UECONX |= _BV(STALLRQ);
+  endpoint_pop();
 }
 
-bool endpoint_pop() {
-  if (ep_stack_index) {
-    // Select previous endpoint and decrement stack count
-    UENUM = ep_stack[ep_stack_index--];
-    return true;
-  }
-  else {
-    return false;
-  }
+void endpoint_clear_stall(const uint8_t ep_num) {
+  endpoint_push(ep_num);
+  UECONX |= _BV(STALLRQC);
+  endpoint_pop();
 }

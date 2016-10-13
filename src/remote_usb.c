@@ -219,7 +219,7 @@ ISR(USB_COM_vect) {
         SEI(RXOUTE);
       }
       else {
-        SET_FLAG(UECONX, STALLRQ);
+        endpoint_stall(0);
       }
 
       CLI(RXSTPI);

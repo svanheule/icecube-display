@@ -1,16 +1,27 @@
 #include "usb/configuration.h"
 #include "usb/endpoint.h"
 
-// Configuration list
-// 64B, single bank, control
-static const struct ep_hw_config_t ENDPOINT_0 = {
-    0
-  , EP_CONTROL
-  , EP_BANK_SIZE_64 | EP_BANK_COUNT_1
+struct configuration_t {
+  uint8_t endpoint_count;
+  const struct ep_config_t* ep_config_list;
 };
 
-// 64B, single bank, bulk
-/*static const struct ep_hw_config_t ENDPOINT_1 = {1, _BV(EPTYPE1), _BV(EPSIZE1)|_BV(EPSIZE0)};*/
+static const struct ep_config_t EP_CONFIG_LIST[1] = {
+  {0, EP_TYPE_CONTROL, EP_DIRECTION_BIDIR, 64}
+};
+
+// Configuration list
+static const struct configuration_t DEFAULT_CONFIG = {1, &EP_CONFIG_LIST[0]};
+
+static bool load_configuration(const struct configuration_t* config) {
+  bool config_ok = true;
+  uint8_t endpoint = 0;
+  while (endpoint < config->endpoint_count && config_ok) {
+    config_ok = config_ok && endpoint_configure(&config->ep_config_list[endpoint]);
+    ++endpoint;
+  }
+  return config_ok;
+}
 
 // Configuration selection state
 static int8_t selected_configuration = -1;
@@ -30,11 +41,8 @@ bool set_configuration_index(int8_t index) {
     selected_configuration = index;
     switch(index) {
       case 0:
-        cfg_ok = cfg_ok && endpoint_configure(&ENDPOINT_0);
-        break;
       case 1:
-        cfg_ok = cfg_ok && endpoint_configure(&ENDPOINT_0);
-/*        cfg_ok = cfg_ok && endpoint_configure(&ENDPOINT_1);*/
+        load_configuration(&DEFAULT_CONFIG);
         break;
       default:
         break;

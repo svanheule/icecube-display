@@ -101,6 +101,7 @@ if(ARDUINO)
   )
 else()
   list(APPEND SOURCES
+    src/avr/endpoint_stack.c
     src/remote_usb.c
     src/usb/led.c
     src/usb/device.c

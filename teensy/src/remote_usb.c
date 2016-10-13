@@ -4,7 +4,7 @@
 #include "usb/device.h"
 #include "usb/address.h"
 #include "usb/configuration.h"
-#include "usb/endpoint_kinetis.h"
+#include "usb/endpoint.h"
 #include "usb/endpoint_0.h"
 
 #include "kinetis/io.h"
