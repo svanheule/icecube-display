@@ -30,10 +30,6 @@ set(TARGET_F_CPU 48000000)
 set(TARGET_F_LED   800000)
 
 set(
-  USE_EEPROM ON
-  CACHE BOOL "If the display's EEPROM is not yet programmed, set this variable to OFF"
-)
-set(
   DEVICE_SERIAL "ICD-IC-001-0000"
   CACHE STRING "Device serial number, stored in the microcontroller's EEPROM"
 )

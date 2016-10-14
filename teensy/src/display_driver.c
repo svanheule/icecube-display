@@ -37,35 +37,7 @@ struct port_map_t {
 
 // TODO Revise LED layout: see with other groups on used layouts
 #define PORTMAP __attribute__((section(".portmap"),used))
-static const struct port_map_t LED_MAP[SEGMENT_COUNT] PORTMAP = {
-#if (DEVICE_ICECUBE_STRING_START == 1)
-  // Front segment
-    {8, { 7,  8, 15, 14, 18, 11, 19, 27}}
-  , {8, { 6, 22, 16,  2, 28, 10, 26, 12}}
-  , {8, { 0,  3, 24, 21, 25,  4, 20, 29}}
-  , {6, { 1,  9, 23, 13, 17,  5,  0,  0}}
-#elif (DEVICE_ICECUBE_STRING_START == 31)
-#if (DEVICE_HAS_DEEPCORE == 0)
-  // Middle segment without DeepCore
-    {5, { 3, 13, 14, 16,  6,  0,  0,  0}}
-  , {5, { 2, 12, 15, 17,  7,  0,  0,  0}}
-  , {5, { 1, 11,  5, 18,  8,  0,  0,  0}}
-  , {5, { 0, 10,  4, 19,  9,  0,  0,  0}}
-#else
-  // Middle segment with DeepCore
-    {7, { 3, 13, 14, 16,  6, 23, 24,  0}}
-  , {7, { 2, 12, 15, 17,  7, 22, 21,  0}}
-  , {7, { 1, 11,  5, 18,  8, 27, 20,  0}}
-  , {7, { 0, 10,  4, 19,  9, 26, 25,  0}}
-#endif
-#else
-  // Back segment
-    {8, {10, 18, 19, 11, 13, 21, 14,  6}}
-  , {8, { 1, 17, 26, 12,  5, 22, 15,  7}}
-  , {8, { 0, 24, 27,  3,  4, 23, 16,  8}}
-  , {4, { 9, 25, 20,  2,  0,  0,  0,  0}}
-#endif
-};
+static const struct port_map_t LED_MAP[SEGMENT_COUNT] PORTMAP;
 
 static struct port_map_t led_mapping[SEGMENT_COUNT];
 
@@ -192,9 +164,12 @@ void init_display_driver() {
       break;
   }
 
-#if USE_EEPROM == 1
   eeprom_read_block(&led_mapping, &LED_MAP, sizeof(LED_MAP));
-#endif
+  for (unsigned int segment = 0; segment < SEGMENT_COUNT; ++segment) {
+    if (led_mapping[segment].ports_length > MAX_PORT_COUNT) {
+      led_mapping[segment].ports_length = 0;
+    }
+  }
 
   // PDB configuration for frame reset timer
   ATOMIC_REGISTER_BIT_SET(SIM_SCGC6, 22); // Enable PDB clock

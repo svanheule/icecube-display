@@ -1,6 +1,5 @@
 #include "display_properties.h"
 #include <avr/eeprom.h>
-#include <avr/pgmspace.h>
 #include <stdbool.h>
 
 uint16_t get_tlv_list_length_P(const struct dp_tlv_item_t* tlv_list) {
@@ -55,19 +54,30 @@ static struct dp_tlv_item_t PROPERTIES_TLV_LIST[5] = {
   , TLV_END
 };
 
+
+union eeprom_start_t {
+  char bytes[4];
+  uint32_t dword;
+};
+static const union eeprom_start_t EEPROM_START = {.bytes = {'I', 0, 'C', 0}};
+extern const uint8_t __eeprom_start[];
+static bool use_eeprom;
+
 void init_display_properties() {
   // Read actual values from EEPROM
-#if USE_EEPROM == 1
-  dp_info_range_icecube.start = eeprom_read_byte(&DP_LED_INFORMATION.ic_string_start);
-  dp_info_range_icecube.end = eeprom_read_byte(&DP_LED_INFORMATION.ic_string_end);
-  led_count = 60*(dp_info_range_icecube.end-dp_info_range_icecube.start+1);
+  use_eeprom = EEPROM_START.dword == eeprom_read_dword((uint32_t*) __eeprom_start);
 
-  if (eeprom_read_byte(&DP_LED_INFORMATION.has_deepcore)) {
-    led_count += 60*(dp_info_range_deepcore.end-dp_info_range_deepcore.start);
-    PROPERTIES_TLV_LIST[3] = (struct dp_tlv_item_t)
-      TLV_ENTRY(DP_INFORMATION_RANGE, MEMSPACE_PROGMEM, &dp_info_range_deepcore);
+  if (use_eeprom) {
+    dp_info_range_icecube.start = eeprom_read_byte(&DP_LED_INFORMATION.ic_string_start);
+    dp_info_range_icecube.end = eeprom_read_byte(&DP_LED_INFORMATION.ic_string_end);
+    led_count = 60*(dp_info_range_icecube.end-dp_info_range_icecube.start+1);
+
+    if (eeprom_read_byte(&DP_LED_INFORMATION.has_deepcore)) {
+      led_count += 60*(dp_info_range_deepcore.end-dp_info_range_deepcore.start);
+      PROPERTIES_TLV_LIST[3] = (struct dp_tlv_item_t)
+        TLV_ENTRY(DP_INFORMATION_RANGE, MEMSPACE_PROGMEM, &dp_info_range_deepcore);
+    }
   }
-#endif
 }
 
 uint16_t get_led_count() {
@@ -75,11 +85,12 @@ uint16_t get_led_count() {
 }
 
 enum display_led_color_order_t get_color_order() {
-#if USE_EEPROM == 1
-  return eeprom_read_byte(&DP_LED_INFORMATION.color_order);
-#else
-  return 0;
-#endif
+  if (use_eeprom) {
+    return eeprom_read_byte(&DP_LED_INFORMATION.color_order);
+  }
+  else {
+    return 0;
+  }
 }
 
 const struct dp_tlv_item_t* get_display_properties_P() {
