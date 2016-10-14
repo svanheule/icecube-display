@@ -225,7 +225,7 @@ static void callback_handshake_eeprom_write(struct control_transfer_t* transfer)
 
 
 static inline void process_vendor_request(struct control_transfer_t* transfer) {
-  if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_VENDOR | REQ_REC_INTERFACE)) {
+  if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_VENDOR | REQ_REC_DEVICE)) {
     if (transfer->req->bRequest == VENDOR_REQUEST_PUSH_FRAME) {
       const size_t buffer_size = get_display_buffer_size();
       if (!usb_frame) {
@@ -259,7 +259,7 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
       }
     }
   }
-  else if (transfer->req->bmRequestType == (REQ_DIR_IN | REQ_TYPE_VENDOR | REQ_REC_INTERFACE)) {
+  else if (transfer->req->bmRequestType == (REQ_DIR_IN | REQ_TYPE_VENDOR | REQ_REC_DEVICE)) {
     if (transfer->req->bRequest == VENDOR_REQUEST_DISPLAY_PROPERTIES) {
       // Get requested length or clip at length of available data
       const struct dp_tlv_item_t* props_head = get_display_properties_P();

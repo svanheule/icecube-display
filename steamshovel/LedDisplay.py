@@ -9,7 +9,7 @@ from icecube.icetray import logging
 
 try:
   # libusb1 support
-  from usb1 import USBContext, ENDPOINT_IN, ENDPOINT_OUT, TYPE_VENDOR, RECIPIENT_INTERFACE
+  from usb1 import USBContext, ENDPOINT_IN, ENDPOINT_OUT, TYPE_VENDOR, RECIPIENT_DEVICE
 except:
   USBContext = None
   logging.log_error("Failed to import python-libusb1", "LedDisplay")
@@ -288,7 +288,7 @@ class DisplayConnection(object):
         properties = None
         handle = device.open()
         if handle:
-            VENDOR_IN = ENDPOINT_IN | TYPE_VENDOR | RECIPIENT_INTERFACE
+            VENDOR_IN = ENDPOINT_IN | TYPE_VENDOR | RECIPIENT_DEVICE
             # Read only properties header: properties length
             data = handle.controlRead(VENDOR_IN, cls.REQUEST_DISPLAY_PROPERTIES, 0, 0, 2)
             size = struct.unpack('<H', data)[0]
@@ -303,7 +303,7 @@ class DisplayConnection(object):
         """Write a full frame to the device using a control request.
         :param bytes frame: Frame data to be displayed."""
         if self._usb_handle:
-            VENDOR_OUT = ENDPOINT_OUT | TYPE_VENDOR | RECIPIENT_INTERFACE
+            VENDOR_OUT = ENDPOINT_OUT | TYPE_VENDOR | RECIPIENT_DEVICE
             try:
                 self._usb_handle.controlWrite(VENDOR_OUT, self.REQUEST_SEND_FRAME, 0, 0, frame)
             except Exception as e:
