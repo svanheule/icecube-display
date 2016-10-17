@@ -6,7 +6,8 @@
 #include "display_driver.h"
 #include "display_properties.h"
 #include "render/demo.h"
-#include "render/test.h"
+#include "render/test_scan.h"
+#include "render/test_ring.h"
 #include "render/boot_splash.h"
 #include "remote.h"
 #include "switches.h"
@@ -21,7 +22,7 @@ enum display_state_t {
   , DISPLAY_STATE_EXTERNAL
   , DISPLAY_STATE_DEMO
   , DISPLAY_STATE_TEST_RING
-  , DISPLAY_STATE_TEST_SNAKE
+  , DISPLAY_STATE_TEST_SCAN
 };
 
 static volatile enum display_state_t display_state = DISPLAY_STATE_BOOT;
@@ -38,7 +39,7 @@ static inline const struct renderer_t* get_renderer() {
     case DISPLAY_STATE_TEST_RING:
       return get_ring_renderer();
       break;
-    case DISPLAY_STATE_TEST_SNAKE:
+    case DISPLAY_STATE_TEST_SCAN:
       return get_scan_renderer();
       break;
     case DISPLAY_STATE_BOOT_SPLASH:

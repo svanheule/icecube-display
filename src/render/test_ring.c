@@ -1,63 +1,10 @@
-#include "render/test.h"
+#include "render/test_ring.h"
 #include "frame_buffer.h"
 #include <avr/pgmspace.h>
 #include <stdint.h>
 #include <stdlib.h>
 
 #define DEFAULT_BRIGHTNESS 0x10
-
-// Render pixel trails
-#define TAIL_LENGTH 3
-static uint8_t scan_frame;
-
-enum direction_t {
-    COUNT_UP = 1
-  , COUNT_DOWN = -1
-};
-static enum direction_t direction;
-
-static void init_scan() {
-  direction = COUNT_UP;
-  scan_frame = 0;
-}
-
-static void stop_scan() {}
-
-struct frame_buffer_t* render_scan() {
-  struct frame_buffer_t* frame = create_empty_frame();
-
-  if (frame) {
-    frame->flags = FRAME_FREE_AFTER_DRAW;
-    struct led_t* write_ptr = &frame->buffer[0];
-
-    uint8_t tail = TAIL_LENGTH;
-    while(tail--) {
-      write_ptr[scan_frame+tail] = (struct led_t) {DEFAULT_BRIGHTNESS, 0x10, 0x10, 0x10};
-    }
-
-    const uint8_t led_count = get_led_count();
-    if ((scan_frame == led_count-TAIL_LENGTH) && (direction == COUNT_UP)) {
-      direction = COUNT_DOWN;
-    }
-    else if ((scan_frame == 0) && (direction == COUNT_DOWN)) {
-      direction = COUNT_UP;
-    }
-  }
-
-  scan_frame = scan_frame + direction;
-
-  return frame;
-}
-
-static const struct renderer_t SCAN_RENDERER = {
-    init_scan
-  , stop_scan
-  , render_scan
-};
-
-const struct renderer_t* get_scan_renderer() {
-  return &SCAN_RENDERER;
-}
 
 // Render expanding concentric rings around station 36 with coordinates (5,4)
 struct station_t {
@@ -90,7 +37,7 @@ static void stop_ring() {}
  * A hexagonal lattice may be constructed from a regular, 3D square grid by taking the plane
  * satisfying the eqaution \f$x+y+z=0\f$. If the pair \f$(x,y)\f$ is mapped onto a 2D space
  * given by \f$(v,w)\f$, this plane equation determines \f$z\f$.
- * The distance between 2 points on a hexagonal is given by
+ * The distance between 2 points on a hexagonal grid is given by
  * \f$0.5 (|x_1-x_2| + |y_1-y_2| + |z_1-z_2|)\f$ or
  * \f$0.5 (|v_1-v_2| + |w_1-w_2| + |(v_1-v_2)-(w_1-w_2)|)\f$.
  */
@@ -116,7 +63,7 @@ struct frame_buffer_t* render_ring() {
       struct station_t station;
       memcpy_P(&station, STATION_VECTOR+led, sizeof(struct station_t));
       uint8_t d = station_distance(station, CENTRE);
-      uint16_t offset = 4*led;
+      uint16_t offset = sizeof(struct led_t)*led;
       // Set global brightness
       buffer[offset] = DEFAULT_BRIGHTNESS;
 

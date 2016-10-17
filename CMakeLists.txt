@@ -90,7 +90,8 @@ set(SOURCES
   src/frame_queue.c
   src/frame_timer.c
   src/render/boot_splash.c
-  src/render/test.c
+  src/render/test_scan.c
+  src/render/test_ring.c
   src/render/demo.c
   src/switches.c
 )
