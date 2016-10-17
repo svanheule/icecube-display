@@ -4,8 +4,10 @@
 static uint8_t ep_stack[EP_STACK_DEPTH];
 static uint8_t ep_stack_index = 0;
 
+#define MAX_EP_NUM 6
+
 bool endpoint_push(const uint8_t ep_num) {
-  if (ep_stack_index < EP_STACK_DEPTH) {
+  if (ep_num <= MAX_EP_NUM && ep_stack_index < EP_STACK_DEPTH) {
     // Put currently selected endpoint number on the stack
     ep_stack[ep_stack_index++] = UENUM;
     // Select new endpoint number

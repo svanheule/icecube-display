@@ -10,6 +10,7 @@
 
 #include "usb/led.h"
 #include "usb/fifo.h"
+#include "avr/endpoint_stack.h"
 #include "usb/endpoint.h"
 #include "usb/endpoint_0.h"
 #include "usb/descriptor.h"

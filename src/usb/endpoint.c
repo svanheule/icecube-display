@@ -13,7 +13,9 @@
 #define AVR_EP_DIR_IN 1
 #define AVR_EP_DIR_OUT 0
 
-/* TODO Endpoint 1-5 FIFO double banking
+#define MAX_EP_NUM 6
+
+/* TODO Endpoint 1-6 FIFO double banking
  * An endpoint can use either one or two buffers. Using only one bank saves memory,
  * but also requires the buffer to be emptied before the endpoint can resume operation.
  * With two banks, the buffers are used in a ping-pong fashion, allowing for simultaneous use
@@ -23,8 +25,8 @@
  */
 
 bool endpoint_configure(const struct ep_config_t* config) {
-  // EP numbers larger than 5 are not supported
-  if (config->num > 5) {
+  // EP numbers larger than 6 are not supported
+  if (config->num > MAX_EP_NUM) {
     return false;
   }
 
