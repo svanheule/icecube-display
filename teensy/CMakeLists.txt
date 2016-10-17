@@ -85,6 +85,7 @@ set(SOURCES
   src/kinetis/pit.c
   src/kinetis/ftm.c
   src/kinetis/dma.c
+  src/kinetis/usb_bdt.c
 )
 configure_file(src/usb/serial.c.in serial.c)
 list(APPEND SOURCES "${CMAKE_BINARY_DIR}/serial.c")

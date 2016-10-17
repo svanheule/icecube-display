@@ -8,60 +8,30 @@
 #include "usb/endpoint_0.h"
 
 #include "kinetis/io.h"
-#include "kinetis/usb.h"
+#include "kinetis/usb_bdt.h"
 
 #include <stdalign.h>
 #include <string.h>
-
-#define LSB_MASK(n) ((1<<n)-1)
 
 static inline uint16_t min(uint16_t a, uint16_t b) {
   return a < b ? a : b;
 }
 
 // Currently only EP0
-#define MAX_ENDPOINTS 1
 #define EP0_SIZE 64
-
-// BDT needs to be aligned to a 512B boundary (i.e. 9 lower bits of address are 0)
-static alignas(512) struct bdt_endpoint_t endpoint_table[MAX_ENDPOINTS];
-static struct buffer_descriptor_t* const buffer_descriptor_table =
-    (struct buffer_descriptor_t*) &endpoint_table[0];
 
 // Align buffers to word boundary, just to make sure nothing weird happens with the DMA transfers
 static alignas(4) uint8_t ep0_rx_buffer[EP0_SIZE];
-
-// BDT entries are 8 bytes in size, so shift back address bits by 3 positions
-static inline ptrdiff_t get_bdt_index(uint8_t epnum, uint8_t tx, uint8_t odd) {
-  return (epnum << 2) | (tx << 1) | odd;
-}
-
-static inline uint8_t get_token_pid(const struct buffer_descriptor_t* descriptor) {
-  return (descriptor->desc >> BDT_DESC_PID) & LSB_MASK(4);
-}
-
-static inline uint16_t byte_count(const struct buffer_descriptor_t* descriptor) {
-  return (descriptor->desc >> BDT_DESC_BC) & LSB_MASK(10);
-}
-
-static inline uint32_t generate_buffer_descriptor(uint16_t length, uint8_t data_toggle) {
-  const uint32_t base_desc = _BV(BDT_DESC_OWN) | _BV(BDT_DESC_DTS);
-  length &= LSB_MASK(10);
-  data_toggle &= LSB_MASK(1);
-  return base_desc | (length << BDT_DESC_BC) | (data_toggle << BDT_DESC_DATA01);
-}
 
 static uint8_t ep0_tx_data_toggle;
 static uint8_t ep0_rx_data_toggle;
 
 static void init_ep0_bdt() {
-  for (unsigned odd = 0; odd < 1; ++odd) {
-    buffer_descriptor_table[get_bdt_index(0, BDT_DIR_TX, odd)].desc = 0;
+  get_buffer_descriptor(0, BDT_DIR_TX, 0)->desc = 0;
 
-    struct buffer_descriptor_t* rx = &buffer_descriptor_table[get_bdt_index(0, BDT_DIR_RX, odd)];
-    rx->desc = generate_buffer_descriptor(EP0_SIZE, odd);
-    rx->buffer = &ep0_rx_buffer;
-  }
+  struct buffer_descriptor_t* rx = get_buffer_descriptor(0, BDT_DIR_RX, 0);
+  rx->desc = generate_bdt_descriptor(EP0_SIZE, 0);
+  rx->buffer = &ep0_rx_buffer;
 }
 
 void init_remote() {
@@ -77,11 +47,12 @@ void init_remote() {
   while (USB0_USBTRC0 & USB_USBTRC_USBRESET) {}
 
   // Reset all endpoints
-  memset(&endpoint_table, 0, sizeof(endpoint_table));
+  clear_bdt();
 
-  USB0_BDTPAGE1 = ((ptrdiff_t) (&buffer_descriptor_table[0]) >> 8) & 0xFE;
-  USB0_BDTPAGE2 = ((ptrdiff_t) (&buffer_descriptor_table[0]) >> 16) & 0xFF;
-  USB0_BDTPAGE3 = (ptrdiff_t) (&buffer_descriptor_table[0]) >> 24;
+  struct buffer_descriptor_t* bdt = get_bdt();
+  USB0_BDTPAGE1 = ((intptr_t) bdt >> 8) & 0xFE;
+  USB0_BDTPAGE2 = ((intptr_t) bdt >> 16) & 0xFF;
+  USB0_BDTPAGE3 = (intptr_t) bdt >> 24;
 
   // Clear pending interrupts we care about
   USB0_ISTAT = 0xFF;
@@ -119,13 +90,13 @@ static inline uint8_t pop_token_status() {
 //      directly to the frame buffer
 
 static uint16_t queue_in(const void* data, uint16_t max_length, uint8_t data01) {
-  struct buffer_descriptor_t* bd = &buffer_descriptor_table[get_bdt_index(0, BDT_DIR_TX, 0)];
+  struct buffer_descriptor_t* bd = get_buffer_descriptor(0, BDT_DIR_TX, 0);
   bool buffer_available = !(bd->desc & _BV(BDT_DESC_OWN));
 
   if (buffer_available) {
     uint16_t packet_size = min(max_length, EP0_SIZE);
     // Send remaining transaction data
-    bd->desc = generate_buffer_descriptor(packet_size, data01);
+    bd->desc = generate_bdt_descriptor(packet_size, data01);
     bd->buffer = (void*) data;
     ep0_tx_data_toggle = data01 ^ 1;
     return packet_size;
@@ -142,13 +113,8 @@ static void return_ep0_rx(
     , uint8_t data01
 ) {
   bd->buffer = buffer;
-  bd->desc = generate_buffer_descriptor(length, data01);
+  bd->desc = generate_bdt_descriptor(length, data01);
   ep0_rx_data_toggle = data01;
-}
-
-static inline void abort_transfer(struct control_transfer_t* transfer) {
-  endpoint_stall(0);
-  cancel_control_transfer(transfer);
 }
 
 #define IRQ_ENABLED_AND_SET(interrupt) \
@@ -221,7 +187,7 @@ void usb_isr() {
     const uint8_t token_status = pop_token_status();
     const uint8_t bdt_index = token_status >> 2;
     const uint8_t endpoint = token_status >> 4;
-    struct buffer_descriptor_t* bdt_entry = &buffer_descriptor_table[bdt_index];
+    struct buffer_descriptor_t* bdt_entry = get_bdt() + bdt_index;
 
     if (endpoint == 0) {
       static struct control_transfer_t control_transfer;
@@ -238,8 +204,8 @@ void usb_isr() {
         if (control_transfer.stage != CTRL_IDLE && control_transfer.stage != CTRL_STALL) {
           cancel_control_transfer(&control_transfer);
         }
-        buffer_descriptor_table[get_bdt_index(0, BDT_DIR_TX, 0)].desc = 0;
-        buffer_descriptor_table[get_bdt_index(0, BDT_DIR_TX, 1)].desc = 0;
+        get_buffer_descriptor(0, BDT_DIR_TX, 0)->desc = 0;
+        get_buffer_descriptor(0, BDT_DIR_TX, 1)->desc = 0;
 
         // Always start with DATA1 after SETUP
         ep0_tx_data_toggle = 1;
@@ -277,7 +243,8 @@ void usb_isr() {
           queue_in(0, 0, 1);
         }
         else { // All other states are invalid at this point
-          abort_transfer(&control_transfer);
+          endpoint_stall(0);
+          cancel_control_transfer(&control_transfer);
         }
 
         return_ep0_rx(bdt_entry, rx_buffer, rx_len, 1);
@@ -286,7 +253,7 @@ void usb_isr() {
         if (control_transfer.stage == CTRL_DATA_IN) {
           static bool queue_extra_zlp;
           // IN data has been transmitted. Read BD to see how much was transmitted
-          control_mark_data_done(&control_transfer, byte_count(bdt_entry));
+          control_mark_data_done(&control_transfer, get_byte_count(bdt_entry));
 
           if (control_data != control_data_end) {
             uint16_t remaining = control_data_end - control_data;
@@ -321,7 +288,7 @@ void usb_isr() {
         if (control_transfer.stage == CTRL_DATA_OUT) {
           // Copy data to data buffer
           uint16_t left = control_transfer.data_length - control_transfer.data_done;
-          uint16_t bytes_received = byte_count(bdt_entry);
+          uint16_t bytes_received = get_byte_count(bdt_entry);
           // These values should be the same for the last transfer, but we want to
           // avoid buffer overflows in case they aren't.
           uint16_t size = min(bytes_received, left);
