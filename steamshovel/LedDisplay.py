@@ -8,11 +8,11 @@ __all__ = ["LedDisplay"]
 from icecube.icetray import logging
 
 try:
-  # libusb1 support
-  from usb1 import USBContext, ENDPOINT_IN, ENDPOINT_OUT, TYPE_VENDOR, RECIPIENT_DEVICE
+    import usb.core
+    import usb.util
 except:
-  USBContext = None
-  logging.log_error("Failed to import python-libusb1", "LedDisplay")
+    logging.log_notice("Failed to load USB support. LED displays are not supported.", "LedDisplay")
+    raise ImportError
 
 from icecube.shovelart import PyArtist
 from icecube.shovelart import RangeSetting, ChoiceSetting, I3TimeColorMap
@@ -172,6 +172,14 @@ class UsbDisplayProperties(object):
         elif led_type == self.LED_TYPE_WS2811:
             self.led_class = LedWS2811
 
+    @property
+    def strings(self):
+        return self._strings
+
+    @property
+    def string_index_map(self):
+        return self._string_index
+
     def addInformationRange(self, start, end):
         """Add a range to the currently supported information ranges.
         `start` and `end` are inclusive."""
@@ -219,93 +227,118 @@ class DisplayConnection(object):
     # USB control transfers
     REQUEST_SEND_FRAME = 1
     REQUEST_DISPLAY_PROPERTIES = 2
+    REQUEST_EEPROM_WRITE = 3
+    REQUEST_EEPROM_READ = 4
+
+    _REQ_IN = usb.util.build_request_type(
+          usb.util.CTRL_IN
+        , usb.util.CTRL_TYPE_VENDOR
+        , usb.util.CTRL_RECIPIENT_DEVICE
+    )
+    _REQ_OUT = usb.util.build_request_type(
+          usb.util.CTRL_OUT
+        , usb.util.CTRL_TYPE_VENDOR
+        , usb.util.CTRL_RECIPIENT_DEVICE
+    )
 
     def __init__(self):
         # Public field
         self.device = None
-        # Private connection handle
-        self._usb_handle = None
+        # Private connection
+        self._usb_interface = None
         # LED display properties
         self._led_count = 0
         self._led_class = None
 
     def isConnected(self):
         "Check if there is an active connection."
-        return self._usb_handle is not None
+        return (self.device is not None) and (self._usb_interface is not None)
 
     @classmethod
     def enumerateDevices(cls):
-        "Get a list of available devices. Returns a list of `usb1.Device` objects."
+        "Get a list of available devices. Returns a list of `UsbDisplayProperties` objects."
         usb_devices = []
-        if USBContext:
-            usb_context = USBContext()
-            for dev in usb_context.getDeviceList():
-                vendorID = dev.getVendorID()
-                productID = dev.getProductID()
-                if vendorID == 0x1CE3 and (productID == 1 or productID == 2):
-                    display = cls.queryDevice(dev)
+
+        for device in usb.core.find(idVendor=0x1CE3, find_all=True):
+            if device.idProduct == 1 or device.idProduct == 2:
+                display = cls.queryDevice(device)
+                if display:
                     usb_devices.append(display)
+
         return usb_devices
 
     def connectDevice(self, device):
         """Try to connect to a USB device.
-        :param usb1.USBDevice device: Device to connect with."""
+        :param usb.core.Device device: Device to connect with."""
         # Release current device before attempting new connection
         self.close()
-        if not self._usb_handle and device:
-            bus = device.getBusNumber()
-            address = device.getDeviceAddress()
+        if not self.device and device:
+            bus = device.bus
+            address = device.address
             dev_name = "[usb:{:03d}-{:03d}]".format(bus, address)
             try:
-                self._usb_handle = device.open()
-                self._usb_handle.claimInterface(0)
+                self.device = device
+                self.device.set_configuration(1)
+                self._usb_interface = self.device.get_active_configuration().interfaces()[0]
+                usb.util.claim_interface(self.device, self._usb_interface)
                 logging.log_debug("Opened device {}".format(dev_name), "LedDisplay")
             except Exception as e:
-                self.close() # Useful call?
-                self._usb_handle = None
+                self.device = None
+                self._usb_interface = None
                 logging.log_warn("Could not open device {}".format(dev_name), "LedDisplay")
         # Return if connection was succesful
-        return self._usb_handle is not None
+        return self._usb_interface is not None
 
     def close(self):
         "Close current USB connection, if any."
-        if self._usb_handle:
+        if self.device and self._usb_interface:
             try:
-                self._usb_handle.releaseInterface(0)
-                self._usb_handle.close()
+                usb.util.release_interface(self.device, self._usb_interface)
             except:
                 pass
             finally:
-                self._usb_handle = None
+                self.device = None
+                self._usb_interface = None
                 logging.log_debug("Released USB display interface", "LedDisplay")
 
     @classmethod
     def queryDevice(cls, device):
         """Get display properties from the given device.
-        :param usb1.USBDevice device: Device to interrogate.
+        :param usb.core.Device device: Device to interrogate.
         :return: A DisplayProperties object or None if device was not available.
         """
         properties = None
-        handle = device.open()
-        if handle:
-            VENDOR_IN = ENDPOINT_IN | TYPE_VENDOR | RECIPIENT_DEVICE
+        if device:
+            VENDOR_IN = cls._REQ_IN
             # Read only properties header: properties length
-            data = handle.controlRead(VENDOR_IN, cls.REQUEST_DISPLAY_PROPERTIES, 0, 0, 2)
+            data = device.ctrl_transfer(cls._REQ_IN, cls.REQUEST_DISPLAY_PROPERTIES, 0, 0, 2, 5000)
             size = struct.unpack('<H', data)[0]
             # Read full TLV list, skip header this time
-            data = handle.controlRead(VENDOR_IN, cls.REQUEST_DISPLAY_PROPERTIES, 0, 0, size)
+            data = device.ctrl_transfer(
+                  cls._REQ_IN
+                , cls.REQUEST_DISPLAY_PROPERTIES
+                , 0
+                , 0
+                , size
+                , 5000
+            )
             properties = UsbDisplayProperties(device)
             TlvParser.parseData(properties, data[2:])
-            handle.close()
         return properties
 
     def writeFrame(self, frame):
         """Write a full frame to the device using a control request.
         :param bytes frame: Frame data to be displayed."""
-        if self._usb_handle:
-            VENDOR_OUT = ENDPOINT_OUT | TYPE_VENDOR | RECIPIENT_DEVICE
+        if self.device:
             try:
-                self._usb_handle.controlWrite(VENDOR_OUT, self.REQUEST_SEND_FRAME, 0, 0, frame)
+                self.device.ctrl_transfer(
+                      self._REQ_OUT
+                    , self.REQUEST_SEND_FRAME
+                    , 0
+                    , 0
+                    , frame
+                    , 5000
+                )
             except Exception as e:
                 logging.log_error("Could not write frame to display: {}".format(e))
                 self.close()
@@ -324,8 +357,6 @@ class LedDisplay(PyArtist):
     def __init__(self):
         PyArtist.__init__(self)
 
-        # USB Device handle field
-        self._usb_handle = None
         self._leds = {}
 
         self._usb_displays = DisplayConnection.enumerateDevices()
@@ -336,10 +367,10 @@ class LedDisplay(PyArtist):
             for display in self._usb_displays:
                 # Collect device info
                 info = {
-                      "bus": display.usb_device.getBusNumber()
-                    , "address": display.usb_device.getDeviceAddress()
-                    , "product": display.usb_device.getProduct()
-                    , "serial": display.usb_device.getSerialNumber()
+                      "bus": display.usb_device.bus
+                    , "address": display.usb_device.address
+                    , "product": display.usb_device.product
+                    , "serial": display.usb_device.serial_number
                     , "range_type": "ranges"
                     , "ranges": ", ".join(["{}-{}".format(s,e) for (s,e) in display.info_ranges])
                 }
