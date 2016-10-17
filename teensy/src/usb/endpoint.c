@@ -38,11 +38,29 @@ void endpoint_deconfigure(const uint8_t ep_num) {
   *ENDPOINT_REGISTER_ADDRESS(ep_num) = 0;
 }
 
-void endpoint_stall(const uint8_t ep_num) {
-  *ENDPOINT_REGISTER_ADDRESS(ep_num) |= _BV(1);
+bool endpoint_stall(const uint8_t ep_num) {
+  uint8_t* ep = ENDPOINT_REGISTER_ADDRESS(ep_num);
+  bool can_stall = *ep & (USB_ENDPT_EPRXEN | USB_ENDPT_EPTXEN);
+  if (can_stall) {
+    *ep |= USB_ENDPT_EPSTALL;
+  }
+  return can_stall;
 }
 
-void endpoint_clear_stall(const uint8_t ep_num) {
-  *ENDPOINT_REGISTER_ADDRESS(ep_num) &= ~_BV(1);
+bool endpoint_clear_stall(const uint8_t ep_num) {
+  uint8_t* ep = ENDPOINT_REGISTER_ADDRESS(ep_num);
+  bool can_stall = *ep & (USB_ENDPT_EPRXEN | USB_ENDPT_EPTXEN);
+  if (can_stall) {
+    *ep &= ~USB_ENDPT_EPSTALL;
+  }
+  return can_stall;
+}
+
+bool endpoint_is_stalled(const uint8_t ep_num) {
+  uint8_t* ep = ENDPOINT_REGISTER_ADDRESS(ep_num);
+  bool stalled = (*ep & (USB_ENDPT_EPRXEN | USB_ENDPT_EPTXEN)) && (*ep & USB_ENDPT_EPSTALL);
+  return stalled;
+}
+
 }
 

@@ -106,14 +106,30 @@ void endpoint_deconfigure(const uint8_t ep_num) {
   endpoint_pop();
 }
 
-void endpoint_stall(const uint8_t ep_num) {
-  endpoint_push(ep_num);
-  UECONX |= _BV(STALLRQ);
-  endpoint_pop();
+bool endpoint_stall(const uint8_t ep_num) {
+  bool can_stall = endpoint_push(ep_num) && (UECONX & _BV(EPEN));
+  if (can_stall) {
+    UECONX |= _BV(STALLRQ);
+    endpoint_pop();
+  }
+  return can_stall;
 }
 
-void endpoint_clear_stall(const uint8_t ep_num) {
-  endpoint_push(ep_num);
-  UECONX |= _BV(STALLRQC);
-  endpoint_pop();
+bool endpoint_clear_stall(const uint8_t ep_num) {
+  bool can_stall = endpoint_push(ep_num) && (UECONX & _BV(EPEN));
+  if (can_stall) {
+    // TODO Reset state after stall is cleared
+    UECONX |= _BV(STALLRQC);
+    endpoint_pop();
+  }
+  return can_stall;
+}
+
+bool endpoint_is_stalled(const uint8_t ep_num) {
+  bool stalled = false;
+  if (endpoint_push(ep_num)) {
+    stalled = (UECONX & _BV(EPEN)) && (UECONX & _BV(STALLRQ));
+    endpoint_pop();
+  }
+  return stalled;
 }

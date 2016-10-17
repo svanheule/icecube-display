@@ -82,10 +82,12 @@ bool endpoint_configure(const struct ep_config_t* config);
 void endpoint_deconfigure(const uint8_t ep_num);
 
 /// Stall an endpoint
-void endpoint_stall(const uint8_t ep_num);
+bool endpoint_stall(const uint8_t ep_num);
 
 /// Clear an endpoint stall
-void endpoint_clear_stall(const uint8_t ep_num);
+bool endpoint_clear_stall(const uint8_t ep_num);
+
+bool endpoint_is_stalled(const uint8_t ep_num);
 
 /// @}
 ///

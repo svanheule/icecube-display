@@ -38,7 +38,7 @@ enum usb_pid_t {
 /// \ingroup usb_endpoint_control
 enum usb_request_code_t {
     GET_STATUS = 0 ///< Get device or endpoint status.
-  , CLEAR_FEATURE = 1 ///< Ture device or endpoint feature off. See ::usb_feature_t
+  , CLEAR_FEATURE = 1 ///< Turn device or endpoint feature off. See ::usb_feature_t
   , SET_FEATURE = 3 ///< Turn device or endpoint feature on. See ::usb_feature_t
   , SET_ADDRESS = 5 ///< Set device address
   , GET_DESCRIPTOR = 6 ///< Get USB descriptor

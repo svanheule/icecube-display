@@ -99,9 +99,8 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
             *((uint16_t*) transfer->data) = 0;
             break;
           case (REQ_DIR_IN | REQ_TYPE_STANDARD | REQ_REC_ENDPOINT):
-            // TODO Select the requested EP and return halted status
-            // Currently no EP supports being halted, so always return 0
-            *((uint16_t*) transfer->data) = 0;
+            *((uint16_t*) transfer->data) =
+                  endpoint_is_stalled(transfer->req->wValue & 0xf) ? 1 : 0;
             break;
           default:
             cancel_control_transfer(transfer);
@@ -175,6 +174,26 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
             old_head = head;
             head = head->next;
             free(old_head);
+          }
+        }
+      }
+      break;
+    case SET_FEATURE:
+      if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_STANDARD | REQ_REC_ENDPOINT)) {
+        if (transfer->req->wValue == ENDPOINT_HALT) {
+          uint8_t ep_num = transfer->req->wIndex & 0xf;
+          if (ep_num > 0 && endpoint_stall(ep_num)) {
+            transfer->stage = CTRL_HANDSHAKE_OUT;
+          }
+        }
+      }
+      break;
+    case CLEAR_FEATURE:
+      if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_STANDARD | REQ_REC_ENDPOINT)) {
+        if (transfer->req->wValue == ENDPOINT_HALT) {
+          uint8_t ep_num = transfer->req->wIndex & 0xf;
+          if (ep_num > 0 && endpoint_clear_stall(ep_num)) {
+            transfer->stage = CTRL_HANDSHAKE_OUT;
           }
         }
       }
