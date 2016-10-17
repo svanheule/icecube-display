@@ -200,17 +200,19 @@ void usb_isr() {
       const enum usb_pid_t token_pid = get_token_pid(bdt_entry);
 
       if (token_pid == PID_SETUP) {
+        // Since we may be using a dynamically allocated buffer that can get discarded when
+        // cancelling an ongoing transfer, copy the data _before_ doing anything else
+        setup_packet = *(const struct usb_setup_packet_t*) bdt_entry->buffer;
+
         // Cancel pending transfers
         if (control_transfer.stage != CTRL_IDLE && control_transfer.stage != CTRL_STALL) {
           cancel_control_transfer(&control_transfer);
         }
         get_buffer_descriptor(0, BDT_DIR_TX, 0)->desc = 0;
-        get_buffer_descriptor(0, BDT_DIR_TX, 1)->desc = 0;
 
         // Always start with DATA1 after SETUP
         ep0_tx_data_toggle = 1;
 
-        setup_packet = *(const struct usb_setup_packet_t*) bdt_entry->buffer;
         // Wait for DATA1 OUT transfer.
         // This will be either first OUT data packet or the IN status stage (handshake)
         void* rx_buffer = &ep0_rx_buffer[0];
@@ -231,8 +233,10 @@ void usb_isr() {
             control_data += queue_in(control_data, control_transfer.data_length, 1);
           }
           else {
-            rx_buffer = control_data;
             rx_len = min(rx_len, control_transfer.data_length);
+            if (rx_len >= EP0_SIZE) {
+              rx_buffer = control_data;
+            }
             control_data += rx_len;
           }
         }
@@ -309,8 +313,15 @@ void usb_isr() {
             // Queue more RX buffers
             uint16_t queue_left = control_data_end - control_data;
             uint16_t queued = min(queue_left, EP0_SIZE);
+            void* rx_buffer;
+            if (queued < EP0_SIZE) {
+              rx_buffer = ep0_rx_buffer;
+            }
+            else {
+              rx_buffer = control_data;
+            }
 
-            return_ep0_rx(bdt_entry, control_data, queued, ep0_rx_data_toggle^1);
+            return_ep0_rx(bdt_entry, rx_buffer, queued, ep0_rx_data_toggle^1);
             control_data += queued;
           }
         }
