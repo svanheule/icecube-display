@@ -11,15 +11,19 @@ To perform an upgrade via USB, first power the device using the 5V power supply,
 display to the computer used to perform the upgrade via a USB cable. You should see the green
 and orange LED light up.
 The display now needs to be rebooted into firmware upgrade mode.
-To do this, press and hold the *Forward* button while pressing the *reset* button. After releasing
-*reset*, the *Forward* button can also be released and the display should now be in
+For the IceTop display, press and hold the *Forward* button while pressing the *reset* button.
+After releasing *reset*, the *Forward* button can also be released and the display should now be in
 firmware upgrade mode. The green LED will still be on, but the orange LED will now be off.
+For the Teensy, just press the program button.
 
-When performing the `lsusb` command on Linux, you will now see the Atmel bootloader showing up
-in the listing:
+When performing the `lsusb` command on Linux, you will now see the Atmel or Teensy bootloader
+showing up in the listing:
 
     $ lsusb | grep -e "Atmel"
     Bus 001 Device 039: ID 03eb:2ff4 Atmel Corp. atmega32u4 DFU bootloader
+
+    $ lsusb | grep -e "Teensy"
+    Bus 003 Device 102: ID 16c0:0478 Van Ooijen Technische Informatica Teensy Halfkay Bootloader
 
 When building the firmware from source, you can use the CMake build system to upload the firmware
 using the upload target:
@@ -27,6 +31,8 @@ using the upload target:
     $ cd $BUILD_DIR
     $ cmake $SOURCE_DIR
     $ make upload
+
+### Manual upload for ATmega32u4 ###
 
 If the firmware was provided as a pre-compiled binary file (e.g. as `icetop_display.hex`), you can
 upload the firmware using the `avrdude` command:
@@ -37,8 +43,14 @@ upload the firmware using the `avrdude` command:
     # you should also specify which port number to use (use lsusb to find out)
     $ avrdude -p ATMEGA32U4 -c flip1 -P usb:001:039 -U flash:w:icetop_display.hex
 
+### Manual upload for Teensy ###
 
-## ICSP firmware upgrade ##
+Currently only the `teensy_loader_cli` program is supported to program the Teensy boards:
+
+    # Only one device can be used at a time
+    $ teensy_loader_cli --mcu=mk20dx256 -w icecube_display.hex
+
+## ICSP firmware upgrade for IceTop display controller ##
 
 The device can also be programmed using the ICSP header on the board.
 Note that any normal firmware upgrade can be performed via USB, so using the ICSP port is not
