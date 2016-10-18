@@ -81,17 +81,36 @@ bool endpoint_configure(const struct ep_config_t* config);
 /// Deallocates the endpoint memory.
 void endpoint_deconfigure(const uint8_t ep_num);
 
+/// @}
+
+
+/** \defgroup usb_endpoint_status Endpoint status
+  * \ingroup usb_endpoint
+  * \brief Endpoint status reporting and setting.
+  * \details
+  * @{
+  */
+
 /// Stall an endpoint
 bool endpoint_stall(const uint8_t ep_num);
 
 /// Clear an endpoint stall
 bool endpoint_clear_stall(const uint8_t ep_num);
 
+/// Get endpoint stall status
 bool endpoint_is_stalled(const uint8_t ep_num);
 
+/// Reset the DATAx toggle to DATA0
+uint8_t endpoint_reset_data_toggle(const uint8_t ep_num);
+
+/** \brief Get the DATAx toggle value.
+  * \details For IN endpoints, this returns the next value that should be used for a data transfer.
+  *     For OUT endpoints, this returns the last received value.
+  *     Note that for control endpoints the returned value may be unrelated to the relevant current
+  *     data toggle since these endpoints are bidirectional.
+  */
+uint8_t endpoint_get_data_toggle(const uint8_t ep_num);
+
 /// @}
-///
-
-
 
 #endif

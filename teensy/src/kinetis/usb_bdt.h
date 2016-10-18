@@ -33,4 +33,10 @@ uint16_t get_byte_count(const struct buffer_descriptor_t* descriptor);
 
 uint32_t generate_bdt_descriptor(uint16_t length, uint8_t data_toggle);
 
+
+void reset_data_toggles();
+
+uint8_t get_data_toggle(const uint8_t ep_num, const uint8_t tx);
+void set_data_toggle(const uint8_t ep_num, const uint8_t tx, const uint8_t value);
+
 #endif // KINETIS_USB_BDT_H

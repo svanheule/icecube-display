@@ -193,6 +193,7 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
         if (transfer->req->wValue == ENDPOINT_HALT) {
           uint8_t ep_num = transfer->req->wIndex & 0xf;
           if (ep_num > 0 && endpoint_clear_stall(ep_num)) {
+            endpoint_reset_data_toggle(ep_num);
             transfer->stage = CTRL_HANDSHAKE_OUT;
           }
         }

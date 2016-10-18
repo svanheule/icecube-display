@@ -73,8 +73,8 @@ bool endpoint_configure(const struct ep_config_t* config) {
   }
 
   if (config_ok) {
-    // Activate endpoint
-    UECONX = _BV(EPEN);
+    // Activate endpoint and reset data toggle
+    UECONX = _BV(EPEN) | _BV(RSTDT);
     // Deconfigure/reset endpoint
     UECFG1X = 0;
     // Configure endpoint
@@ -132,4 +132,23 @@ bool endpoint_is_stalled(const uint8_t ep_num) {
     endpoint_pop();
   }
   return stalled;
+}
+
+// Data toggle functions
+void endpoint_reset_data_toggle(const uint8_t ep_num) {
+  if (endpoint_push(ep_num)) {
+    if (UECONX & _BV(EPEN)) {
+      UECONX |= _BV(RSTDT);
+    }
+    endpoint_pop();
+  }
+}
+
+uint8_t endpoint_get_data_toggle(const uint8_t ep_num) {
+  uint8_t data_toggle = 0;
+  if (endpoint_push(ep_num)) {
+    data_toggle = (UESTA0X & _BV(DTSEQ0)) >> DTSEQ0;
+    pop_endpoint();
+  }
+  return data_toggle;
 }

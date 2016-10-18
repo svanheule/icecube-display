@@ -1,5 +1,6 @@
 #include "usb/endpoint.h"
 #include "kinetis/io.h"
+#include "kinetis/usb_bdt.h"
 
 #define ENDPOINT_REGISTER_ADDRESS(i) ((volatile uint8_t*)(&(USB0_ENDPT0) + 4*i))
 
@@ -30,6 +31,7 @@ bool endpoint_configure(const struct ep_config_t* config) {
 
   // Memory is currently allocated in remote_usb.c
 
+  endpoint_reset_data_toggle(config->num);
   *ENDPOINT_REGISTER_ADDRESS(config->num) = reg;
   return reg != 0;
 }
@@ -62,5 +64,15 @@ bool endpoint_is_stalled(const uint8_t ep_num) {
   return stalled;
 }
 
+// Data toggle functions
+void endpoint_reset_data_toggle(const uint8_t ep_num) {
+  volatile uint8_t* ep = ENDPOINT_REGISTER_ADDRESS(ep_num);
+  // Check RX first so data toggle reset applies to RX for control endpoints
+  set_data_toggle(ep_num, (*ep & USB_ENDPT_EPRXEN) ? 0 : 1, 0);
 }
 
+uint8_t endpoint_get_data_toggle(const uint8_t ep_num) {
+  volatile uint8_t* ep = ENDPOINT_REGISTER_ADDRESS(ep_num);
+  // Check RX first so data toggle get applies to RX for control endpoints
+  return get_data_toggle(ep_num, (*ep & USB_ENDPT_EPRXEN) ? 0 : 1);
+}

@@ -23,9 +23,6 @@ static inline uint16_t min(uint16_t a, uint16_t b) {
 // Align buffers to word boundary, just to make sure nothing weird happens with the DMA transfers
 static alignas(4) uint8_t ep0_rx_buffer[EP0_SIZE];
 
-static uint8_t ep0_tx_data_toggle;
-static uint8_t ep0_rx_data_toggle;
-
 static void init_ep0_bdt() {
   get_buffer_descriptor(0, BDT_DIR_TX, 0)->desc = 0;
 
@@ -98,7 +95,7 @@ static uint16_t queue_in(const void* data, uint16_t max_length, uint8_t data01) 
     // Send remaining transaction data
     bd->desc = generate_bdt_descriptor(packet_size, data01);
     bd->buffer = (void*) data;
-    ep0_tx_data_toggle = data01 ^ 1;
+    set_data_toggle(0, 1, data01^1);
     return packet_size;
   }
   else {
@@ -114,7 +111,7 @@ static void return_ep0_rx(
 ) {
   bd->buffer = buffer;
   bd->desc = generate_bdt_descriptor(length, data01);
-  ep0_rx_data_toggle = data01;
+  set_data_toggle(0, 0, data01);
 }
 
 #define IRQ_ENABLED_AND_SET(interrupt) \
@@ -210,9 +207,6 @@ void usb_isr() {
         }
         get_buffer_descriptor(0, BDT_DIR_TX, 0)->desc = 0;
 
-        // Always start with DATA1 after SETUP
-        ep0_tx_data_toggle = 1;
-
         // Wait for DATA1 OUT transfer.
         // This will be either first OUT data packet or the IN status stage (handshake)
         void* rx_buffer = &ep0_rx_buffer[0];
@@ -261,7 +255,7 @@ void usb_isr() {
 
           if (control_data != control_data_end) {
             uint16_t remaining = control_data_end - control_data;
-            control_data += queue_in(control_data, remaining, ep0_tx_data_toggle);
+            control_data += queue_in(control_data, remaining, get_data_toggle(0, 1));
             if (control_data_end == control_data) {
               // When the amount of transmitted data is less then the amount of requested data,
               // a packet smaller than wMaxPacketSize has to be sent. In case the data size is an
@@ -276,7 +270,7 @@ void usb_isr() {
           }
           else if (queue_extra_zlp) {
               // Queue extra ZLP to signal request length underrun
-              queue_in(0, 0, ep0_tx_data_toggle);
+              queue_in(0, 0, get_data_toggle(0, 1));
               queue_extra_zlp = false;
           }
         }
@@ -321,7 +315,7 @@ void usb_isr() {
               rx_buffer = control_data;
             }
 
-            return_ep0_rx(bdt_entry, rx_buffer, queued, ep0_rx_data_toggle^1);
+            return_ep0_rx(bdt_entry, rx_buffer, queued, get_data_toggle(0, 0) ^ 1);
             control_data += queued;
           }
         }
