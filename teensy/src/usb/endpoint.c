@@ -41,7 +41,7 @@ void endpoint_deconfigure(const uint8_t ep_num) {
 }
 
 bool endpoint_stall(const uint8_t ep_num) {
-  uint8_t* ep = ENDPOINT_REGISTER_ADDRESS(ep_num);
+  volatile uint8_t* ep = ENDPOINT_REGISTER_ADDRESS(ep_num);
   bool can_stall = *ep & (USB_ENDPT_EPRXEN | USB_ENDPT_EPTXEN);
   if (can_stall) {
     *ep |= USB_ENDPT_EPSTALL;
@@ -50,7 +50,7 @@ bool endpoint_stall(const uint8_t ep_num) {
 }
 
 bool endpoint_clear_stall(const uint8_t ep_num) {
-  uint8_t* ep = ENDPOINT_REGISTER_ADDRESS(ep_num);
+  volatile uint8_t* ep = ENDPOINT_REGISTER_ADDRESS(ep_num);
   bool can_stall = *ep & (USB_ENDPT_EPRXEN | USB_ENDPT_EPTXEN);
   if (can_stall) {
     *ep &= ~USB_ENDPT_EPSTALL;
@@ -59,7 +59,7 @@ bool endpoint_clear_stall(const uint8_t ep_num) {
 }
 
 bool endpoint_is_stalled(const uint8_t ep_num) {
-  uint8_t* ep = ENDPOINT_REGISTER_ADDRESS(ep_num);
+  volatile uint8_t* ep = ENDPOINT_REGISTER_ADDRESS(ep_num);
   bool stalled = (*ep & (USB_ENDPT_EPRXEN | USB_ENDPT_EPTXEN)) && (*ep & USB_ENDPT_EPSTALL);
   return stalled;
 }
