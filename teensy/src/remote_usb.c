@@ -121,16 +121,46 @@ static void return_ep0_rx(
 
 void usb_isr() {
   // TODO VBUS transitions?
+  static bool frame_num_rolled_over;
+  static uint16_t frame_num;
+  static uint16_t pps;
+
+  if (IRQ_ENABLED_AND_SET(SOFTOK)) {
+    USB0_ISTAT = USB_ISTAT_SOFTOK;
+    const uint16_t MAX_FRMNUM = 1<<11;
+    uint16_t new_frame_num = ((USB0_FRMNUMH << 8) | USB0_FRMNUML) & (MAX_FRMNUM - 1);
+    // Unwrap if roll-over has occured
+    if (new_frame_num < frame_num) {
+      frame_num_rolled_over = true;
+      pps += new_frame_num + MAX_FRMNUM - frame_num;
+    }
+    else {
+      pps += new_frame_num - frame_num;
+    }
+
+    if (!frame_num_rolled_over) {
+      pps = 0;
+    }
+    else if (pps >= 1000) {
+      trip_led();
+      pps = pps % 1000;
+    }
+    frame_num = new_frame_num;
+  }
 
   if (IRQ_ENABLED_AND_SET(USBRST)) {
     // Clear reset interrupt, suspend and token interrupt
     USB0_ISTAT = USB_ISTAT_USBRST | USB_ISTAT_SLEEP | USB_ISTAT_TOKDNE;
     // Enable suspend and token interrupt
-    USB0_INTEN |= USB_INTEN_SLEEPEN | USB_INTEN_TOKDNEEN;
+    USB0_INTEN |= USB_INTEN_SLEEPEN | USB_INTEN_TOKDNEEN | USB_INTEN_SOFTOKEN;
 
     // Reset all buffer toggles to 0
     USB0_CTL |= USB_CTL_ODDRST;
     init_ep0_bdt();
+
+    frame_num_rolled_over = false;
+    frame_num = 0;
+    pps = 0;
 
     // Load default configuration
     usb_set_address(0);
@@ -142,7 +172,7 @@ void usb_isr() {
   // Wake-up, suspend
   if (IRQ_ENABLED_AND_SET(SLEEP)) {
     // Clear and disable suspend and token interrupt
-    USB0_INTEN &= ~(USB_INTEN_SLEEPEN | USB_INTEN_TOKDNEEN);
+    USB0_INTEN &= ~(USB_INTEN_SLEEPEN | USB_INTEN_TOKDNEEN | USB_INTEN_SOFTOKEN);
     USB0_ISTAT = USB_ISTAT_SLEEP | USB_ISTAT_TOKDNE;
     // Suspend transceiver
     USB0_USBCTRL |= USB_USBCTRL_SUSP;
@@ -179,7 +209,6 @@ void usb_isr() {
   }
 
   if (IRQ_ENABLED_AND_SET(TOKDNE)) {
-    trip_led();
 
     const uint8_t token_status = pop_token_status();
     const uint8_t bdt_index = token_status >> 2;
