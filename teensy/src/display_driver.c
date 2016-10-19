@@ -1,6 +1,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdalign.h>
+#include <stdatomic.h>
+
 #include "kinetis/io.h"
 #include "kinetis/ftm.h"
 #include "kinetis/dma.h"
@@ -41,7 +43,7 @@ static const struct port_map_t LED_MAP[SEGMENT_COUNT] PORTMAP;
 
 static struct port_map_t led_mapping[SEGMENT_COUNT];
 
-static volatile bool frame_write_in_progress;
+static volatile atomic_flag frame_write_in_progress;
 
 // DMA sources
 #define DISPMEM __attribute__ ((section(".displaybuffer")))
@@ -182,7 +184,7 @@ void init_display_driver() {
 
   PDB0_SC = PDB_SC_PDBIE | PDB_SC_TRGSEL(15) | PDB_SC_LDOK | PDB_SC_PDBEN;
 
-  frame_write_in_progress = false;
+  atomic_flag_clear(&frame_write_in_progress);
 }
 
 void dma_ch2_isr() {
@@ -203,7 +205,7 @@ void dma_ch2_isr() {
 
 void pdb_isr() {
   ATOMIC_REGISTER_BIT_CLEAR(PDB0_SC, 6);
-  frame_write_in_progress = false;
+  atomic_flag_clear(&frame_write_in_progress);
 }
 
 static void start_dma_transfer() {
@@ -362,11 +364,8 @@ static void copy_buffer(const void* restrict src, void* restrict dest) {
   }
 }
 
-// TODO Make read-write cycles of frame_write_in_progress re-entrant
 void display_frame(struct frame_buffer_t* buffer) {
-  if (!frame_write_in_progress) {
-    frame_write_in_progress = true;
-
+  if (!atomic_flag_test_and_set(&frame_write_in_progress)) {
     ATOMIC_SRAM_BIT_SET(buffer->flags, 2);
     copy_buffer(buffer->buffer, &(led_data[0]));
     ATOMIC_SRAM_BIT_CLEAR(buffer->flags, 2);
@@ -382,9 +381,7 @@ void display_frame(struct frame_buffer_t* buffer) {
 }
 
 void display_blank() {
-  if (!frame_write_in_progress) {
-    frame_write_in_progress = true;
-
+  if (!atomic_flag_test_and_set(&frame_write_in_progress)) {
     // Setup TCD to write blank data
     dma_tcd_list[1].SADDR = &ones;
     dma_tcd_list[1].SOFF = 0;
