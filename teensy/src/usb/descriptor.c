@@ -157,11 +157,7 @@ static const struct usb_descriptor_body_interface_t BODY_INTERFACE = {
 static const char16_t STR_MANUFACTURER[] = u"Ghent University";
 static const char16_t STR_PRODUCT[] = u"IceCube event display";
 static const char16_t STR_IFACE_DESCR[] = u"Steamshovel display";
-#if USE_EEPROM == 1
 extern const char16_t STR_SERIAL_NUMBER[];
-#else
-static const char16_t STR_SERIAL_NUMBER[] = u"ICD-IC-001-0000";
-#endif
 
 #define LANG_ID_EN_US 0x0409
 
@@ -175,11 +171,7 @@ static const struct string_pointer_t STR_EN_US[] = {
     {STR_MANUFACTURER, MEMSPACE_PROGMEM}
   , {STR_PRODUCT, MEMSPACE_PROGMEM}
   , {STR_IFACE_DESCR, MEMSPACE_PROGMEM}
-#if USE_EEPROM == 1
   , {STR_SERIAL_NUMBER, MEMSPACE_EEPROM}
-#else
-    , {STR_SERIAL_NUMBER, MEMSPACE_PROGMEM}
-#endif
 };
 static const uint8_t STRING_COUNT = sizeof(STR_EN_US)/sizeof(struct string_pointer_t);
 
