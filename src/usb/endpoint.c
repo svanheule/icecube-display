@@ -148,7 +148,7 @@ uint8_t endpoint_get_data_toggle(const uint8_t ep_num) {
   uint8_t data_toggle = 0;
   if (endpoint_push(ep_num)) {
     data_toggle = (UESTA0X & _BV(DTSEQ0)) >> DTSEQ0;
-    pop_endpoint();
+    endpoint_pop();
   }
   return data_toggle;
 }
