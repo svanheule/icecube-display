@@ -84,7 +84,7 @@ enum usb_request_code_t {
 #define ENDPOINT_STATUS_HALTED 1
 /// @}
 
-/// USB device or endpoint features. None are currently supported.
+/// USB device or endpoint features.
 enum usb_feature_t {
     ENDPOINT_HALT = 0
   , REMOTE_WAKEUP = 1
@@ -94,7 +94,7 @@ enum usb_feature_t {
 
 /// USB control endpoint setup packet
 struct usb_setup_packet_t {
-  /// bitwise OR of a `REQ_DIR_*`, a `REQ_TYPE_*`, and a `REC_REC_*` constant. See std.h.
+  /// bitwise OR of a `REQ_DIR_*`, a `REQ_TYPE_*`, and a `REQ_REC_*` constant. See std.h.
   uint8_t bmRequestType;
   uint8_t bRequest; ///< Request code, interpretation depends on value of bmRequestType.
   uint16_t wValue; ///< Request value, interpretation is specific to bRequest's value.
