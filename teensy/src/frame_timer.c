@@ -31,3 +31,15 @@ void pit0_isr() {
     callback();
   }
 }
+
+uint32_t get_counts_max() {
+  return pit_channels[0].LDVAL;
+}
+
+uint32_t get_counts_current() {
+  return pit_channels[0].CVAL;
+}
+
+void correct_counts_max(int32_t diff) {
+  pit_channels[0].LDVAL -= diff;
+}

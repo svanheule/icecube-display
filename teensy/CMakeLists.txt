@@ -68,6 +68,7 @@ set(SOURCES
   src/frame_buffer.c
   src/frame_queue.c
   src/frame_timer.c
+  src/frame_timer_sof_tracker.c
   # Renderers
 #  src/render/boot_splash.c
   src/render/test.c
