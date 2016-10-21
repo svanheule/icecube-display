@@ -12,6 +12,8 @@
 /// Initialise the frame timer and set the function to be called when the timer trips.
 void init_frame_timer(void (*timer_callback)());
 
+void restart_frame_timer();
+
 uint32_t get_counts_max();
 uint32_t get_counts_current();
 void correct_counts_max(int32_t diff);

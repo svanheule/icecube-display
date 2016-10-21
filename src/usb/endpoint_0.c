@@ -9,6 +9,7 @@
 #include "frame_queue.h"
 #include "display_properties.h"
 #include "frame_timer_sof_tracker.h"
+#include "frame_timer.h"
 
 // Descriptor transaction definitions
 #include "usb/descriptor.h"
@@ -247,6 +248,8 @@ static void callback_handshake_eeprom_write(struct control_transfer_t* transfer)
 #define VENDOR_REQUEST_GET_HISTOGRAM 5
 static void callback_data_get_histogram(struct control_transfer_t *transfer);
 
+#define VENDOR_REQUEST_SYNC_FRAME_DRAW 6
+
 static inline void process_vendor_request(struct control_transfer_t* transfer) {
   if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_VENDOR | REQ_REC_DEVICE)) {
     if (transfer->req->bRequest == VENDOR_REQUEST_PUSH_FRAME) {
@@ -280,6 +283,10 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
         transfer->callback_cancel = callback_default_cancel;
         transfer->stage = CTRL_DATA_OUT;
       }
+    }
+    else if (transfer->req->bRequest == VENDOR_REQUEST_SYNC_FRAME_DRAW) {
+      transfer->stage = CTRL_HANDSHAKE_OUT;
+      restart_frame_timer();
     }
   }
   else if (transfer->req->bmRequestType == (REQ_DIR_IN | REQ_TYPE_VENDOR | REQ_REC_DEVICE)) {
