@@ -134,14 +134,8 @@ void usb_isr() {
 
   if (IRQ_ENABLED_AND_SET(SOFTOK)) {
     USB0_ISTAT = USB_ISTAT_SOFTOK;
-    static bool fnum_good;
-    static uint16_t previous_fnum;
-    uint16_t fnum = (USB0_FRMNUMH << 8) | (USB0_FRMNUML);
-    if (fnum_good && previous_fnum < fnum) {
-      new_sof_received(fnum - previous_fnum);
-    }
-    fnum_good = true;
-    previous_fnum = fnum;
+    uint16_t frame_number = ((USB0_FRMNUMH << 8) | (USB0_FRMNUML)) & 0x7FF;
+    new_sof_received(frame_number);
   }
 
   if (IRQ_ENABLED_AND_SET(USBRST)) {

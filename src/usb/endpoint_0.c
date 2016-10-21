@@ -8,6 +8,7 @@
 #include "usb/configuration.h"
 #include "frame_queue.h"
 #include "display_properties.h"
+#include "frame_timer_sof_tracker.h"
 
 // Descriptor transaction definitions
 #include "usb/descriptor.h"
@@ -243,6 +244,8 @@ const uint16_t EEPROM_SIZE = E2END + 1;
 static void callback_data_eeprom_write(struct control_transfer_t* transfer);
 static void callback_handshake_eeprom_write(struct control_transfer_t* transfer);
 
+#define VENDOR_REQUEST_GET_HISTOGRAM 5
+static void callback_data_get_histogram(struct control_transfer_t *transfer);
 
 static inline void process_vendor_request(struct control_transfer_t* transfer) {
   if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_VENDOR | REQ_REC_DEVICE)) {
@@ -331,6 +334,29 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
         }
       }
     }
+    else if (transfer->req->bRequest == VENDOR_REQUEST_GET_HISTOGRAM) {
+      uint16_t length;
+      void* buffer = 0;
+      switch (transfer->req->wValue) {
+        case 0: // SOF frame delta histogram
+          length = sizeof(*histogram_error.bins)*histogram_error.bin_count;
+          buffer = histogram_error.bins;
+          break;
+        case 1: // counts per ms histogram
+          length = sizeof(*histogram_ms_counts.bins)*histogram_ms_counts.bin_count;
+          buffer = histogram_ms_counts.bins;
+          break;
+        default:
+          break;
+      }
+      if (buffer) {
+        transfer->data = buffer;
+        transfer->data_length = min(length, transfer->req->wLength);
+        transfer->data_done = 0;
+        transfer->callback_data = callback_data_get_histogram;
+        transfer->stage = CTRL_DATA_IN;
+      }
+    }
   }
 }
 
@@ -373,6 +399,12 @@ static void callback_handshake_eeprom_write(struct control_transfer_t *transfer)
     eeprom_update_block(transfer->data, dest, transfer->data_length);
     free(transfer->data);
     transfer->data = 0;
+  }
+}
+
+static void callback_data_get_histogram(struct control_transfer_t* transfer) {
+  if (transfer->data_done == transfer->data_length) {
+    transfer->stage = CTRL_HANDSHAKE_IN;
   }
 }
 

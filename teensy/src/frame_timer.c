@@ -41,5 +41,5 @@ uint32_t get_counts_current() {
 }
 
 void correct_counts_max(int32_t diff) {
-  pit_channels[0].LDVAL -= diff;
+  pit_channels[0].LDVAL += diff;
 }
