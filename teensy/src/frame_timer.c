@@ -2,8 +2,6 @@
 #include "kinetis/pit.h"
 #include "frame_timer.h"
 
-// TODO Potentially merge this file with `avr/scr/frame_timer.c` 
-
 static void (*callback)();
 
 void init_frame_timer(void (*timer_callback)()) {
