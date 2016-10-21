@@ -115,6 +115,15 @@ static void return_ep0_rx(
   set_data_toggle(0, 0, data01);
 }
 
+static bool needs_extra_zlp(struct control_transfer_t* transfer) {
+  // When the amount of transmitted data is less then the amount of requested data,
+  // a packet smaller than wMaxPacketSize has to be sent. In case the data size is an
+  // exact multiple of the endpoint buffer size, queue an extra ZLP.
+  bool small_transfer = transfer->data_length < transfer->req->wLength;
+  bool buffer_aligned = (transfer->data_length % EP0_SIZE) == 0;
+  return small_transfer && buffer_aligned;
+}
+
 #define IRQ_ENABLED_AND_SET(interrupt) \
     (USB0_INTEN & USB_INTEN_ ## interrupt ## EN) && (USB0_ISTAT & USB_ISTAT_ ## interrupt)
 #define requested_wakeup() \
@@ -206,6 +215,7 @@ void usb_isr() {
       // control_data will track the amount of queued data, so is ahead of .data_done
       static uint8_t* control_data;
       static uint8_t* control_data_end;
+      static bool queue_extra_zlp;
 
       const enum usb_pid_t token_pid = get_token_pid(bdt_entry);
 
@@ -236,7 +246,7 @@ void usb_isr() {
           control_data = (uint8_t*) control_transfer.data;
           control_data_end = control_data + control_transfer.data_length;
           if (stage == CTRL_DATA_IN) {
-            // Queue at most two packets
+            queue_extra_zlp = needs_extra_zlp(&control_transfer);
             control_data += queue_in(control_data, control_transfer.data_length, 1);
           }
           else {
@@ -262,24 +272,12 @@ void usb_isr() {
       }
       else if (token_pid == PID_IN) {
         if (control_transfer.stage == CTRL_DATA_IN) {
-          static bool queue_extra_zlp;
           // IN data has been transmitted. Read BD to see how much was transmitted
           control_mark_data_done(&control_transfer, get_byte_count(bdt_entry));
 
           if (control_data != control_data_end) {
             uint16_t remaining = control_data_end - control_data;
             control_data += queue_in(control_data, remaining, get_data_toggle(0, 1));
-            if (control_data_end == control_data) {
-              // When the amount of transmitted data is less then the amount of requested data,
-              // a packet smaller than wMaxPacketSize has to be sent. In case the data size is an
-              // exact multiple of the endpoint buffer size, queue an extra ZLP.
-              bool small_transfer = control_transfer.data_length < control_transfer.req->wLength;
-              bool buffer_aligned = (control_transfer.data_length % EP0_SIZE) == 0;
-              queue_extra_zlp = small_transfer && buffer_aligned;
-            }
-            else {
-              queue_extra_zlp = false;
-            }
           }
           else if (queue_extra_zlp) {
               // Queue extra ZLP to signal request length underrun
