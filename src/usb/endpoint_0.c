@@ -323,8 +323,7 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
         }
       }
     }
-    else if (transfer->req->bRequest == VENDOR_REQUEST_EEPROM_READ)
-    {
+    else if (transfer->req->bRequest == VENDOR_REQUEST_EEPROM_READ) {
       uint16_t length = min(EEPROM_SIZE, transfer->req->wLength);
       uint16_t offset = transfer->req->wIndex;
       if (offset <= EEPROM_SIZE && length + offset <= EEPROM_SIZE) {

@@ -59,37 +59,36 @@ struct histogram_t histogram_error = {BINS_HIST_ERROR, &error_bins[0]};
 static uint16_t alignas(4) ms_counts_bins[BINS_HIST_MS_COUNTS];
 struct histogram_t histogram_ms_counts = {BINS_HIST_MS_COUNTS, &ms_counts_bins[0]};
 
-static bool sof_delta_valid = false;
-
+static bool usb_frame_delta_valid = false;
 static bool ms_counts_valid = false;
 
 static int32_t error_accum = 0;
 
-void new_sof_received(const uint16_t frame_counter) {
-  static uint16_t previous_frame_counter;
+void new_sof_received(const uint16_t usb_frame_counter) {
+  static uint16_t previous_usb_frame_counter;
   static uint32_t previous_count;
 
   // Latch all counters first
   uint32_t count = get_counts_current();
 
   // Calculate frame number delta and store in histogram if there is space left
-  int16_t frame_delta;
-  if (frame_counter < previous_frame_counter) {
-    frame_delta = frame_counter + (1<<11) - previous_frame_counter;
+  int16_t usb_frame_delta;
+  if (usb_frame_counter < previous_usb_frame_counter) {
+    usb_frame_delta = usb_frame_counter + (1<<11) - previous_usb_frame_counter;
   }
   else {
-    frame_delta = frame_counter - previous_frame_counter;
+    usb_frame_delta = usb_frame_counter - previous_usb_frame_counter;
   }
 
-  previous_frame_counter = frame_counter;
+  previous_usb_frame_counter = usb_frame_counter;
 
   // If the counter has rolled over, the actual difference between the two counter
   // values is uncertain because this depends on the implementation of the counter
   // itself. Therefore counter difference is only used when there is no rollover.
   bool counter_rolled_over = count > previous_count;
 
-  if (sof_delta_valid && ms_counts_valid && !counter_rolled_over) {
-    int32_t step = (previous_count - count)/frame_delta;
+  if (usb_frame_delta_valid && ms_counts_valid && !counter_rolled_over) {
+    int32_t step = (previous_count - count)/usb_frame_delta;
     int32_t bin_diff = (step - NOMINAL_MS_COUNTS + MS_COUNTS_BIN_WIDTH/2) / MS_COUNTS_BIN_WIDTH;
     histogram_add(&histogram_ms_counts, BINS_HIST_MS_COUNTS/2 + bin_diff);
 
@@ -108,7 +107,7 @@ void new_sof_received(const uint16_t frame_counter) {
   }
 
   previous_count = count;
-  sof_delta_valid = true;
+  usb_frame_delta_valid = true;
   ms_counts_valid = true;
 }
 
