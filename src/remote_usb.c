@@ -15,6 +15,7 @@
 #include "usb/endpoint_0.h"
 #include "usb/descriptor.h"
 #include "frame_buffer.h"
+#include "frame_timer_sof_tracker.h"
 
 
 // Heavily based on LUFA code, stripped down to the specifics of the ATmega32U4.
@@ -97,6 +98,13 @@ bool is_remote_connected() {
 #define requested_wakeup() DEVICE_ENABLED_AND_SET(WAKEUP)
 
 ISR(USB_GEN_vect) {
+  if (DEVICE_ENABLED_AND_SET(SOF)) {
+    CLEAR_UDINT(SOFI);
+    uint16_t fnum = UDFNUMH;
+    fnum = (fnum << 8) | UDFNUML;
+    new_sof_received(fnum);
+  }
+
   // VBUS transitions
   if (vbus_change()) {
     CLEAR_USBINT(VBUSTI);
@@ -112,6 +120,7 @@ ISR(USB_GEN_vect) {
       CLEAR_FLAG(UDIEN, SUSPI);
       CLEAR_FLAG(UDIEN, WAKEUPE);
       CLEAR_FLAG(UDIEN, EORSTE);
+      CLEAR_FLAG(UDIEN, SOFE);
       SET_FLAG(USBCON, FRZCLK);
       disable_pll();
       set_device_state(ATTACHED);
@@ -125,6 +134,7 @@ ISR(USB_GEN_vect) {
     CLEAR_UDINT(WAKEUPI);
     CLEAR_FLAG(UDIEN, WAKEUPE);
     SET_FLAG(UDIEN, SUSPE);
+    SET_FLAG(UDIEN, SOFE);
 
     // Load default configuration
     usb_set_address(0);

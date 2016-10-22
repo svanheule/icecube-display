@@ -112,6 +112,7 @@ else()
     src/usb/fifo.c
     src/usb/descriptor.c
     src/usb/configuration.c
+    src/frame_timer_sof_tracker.c
   )
   configure_file(src/usb/serial.c.in serial.c)
   list(APPEND SOURCES "${CMAKE_BINARY_DIR}/serial.c")
@@ -169,6 +170,7 @@ set_target_properties(icetop_display PROPERTIES
 )
 target_compile_definitions(icetop_display
   PUBLIC F_CPU=${AVR_TARGET_F_CPU}UL DEVICE_LED_COUNT=${DEVICE_LED_COUNT}
+  PUBLIC DEVICE_FPS=25
 )
 if(ARDUINO)
   target_compile_definitions(
