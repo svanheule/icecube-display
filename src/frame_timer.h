@@ -14,6 +14,7 @@ void init_frame_timer(void (*timer_callback)());
 
 void restart_frame_timer();
 
+int8_t get_counter_direction();
 uint32_t get_counts_max();
 uint32_t get_counts_current();
 void correct_counts_max(int32_t diff);

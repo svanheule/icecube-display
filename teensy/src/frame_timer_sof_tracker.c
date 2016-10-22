@@ -85,14 +85,15 @@ void new_sof_received(const uint16_t usb_frame_counter) {
   // If the counter has rolled over, the actual difference between the two counter
   // values is uncertain because this depends on the implementation of the counter
   // itself. Therefore counter difference is only used when there is no rollover.
-  bool counter_rolled_over = count > previous_count;
+  int32_t count_diff = get_counter_direction() * (count - previous_count);
+  bool counter_rolled_over = count_diff < 0;
 
   if (usb_frame_delta_valid && ms_counts_valid && !counter_rolled_over) {
-    int32_t step = (previous_count - count)/usb_frame_delta;
-    int32_t bin_diff = (step - NOMINAL_MS_COUNTS + MS_COUNTS_BIN_WIDTH/2) / MS_COUNTS_BIN_WIDTH;
+    int32_t ms_step = count_diff/usb_frame_delta;
+    int32_t bin_diff = (ms_step - NOMINAL_MS_COUNTS + MS_COUNTS_BIN_WIDTH/2) / MS_COUNTS_BIN_WIDTH;
     histogram_add(&histogram_ms_counts, BINS_HIST_MS_COUNTS/2 + bin_diff);
 
-    register_ms_step(step);
+    register_ms_step(ms_step);
   }
 
   if (counter_rolled_over) {
