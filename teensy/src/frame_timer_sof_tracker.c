@@ -104,7 +104,7 @@ void new_sof_received(const uint16_t usb_frame_counter) {
       error_accum += error;
       // Accumulative error divider should be bigger than the mean expected error value
       // to avoid overshooting with the initial correction
-      correct_counts_max((error + error_accum/16) / 4);
+      correct_counts_max( (9*error + 4*error_accum + 8)/16 );
   }
 
   previous_count = count;
