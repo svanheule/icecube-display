@@ -85,6 +85,8 @@ void new_sof_received(const uint16_t usb_frame_counter) {
   // If the counter has rolled over, the actual difference between the two counter
   // values is uncertain because this depends on the implementation of the counter
   // itself. Therefore counter difference is only used when there is no rollover.
+  // This results in (MS_PER_FRAME-1) being registered per display frame. Only when
+  // MS_PER_FRAME intervals have been recorded, will the frame counter be corrected.
   int32_t count_diff = get_counter_direction() * (count - previous_count);
   bool counter_rolled_over = count_diff < 0;
 
@@ -96,15 +98,15 @@ void new_sof_received(const uint16_t usb_frame_counter) {
     register_ms_step(ms_step);
   }
 
-  if (counter_rolled_over) {
+  if (counter_rolled_over && step_sum_valid) {
     // Apply correction once per rollover
-      int32_t error = step_sum - get_counts_max();
-      histogram_add(&histogram_error, BINS_HIST_ERROR/2 + error/8);
+    int32_t error = step_sum - get_counts_max();
+    histogram_add(&histogram_error, BINS_HIST_ERROR/2 + error/8);
 
-      error_accum += error;
-      // Accumulative error divider should be bigger than the mean expected error value
-      // to avoid overshooting with the initial correction
-      correct_counts_max( (9*error + 4*error_accum + 8)/16 );
+    error_accum += error;
+    // Accumulative error divider should be bigger than the mean expected error value
+    // to avoid overshooting with the initial correction
+    correct_counts_max( (9*error + 4*error_accum + 8)/16 );
   }
 
   previous_count = count;
