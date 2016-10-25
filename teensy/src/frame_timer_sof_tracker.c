@@ -29,49 +29,17 @@ static void register_ms_step(int32_t ms_step) {
   }
 }
 
-#include <stdalign.h>
-
-static void histogram_add(struct histogram_t* hist, ptrdiff_t bin) {
-  // Clamp bin index
-  if (bin < 0) {
-    bin = 0;
-  }
-  else if (bin > hist->bin_count-1) {
-    bin = hist->bin_count-1;
-  }
-
-  // Automatic histogram reset if full
-  if (hist->bins[bin] == UINT16_MAX) {
-    memset(hist->bins, 0, sizeof(uint16_t)*hist->bin_count);
-  }
-
-  hist->bins[bin]++;
-}
-
-#define NOMINAL_MS_COUNTS (F_CPU/1000)
-#define MS_COUNTS_BIN_WIDTH 1
-
-#define BINS_HIST_ERROR 64
-static uint16_t alignas(4) error_bins[BINS_HIST_ERROR];
-struct histogram_t histogram_error = {BINS_HIST_ERROR, &error_bins[0]};
-
-#define BINS_HIST_MS_COUNTS 64
-static uint16_t alignas(4) ms_counts_bins[BINS_HIST_MS_COUNTS];
-struct histogram_t histogram_ms_counts = {BINS_HIST_MS_COUNTS, &ms_counts_bins[0]};
-
-static bool usb_frame_delta_valid = false;
-static bool ms_counts_valid = false;
-
-static int32_t error_accum = 0;
-
 void new_sof_received(const uint16_t usb_frame_counter) {
+  static bool usb_frame_delta_valid = false;
   static uint16_t previous_usb_frame_counter;
+
+  static bool ms_counts_valid = false;
   static uint32_t previous_count;
 
   // Latch all counters first
   uint32_t count = get_counts_current();
 
-  // Calculate frame number delta and store in histogram if there is space left
+  // Calculate frame number delta
   int16_t usb_frame_delta;
   if (usb_frame_counter < previous_usb_frame_counter) {
     usb_frame_delta = usb_frame_counter + (1<<11) - previous_usb_frame_counter;
@@ -79,8 +47,6 @@ void new_sof_received(const uint16_t usb_frame_counter) {
   else {
     usb_frame_delta = usb_frame_counter - previous_usb_frame_counter;
   }
-
-  previous_usb_frame_counter = usb_frame_counter;
 
   // If the counter has rolled over, the actual difference between the two counter
   // values is uncertain because this depends on the implementation of the counter
@@ -92,25 +58,25 @@ void new_sof_received(const uint16_t usb_frame_counter) {
 
   if (usb_frame_delta_valid && ms_counts_valid && !counter_rolled_over) {
     int32_t ms_step = count_diff/usb_frame_delta;
-    int32_t bin_diff = (ms_step - NOMINAL_MS_COUNTS + MS_COUNTS_BIN_WIDTH/2) / MS_COUNTS_BIN_WIDTH;
-    histogram_add(&histogram_ms_counts, BINS_HIST_MS_COUNTS/2 + bin_diff);
-
     register_ms_step(ms_step);
   }
 
   if (counter_rolled_over && step_sum_valid) {
+    static int32_t error_accum = 0;
+
     // Apply correction once per rollover
     int32_t error = step_sum - get_counts_max();
-    histogram_add(&histogram_error, BINS_HIST_ERROR/2 + error/8);
-
     error_accum += error;
+
     // Accumulative error divider should be bigger than the mean expected error value
     // to avoid overshooting with the initial correction
     correct_counts_max( (9*error + 4*error_accum + 8)/16 );
   }
 
-  previous_count = count;
+  previous_usb_frame_counter = usb_frame_counter;
   usb_frame_delta_valid = true;
+
+  previous_count = count;
   ms_counts_valid = true;
 }
 

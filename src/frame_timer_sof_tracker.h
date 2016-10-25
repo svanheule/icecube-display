@@ -10,7 +10,4 @@ struct histogram_t {
   uint16_t* bins;
 };
 
-extern struct histogram_t histogram_error;
-extern struct histogram_t histogram_ms_counts;
-
 #endif //FRAME_TIMER_SOF_TRACKER_H
