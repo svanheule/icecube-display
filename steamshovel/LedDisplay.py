@@ -331,14 +331,21 @@ class DisplayConnection(object):
         :param bytes frame: Frame data to be displayed."""
         if self.device:
             try:
-                self.device.ctrl_transfer(
-                      self._REQ_OUT
-                    , self.REQUEST_SEND_FRAME
-                    , 0
-                    , 0
-                    , frame
-                    , 5000
-                )
+                max_size = 4096
+                remaining = len(frame)
+                start = 0
+                while remaining > 0:
+                  transfer_length = min(max_size, remaining)
+                  self.device.ctrl_transfer(
+                        self._REQ_OUT
+                      , self.REQUEST_SEND_FRAME
+                      , 0
+                      , 0
+                      , frame[start:start+transfer_length]
+                      , 5000
+                  )
+                  remaining -= transfer_length
+                  start += transfer_length
             except Exception as e:
                 logging.log_error("Could not write frame to display: {}".format(e))
                 self.close()
