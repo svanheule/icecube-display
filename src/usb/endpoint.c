@@ -64,6 +64,8 @@ bool endpoint_configure(const struct ep_config_t* config) {
     }
   }
   else {
+    // Use double banks
+    cfg1 |= _BV(EPBK0);
     if (config->dir == EP_DIRECTION_IN) {
       cfg0 |= AVR_EP_DIR_IN;
     }
