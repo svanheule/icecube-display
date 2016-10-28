@@ -14,15 +14,17 @@ static const struct ep_config_t CONFIG0_EP_LIST[] PROGMEM = {
 
 static const struct ep_config_t CONFIG1_EP_LIST[] PROGMEM = {
     {0, EP_TYPE_CONTROL, EP_DIRECTION_BIDIR, 64}
-  , {1, EP_TYPE_INTERRUPT, EP_DIRECTION_IN, 4}
-  , {2, EP_TYPE_BULK, EP_DIRECTION_OUT, 64} // TODO determine best size
+  , {1, EP_TYPE_BULK, EP_DIRECTION_OUT, 64}
 };
 
 #define CONFIG(config_list) {sizeof(config_list)/sizeof(config_list[0]), &config_list[0]}
 
 // Configuration list
-static const struct configuration_t DEFAULT_CONFIG PROGMEM = CONFIG(CONFIG0_EP_LIST);
-static const struct configuration_t DISPLAY_CONFIG PROGMEM = CONFIG(CONFIG1_EP_LIST);
+static const struct configuration_t CONFIG_LIST[] PROGMEM = {
+    CONFIG(CONFIG0_EP_LIST)
+  , CONFIG(CONFIG1_EP_LIST)
+};
+#define CONFIG_LIST_LENGTH (sizeof(CONFIG_LIST)/sizeof(CONFIG_LIST[0]))
 
 static bool load_configuration(const struct configuration_t* config) {
   uint8_t ep_count = pgm_read_byte(&config->endpoint_count);
@@ -49,22 +51,14 @@ int8_t get_configuration_index() {
 }
 
 bool valid_configuration_index(int8_t index) {
-  // FIXME Use runtime determination of largest index
-  return (index >= 0) && (index <= 1);
+  return (index >= 0) && (index <= CONFIG_LIST_LENGTH);
 }
 
 bool set_configuration_index(int8_t index) {
   bool cfg_ok = valid_configuration_index(index);
   if (cfg_ok) {
     selected_configuration = index;
-    switch(index) {
-      case 0:
-      case 1:
-        load_configuration(&DEFAULT_CONFIG);
-        break;
-      default:
-        break;
-    }
+    cfg_ok = load_configuration(&CONFIG_LIST[index]);
   }
   return cfg_ok;
 }
