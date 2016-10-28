@@ -76,8 +76,10 @@ bool endpoint_configure(const struct ep_config_t* config) {
     // Activate endpoint and reset data toggle
     UECONX = _BV(EPEN) | _BV(RSTDT);
     // Deconfigure/reset endpoint
+    UERST |= _BV(config->num);
     UECFG1X = 0;
     // Configure endpoint
+    UERST &= ~_BV(config->num);
     UECFG0X = cfg0;
     UECFG1X = cfg1 | _BV(ALLOC);
 
@@ -118,7 +120,8 @@ bool endpoint_stall(const uint8_t ep_num) {
 bool endpoint_clear_stall(const uint8_t ep_num) {
   bool can_stall = endpoint_push(ep_num) && (UECONX & _BV(EPEN));
   if (can_stall) {
-    // TODO Reset state after stall is cleared
+    UERST |= _BV(ep_num);
+    UERST &= ~_BV(ep_num);
     UECONX |= _BV(STALLRQC);
     endpoint_pop();
   }
