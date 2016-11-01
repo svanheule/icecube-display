@@ -35,11 +35,11 @@ void restart_frame_timer() {
   ATOMIC_REGISTER_BIT_SET(pit_channels[0].TCTRL, 0);
 }
 
-uint32_t get_counts_max() {
+timer_count_t get_counts_max() {
   return pit_channels[0].LDVAL;
 }
 
-uint32_t get_counts_current() {
+timer_count_t get_counts_current() {
   return pit_channels[0].CVAL;
 }
 
@@ -47,6 +47,6 @@ int8_t get_counter_direction() {
   return -1;
 }
 
-void correct_counts_max(int32_t diff) {
+void correct_counts_max(timer_diff_t diff) {
   pit_channels[0].LDVAL += diff;
 }

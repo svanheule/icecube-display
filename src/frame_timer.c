@@ -1,5 +1,6 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include "frame_timer.h"
 
 #define MODE_SELECT_A (_BV(WGM11) | _BV(WGM10))
 #define MODE_SELECT_B (_BV(WGM13) | _BV(WGM12))
@@ -38,14 +39,14 @@ int8_t get_counter_direction() {
   return 1;
 }
 
-uint32_t get_counts_max() {
+timer_count_t get_counts_max() {
   return OCR1A;
 }
 
-uint32_t get_counts_current() {
+timer_count_t get_counts_current() {
   return TCNT1;
 }
 
-void correct_counts_max(int32_t diff) {
+void correct_counts_max(timer_diff_t diff) {
   OCR1A += diff;
 }

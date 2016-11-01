@@ -9,14 +9,22 @@
 
 #include <stdint.h>
 
+#if defined(__MK20DX256__)
+typedef uint32_t timer_count_t;
+typedef int32_t timer_diff_t;
+#else
+typedef uint16_t timer_count_t;
+typedef int16_t timer_diff_t;
+#endif
+
 /// Initialise the frame timer and set the function to be called when the timer trips.
 void init_frame_timer(void (*timer_callback)());
 
 void restart_frame_timer();
 
 int8_t get_counter_direction();
-uint32_t get_counts_max();
-uint32_t get_counts_current();
-void correct_counts_max(int32_t diff);
+timer_count_t get_counts_max();
+timer_count_t get_counts_current();
+void correct_counts_max(timer_diff_t diff);
 
 #endif //FRAME_TIMER_H
