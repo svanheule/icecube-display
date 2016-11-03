@@ -40,3 +40,13 @@ size_t fifo_read(void* restrict buffer, size_t length) {
 
   return read;
 }
+
+size_t fifo_discard(size_t length) {
+  uint8_t read = 0;
+  uint8_t byte __attribute__((unused));
+  while (UEBCLX && length--) {
+    byte = UEDATX;
+    read++;
+  }
+  return read;
+}
