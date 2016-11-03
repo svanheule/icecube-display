@@ -3,7 +3,7 @@
 #include <avr/pgmspace.h>
 
 uint16_t fifo_byte_count() {
-  return (((uint16_t) UEBCHX) << 8) & (UEBCLX);
+  return (((uint16_t) UEBCHX) << 8) | (UEBCLX);
 }
 
 uint16_t fifo_size() {
