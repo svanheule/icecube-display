@@ -13,10 +13,10 @@
 #include "avr/endpoint_stack.h"
 #include "usb/endpoint.h"
 #include "usb/endpoint_0.h"
+#include "usb/remote_renderer.h"
 #include "usb/descriptor.h"
 #include "frame_buffer.h"
 #include "frame_timer_sof_tracker.h"
-
 
 // Heavily based on LUFA code, stripped down to the specifics of the ATmega32U4.
 
@@ -194,6 +194,9 @@ static inline uint16_t min(uint16_t a, uint16_t b) {
 #define ENDPOINT_IRQ_ENABLED_AND_SET(interrupt) \
     (FLAG_IS_SET(UEIENX, interrupt ## E) && FLAG_IS_SET(UEINTX, interrupt ## I))
 
+// FIXME If the USB connection is removed during transfers, resources are not freed.
+// This will result in these resources being held until the next control transfer occurs.
+
 ISR(USB_COM_vect) {
   trip_led();
 
@@ -325,6 +328,38 @@ ISR(USB_COM_vect) {
     }
 
     // Restore endpoint number
+    endpoint_pop();
+  }
+
+  if (FLAG_IS_SET(UEINT, 1) && endpoint_push(1)) {
+    if (ENDPOINT_IRQ_ENABLED_AND_SET(RXOUT) && FLAG_IS_SET(UEINTX, RWAL)) {
+      // TODO Test if the following code works!
+      // TODO Scrap current EP0 code?
+      CLI(RXOUTI);
+
+      // If a transfer is possible, copy the received data. Otherwise, halt the endpoint.
+      struct remote_transfer_t* transfer = remote_renderer_get_current();
+      if (transfer) {
+        // Make sure we don't overrun the buffer
+        const size_t max_transfer = min(fifo_byte_count(), transfer->buffer_remaining);
+        const size_t transferred = fifo_read(transfer->buffer_pos, max_transfer);
+        transfer->buffer_pos += transferred;
+        transfer->buffer_remaining -= transferred;
+        // Finish frame transfer when all data was received
+        // or when receiving a short transaction
+        if (transfer->buffer_remaining == 0 || transferred < fifo_size()) {
+          if (fifo_byte_count() > 0 || !remote_renderer_finish()) {
+            endpoint_stall(1);
+          }
+        }
+      }
+      else {
+        endpoint_stall(1);
+      }
+
+      CLEAR_FLAG(UEINTX, FIFOCON);
+    }
+
     endpoint_pop();
   }
 

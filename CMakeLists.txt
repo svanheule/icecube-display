@@ -109,6 +109,7 @@ else()
     src/usb/address.c
     src/usb/endpoint.c
     src/usb/endpoint_0.c
+    src/usb/remote_renderer.c
     src/usb/fifo.c
     src/usb/descriptor.c
     src/usb/configuration.c
