@@ -102,7 +102,7 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
             break;
           case (REQ_DIR_IN | REQ_TYPE_STANDARD | REQ_REC_ENDPOINT):
             *((uint16_t*) transfer->data) =
-                  endpoint_is_stalled(transfer->req->wValue & 0xf) ? 1 : 0;
+                  endpoint_is_stalled(transfer->req->wIndex & 0xf) ? 1 : 0;
             break;
           default:
             cancel_control_transfer(transfer);
