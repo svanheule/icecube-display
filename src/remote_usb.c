@@ -198,8 +198,7 @@ ISR(USB_COM_vect) {
   trip_led();
 
   // Process USB transfers
-  if (FLAG_IS_SET(UEINT, 0)) {
-    endpoint_push(0);
+  if (FLAG_IS_SET(UEINT, 0) && endpoint_push(0)) {
     static struct control_transfer_t control_transfer;
     static struct usb_setup_packet_t setup_packet;
 
