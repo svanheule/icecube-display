@@ -15,6 +15,7 @@ static const struct ep_config_t CONFIG0_EP_LIST[] PROGMEM = {
 static const struct ep_config_t CONFIG1_EP_LIST[] PROGMEM = {
     {0, EP_TYPE_CONTROL, EP_DIRECTION_BIDIR, 64}
   , {1, EP_TYPE_BULK, EP_DIRECTION_OUT, 64}
+  , {2, EP_TYPE_INTERRUPT, EP_DIRECTION_IN, 4}
 };
 
 #define CONFIG(config_list) {sizeof(config_list)/sizeof(config_list[0]), &config_list[0]}
