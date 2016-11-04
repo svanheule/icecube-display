@@ -83,11 +83,12 @@ bool is_remote_connected() {
 
 #define FLAG_IS_SET(reg, flag) (reg & (1<<flag))
 #define CLEAR_FLAG(reg, flag) reg &= ~(1<<flag)
+#define CLEAR_INT(reg, flag) reg = ~(1<<flag)
 #define SET_FLAG(reg, flag) reg |= (1<<flag)
 
 // USB low-level interrupts
-#define CLEAR_USBINT(flag) CLEAR_FLAG(USBINT ,flag)
-#define CLEAR_UDINT(flag) CLEAR_FLAG(UDINT, flag)
+#define CLEAR_USBINT(flag) CLEAR_INT(USBINT ,flag)
+#define CLEAR_UDINT(flag) CLEAR_INT(UDINT, flag)
 
 #define vbus_change() (FLAG_IS_SET(USBINT, VBUSTI) && FLAG_IS_SET(USBCON, VBUSTE))
 
@@ -186,7 +187,7 @@ static inline uint16_t min(uint16_t a, uint16_t b) {
 }
 
 // Communications interrupts
-#define CLI(flag) CLEAR_FLAG(UEINTX, flag)
+#define CLI(flag) CLEAR_INT(UEINTX, flag)
 #define SEI(flag) SET_FLAG(UEIENX, flag)
 #define CEI(flag) CLEAR_FLAG(UEIENX, flag)
 
