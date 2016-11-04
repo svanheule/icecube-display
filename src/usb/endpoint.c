@@ -15,8 +15,7 @@
 
 #define MAX_EP_NUM 6
 
-/* TODO Endpoint 1-6 FIFO double banking
- * An endpoint can use either one or two buffers. Using only one bank saves memory,
+/* An endpoint can use either one or two buffers. Using only one bank saves memory,
  * but also requires the buffer to be emptied before the endpoint can resume operation.
  * With two banks, the buffers are used in a ping-pong fashion, allowing for simultaneous use
  * of the buffers by the endpoint hardware and the firmware. While one buffer is used by the
@@ -75,13 +74,12 @@ bool endpoint_configure(const struct ep_config_t* config) {
   }
 
   if (config_ok) {
+    // Deconfigure/reset endpoint
+    UECFG1X = 0;
+    UERST |= _BV(config->num);
+    UERST &= ~_BV(config->num);
     // Activate endpoint and reset data toggle
     UECONX = _BV(EPEN) | _BV(RSTDT);
-    // Deconfigure/reset endpoint
-    UERST |= _BV(config->num);
-    UECFG1X = 0;
-    // Configure endpoint
-    UERST &= ~_BV(config->num);
     UECFG0X = cfg0;
     UECFG1X = cfg1 | _BV(ALLOC);
 
