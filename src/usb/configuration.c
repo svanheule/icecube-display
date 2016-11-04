@@ -55,10 +55,9 @@ bool valid_configuration_index(int8_t index) {
 }
 
 bool set_configuration_index(int8_t index) {
-  bool cfg_ok = valid_configuration_index(index);
+  bool cfg_ok = valid_configuration_index(index) && load_configuration(&CONFIG_LIST[index]);
   if (cfg_ok) {
     selected_configuration = index;
-    cfg_ok = load_configuration(&CONFIG_LIST[index]);
   }
   return cfg_ok;
 }
