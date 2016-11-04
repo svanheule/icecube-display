@@ -36,6 +36,12 @@ uint16_t get_usb_frame_counter_value() {
   return current_usb_frame_counter;
 }
 
+void perfom_ms_slip(const int8_t ms) {
+  // Make sure this value does not overflow!
+  timer_diff_t correction = (ms * get_counts_max()) / MS_PER_FRAME;
+  correct_counts_max(correction, true);
+}
+
 void new_sof_received(const uint16_t usb_frame_counter) {
   static bool usb_frame_delta_valid = false;
 
@@ -75,7 +81,7 @@ void new_sof_received(const uint16_t usb_frame_counter) {
 
     // Accumulative error divider should be bigger than the mean expected error value
     // to avoid overshooting with the initial correction
-    correct_counts_max( (9*error + 4*error_accum)/8 );
+    correct_counts_max((9*error + 4*error_accum)/8, false);
 
     error_accum += error;
   }

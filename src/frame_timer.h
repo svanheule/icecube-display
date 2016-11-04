@@ -8,6 +8,7 @@
   */
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #if defined(__MK20DX256__)
 typedef uint32_t timer_count_t;
@@ -25,6 +26,6 @@ void restart_frame_timer();
 int8_t get_counter_direction();
 timer_count_t get_counts_max();
 timer_count_t get_counts_current();
-void correct_counts_max(timer_diff_t diff);
+void correct_counts_max(timer_diff_t diff, bool is_phase_slip);
 
 #endif //FRAME_TIMER_H

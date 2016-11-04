@@ -18,6 +18,7 @@ enum clock_t {
 };
 
 static void (*callback)();
+static timer_count_t old_max_count;
 
 void init_frame_timer(void (*timer_callback)()) {
   /* Clock is 16MHz
@@ -29,6 +30,8 @@ void init_frame_timer(void (*timer_callback)()) {
   TCCR1A = MODE_SELECT_A;
   TCCR1B = MODE_SELECT_B | CLOCK_SELECT(CLOCK_DIV_64);
 
+  old_max_count = 0;
+
   // Set callback and enable interrupt
   callback = timer_callback;
   TIMSK1 = (1<<OCIE1A);
@@ -37,6 +40,11 @@ void init_frame_timer(void (*timer_callback)()) {
 ISR(TIMER1_COMPA_vect) {
   if (callback) {
     callback();
+  }
+  // If a one-time correction has been set, restore old value after roll-over.
+  if (old_max_count) {
+    OCR1A = old_max_count;
+    old_max_count = 0;
   }
 }
 
@@ -58,6 +66,16 @@ timer_count_t get_counts_current() {
   return TCNT1;
 }
 
-void correct_counts_max(timer_diff_t diff) {
-  OCR1A += diff;
+void correct_counts_max(timer_diff_t diff, bool is_phase_slip) {
+  // Only perform correction if we are not in the middle of a phase slip
+  if (!old_max_count) {
+    if (is_phase_slip) {
+      old_max_count = OCR1A;
+    }
+    else {
+      old_max_count = 0;
+    }
+
+    OCR1A += diff;
+  }
 }
