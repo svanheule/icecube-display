@@ -6,6 +6,17 @@
 #define MODE_SELECT_B (_BV(WGM13) | _BV(WGM12))
 #define CLOCK_SELECT(n) ((n) << CS10)
 
+enum clock_t {
+    CLOCK_NONE = 0
+  , CLOCK_DIV_1 = 1
+  , CLOCK_DIV_8 = 2
+  , CLOCK_DIV_64 = 3
+  , CLOCK_DIV_256 = 4
+  , CLOCK_DIV_1024 = 5
+  , CLOCK_EXT_FALLING = 6
+  , CLOCK_EXT_RISING = 7
+};
+
 static void (*callback)();
 
 void init_frame_timer(void (*timer_callback)()) {
@@ -16,7 +27,7 @@ void init_frame_timer(void (*timer_callback)()) {
    */
   OCR1A = (F_CPU/64/DEVICE_FPS)-1;
   TCCR1A = MODE_SELECT_A;
-  TCCR1B = MODE_SELECT_B | CLOCK_SELECT(3);
+  TCCR1B = MODE_SELECT_B | CLOCK_SELECT(CLOCK_DIV_64);
 
   // Set callback and enable interrupt
   callback = timer_callback;
@@ -30,9 +41,9 @@ ISR(TIMER1_COMPA_vect) {
 }
 
 void restart_frame_timer() {
-  TCCR1B = MODE_SELECT_B;
+  TCCR1B = MODE_SELECT_B | CLOCK_SELECT(CLOCK_NONE);
   TCNT1 = 0;
-  TCCR1B = MODE_SELECT_B | CLOCK_SELECT(3);
+  TCCR1B = MODE_SELECT_B | CLOCK_SELECT(CLOCK_DIV_64);
 }
 
 int8_t get_counter_direction() {
