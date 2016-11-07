@@ -118,14 +118,6 @@ static inline void advance_display_state() {
   }
 }
 
-// CTC interrupt handling
-volatile uint8_t draw_frame;
-
-void frame_timer_callback() {
-  // Trigger drawing of new frame
-  draw_frame = 1;
-}
-
 static inline void consume_frame(struct frame_buffer_t* frame) {
   if (frame && frame->buffer) {
     display_frame(frame);
@@ -157,12 +149,11 @@ int main () {
   sei();
 
   // Init display timer just before display loop
-  draw_frame = 0;
-  init_frame_timer(frame_timer_callback);
+  init_frame_timer();
 
   // Main loop
   for (;;) {
-    while (!draw_frame) {
+    while (!should_draw_frame()) {
       // Idle CPU until next interrupt
       sleep_cpu();
     }
@@ -178,7 +169,7 @@ int main () {
       }
     }
 
-    draw_frame = 0;
+    clear_draw_frame();
   }
 
   return 0;

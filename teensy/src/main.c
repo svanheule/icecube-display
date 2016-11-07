@@ -1,12 +1,11 @@
-#include "frame_timer.h"
+#include <stdint.h>
+
+#include "display_driver.h"
+#include "render/test.h"
+#include "remote.h"
 #include "frame_buffer.h"
 #include "frame_queue.h"
-#include "display_driver.h"
-
-#include "kinetis/io.h"
-#include "remote.h"
-
-#include "render/test.h"
+#include "frame_timer.h"
 
 // Display state
 enum display_state_t {
@@ -108,15 +107,6 @@ static inline void advance_display_state() {
 }
 
 
-// Frame draw timer
-volatile uint8_t draw_frame;
-
-void frame_timer_callback() {
-  // Trigger drawing of new frame
-  draw_frame = 1;
-}
-
-
 static inline void consume_frame(struct frame_buffer_t* frame) {
   if (frame && frame->buffer) {
     display_frame(frame);
@@ -141,12 +131,11 @@ int main () {
   init_remote();
 
   // Init display timer just before display loop
-  draw_frame = 0;
-  init_frame_timer(frame_timer_callback);
+  init_frame_timer();
 
   // Main loop
   for (;;) {
-    while (!draw_frame) {
+    while (!should_draw_frame()) {
       // Idle CPU until next interrupt
       asm("wfi");
     }
@@ -162,7 +151,7 @@ int main () {
       }
     }
 
-    draw_frame = 0;
+    clear_draw_frame();
   }
 
   return 0;

@@ -6,7 +6,7 @@
 #include "usb/configuration.h"
 #include "usb/endpoint.h"
 #include "usb/endpoint_0.h"
-#include "frame_timer_sof_tracker.h"
+#include "frame_timer.h"
 
 #include "kinetis/io.h"
 #include "kinetis/usb_bdt.h"

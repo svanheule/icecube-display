@@ -16,7 +16,7 @@
 #include "usb/remote_renderer.h"
 #include "usb/descriptor.h"
 #include "frame_buffer.h"
-#include "frame_timer_sof_tracker.h"
+#include "frame_timer.h"
 
 // Heavily based on LUFA code, stripped down to the specifics of the ATmega32U4.
 

@@ -88,7 +88,7 @@ set(SOURCES
   src/display_properties.c
   src/frame_buffer.c
   src/frame_queue.c
-  src/frame_timer.c
+  src/frame_timer_backend.c
   src/render/boot_splash.c
   src/render/test_scan.c
   src/render/test_ring.c
@@ -113,7 +113,7 @@ else()
     src/usb/fifo.c
     src/usb/descriptor.c
     src/usb/configuration.c
-    src/frame_timer_sof_tracker.c
+    src/frame_timer.c
   )
   configure_file(src/usb/serial.c.in serial.c)
   list(APPEND SOURCES "${CMAKE_BINARY_DIR}/serial.c")
