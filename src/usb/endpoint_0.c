@@ -9,7 +9,6 @@
 #include "frame_queue.h"
 #include "display_properties.h"
 #include "frame_timer_sof_tracker.h"
-#include "frame_timer.h"
 
 // Descriptor transaction definitions
 #include "usb/descriptor.h"
@@ -283,7 +282,17 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
     }
     else if (transfer->req->bRequest == VENDOR_REQUEST_SYNC_FRAME_DRAW) {
       transfer->stage = CTRL_HANDSHAKE_OUT;
-      restart_frame_timer();
+      // wValue is the number of ms the frame timer should be corrected.
+      // This can be factored as (40*frame_correction + ms_correction) to split the
+      // display counter value correction and display phase correction.
+      int16_t full_correction = (int16_t) transfer->req->wValue;
+      // Round the frame number correction such that the ms_correction will have the smallest
+      // possible absolute value.
+      int16_t frame_correction = (full_correction + MS_PER_FRAME/2) / MS_PER_FRAME;
+      int8_t ms_correction = frame_correction*MS_PER_FRAME - full_correction;
+
+      correct_display_frame_counter(frame_correction);
+      correct_display_frame_phase(ms_correction);
     }
   }
   else if (transfer->req->bmRequestType == (REQ_DIR_IN | REQ_TYPE_VENDOR | REQ_REC_DEVICE)) {

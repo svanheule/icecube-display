@@ -1,6 +1,7 @@
 #include "kinetis/io.h"
 #include "kinetis/pit.h"
 #include "frame_timer.h"
+#include "frame_timer_sof_tracker.h"
 
 static void (*callback)();
 
@@ -28,16 +29,7 @@ void pit0_isr() {
   if (callback) {
     callback();
   }
-
-  if (old_max_count) {
-    pit_channels[0].LDVAL = old_max_count;
-    old_max_count = 0;
-  }
-}
-
-void restart_frame_timer() {
-  ATOMIC_REGISTER_BIT_CLEAR(pit_channels[0].TCTRL, 0);
-  ATOMIC_REGISTER_BIT_SET(pit_channels[0].TCTRL, 0);
+  timer_rollover_callback();
 }
 
 timer_count_t get_counts_max() {
@@ -52,15 +44,6 @@ int8_t get_counter_direction() {
   return -1;
 }
 
-void correct_counts_max(timer_diff_t diff, bool is_phase_slip) {
-  if (!old_max_count) {
-    if (is_phase_slip) {
-      old_max_count = pit_channels[0].LDVAL;
-    }
-    else {
-      old_max_count = 0;
-    }
-
-    pit_channels[0].LDVAL += diff;
-  }
+void correct_counts_max(timer_diff_t diff) {
+  pit_channels[0].LDVAL += diff;
 }

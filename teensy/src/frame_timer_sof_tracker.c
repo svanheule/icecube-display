@@ -5,8 +5,29 @@
 #include <stddef.h>
 #include <string.h>
 
-#define MS_PER_FRAME (1000/DEVICE_FPS)
 
+/* FRAME COUNTER */
+static uint16_t current_display_frame_counter;
+
+uint16_t get_display_frame_counter_value() {
+  return current_display_frame_counter;
+}
+
+void correct_display_frame_counter(int16_t diff) {
+  current_display_frame_counter += diff;
+}
+
+
+/* FRAME DISPLAY PHASE */
+static timer_diff_t phase_slip_correction = 0;
+
+void correct_display_frame_phase(const int8_t ms_shift) {
+  // Make sure this value does not overflow!
+  phase_slip_correction = (ms_shift * get_counts_max()) / MS_PER_FRAME;
+}
+
+
+/* SOF TRACKING */
 static timer_diff_t ms_steps[MS_PER_FRAME];
 #define LEN_STEPS (sizeof(ms_steps)/sizeof(ms_steps[0]))
 static uint8_t ms_steps_index = 0;
@@ -34,12 +55,6 @@ static uint16_t current_usb_frame_counter;
 
 uint16_t get_usb_frame_counter_value() {
   return current_usb_frame_counter;
-}
-
-void perfom_ms_slip(const int8_t ms) {
-  // Make sure this value does not overflow!
-  timer_diff_t correction = (ms * get_counts_max()) / MS_PER_FRAME;
-  correct_counts_max(correction, true);
 }
 
 void new_sof_received(const uint16_t usb_frame_counter) {
@@ -73,22 +88,54 @@ void new_sof_received(const uint16_t usb_frame_counter) {
     register_ms_step(ms_step);
   }
 
-  if (counter_rolled_over && step_sum_valid) {
-    static timer_diff_t error_accum = 0;
-
-    // Apply correction once per rollover
-    timer_diff_t error = step_sum - get_counts_max();
-
-    // Accumulative error divider should be bigger than the mean expected error value
-    // to avoid overshooting with the initial correction
-    correct_counts_max((9*error + 4*error_accum)/8, false);
-
-    error_accum += error;
-  }
-
   current_usb_frame_counter = usb_frame_counter;
   usb_frame_delta_valid = true;
 
   previous_count = count;
   ms_counts_valid = true;
+}
+
+
+/* FRAME TIMER FSM */
+enum correction_state_t {
+    TRACK
+  , PHASE_SLIP
+  , PHASE_SLIP_RESTORE
+};
+
+void timer_rollover_callback() {
+  // Increment display frame counter on each rollover
+  ++current_display_frame_counter;
+
+  // Use a small state machine to implement SOF frequency tracking and phase shifting
+  static enum correction_state_t correction_state = TRACK;
+
+  // If a phase slip was set, go through a cycle of slip and restore before returning
+  // to SOF tracking
+  if (correction_state == TRACK && phase_slip_correction != 0) {
+    correction_state = PHASE_SLIP;
+  }
+
+  switch (correction_state) {
+    case TRACK:
+      if (step_sum_valid) {
+        static timer_diff_t error_accum = 0;
+        // Apply correction once per rollover
+        timer_diff_t error = step_sum - get_counts_max();
+        // Accumulative error divider should be bigger than the mean expected error value
+        // to avoid overshooting with the initial correction
+        correct_counts_max((9*error + 4*error_accum)/8);
+        error_accum += error;
+      }
+      break;
+    case PHASE_SLIP:
+      correct_counts_max(phase_slip_correction);
+      correction_state = PHASE_SLIP_RESTORE;
+      break;
+    case PHASE_SLIP_RESTORE:
+      correct_counts_max(-phase_slip_correction);
+      phase_slip_correction = 0;
+      correction_state = TRACK;
+      break;
+  }
 }

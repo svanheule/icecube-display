@@ -1,6 +1,7 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include "frame_timer.h"
+#include "frame_timer_sof_tracker.h"
 
 #define MODE_SELECT_A (_BV(WGM11) | _BV(WGM10))
 #define MODE_SELECT_B (_BV(WGM13) | _BV(WGM12))
@@ -41,17 +42,7 @@ ISR(TIMER1_COMPA_vect) {
   if (callback) {
     callback();
   }
-  // If a one-time correction has been set, restore old value after roll-over.
-  if (old_max_count) {
-    OCR1A = old_max_count;
-    old_max_count = 0;
-  }
-}
-
-void restart_frame_timer() {
-  TCCR1B = MODE_SELECT_B | CLOCK_SELECT(CLOCK_NONE);
-  TCNT1 = 0;
-  TCCR1B = MODE_SELECT_B | CLOCK_SELECT(CLOCK_DIV_64);
+  timer_rollover_callback();
 }
 
 int8_t get_counter_direction() {
@@ -66,16 +57,6 @@ timer_count_t get_counts_current() {
   return TCNT1;
 }
 
-void correct_counts_max(timer_diff_t diff, bool is_phase_slip) {
-  // Only perform correction if we are not in the middle of a phase slip
-  if (!old_max_count) {
-    if (is_phase_slip) {
-      old_max_count = OCR1A;
-    }
-    else {
-      old_max_count = 0;
-    }
-
-    OCR1A += diff;
-  }
+void correct_counts_max(timer_diff_t diff) {
+  OCR1A += diff;
 }
