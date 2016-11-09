@@ -8,6 +8,7 @@
 static uint8_t ep_sizes[MAX_ENDPOINTS];
 
 bool endpoint_configure(const struct ep_config_t* config) {
+  endpoint_deconfigure(config->num);
   uint8_t reg = 0;
 
   if (config->type == EP_TYPE_CONTROL && config->dir == EP_DIRECTION_BIDIR) {
@@ -32,8 +33,30 @@ bool endpoint_configure(const struct ep_config_t* config) {
     }
   }
 
-  // Memory is currently allocated in remote_usb.c
+  // Memory allocation
+  // generate_bdt_descriptor() enables data toggle synchronisation by default,
+  // which might be undesired behaviour for isochronous endpoints
   bool config_ok = reg != 0;
+  if (config->type == EP_TYPE_CONTROL) {
+    // Don't use ping-pong buffers for control endpoints
+    get_buffer_descriptor(config->num, BDT_DIR_TX, 0)->desc = 0;
+    struct buffer_descriptor_t* rx = get_buffer_descriptor(config->num, BDT_DIR_RX, 0);
+    config_ok &= transfer_mem_alloc(config->num, config->size, false);
+    if (config_ok) {
+      rx->desc = generate_bdt_descriptor(config->size, 0);
+      rx->buffer = get_ep_buffer(config->num, 0);
+    }
+  }
+  else if (config->dir == EP_DIRECTION_OUT) {
+    config_ok &= transfer_mem_alloc(config->num, config->size, true);
+    if (config_ok) {
+      for (int odd = 0; odd < 2; ++odd) {
+        struct buffer_descriptor_t* bd = get_buffer_descriptor(config->num, BDT_DIR_RX, odd);
+        bd->desc = generate_bdt_descriptor(config->size, odd);
+        bd->buffer = get_ep_buffer(config->num, odd);
+      }
+    }
+  }
 
   if (config_ok) {
     ep_sizes[config->num] = config->size;
@@ -45,6 +68,11 @@ bool endpoint_configure(const struct ep_config_t* config) {
 }
 
 void endpoint_deconfigure(const uint8_t ep_num) {
+  void* ep_buffer = get_ep_buffer(ep_num, 0);
+  if (ep_buffer) {
+    transfer_mem_free(ep_num);
+    ep_sizes[ep_num] = 0;
+  }
   *ENDPOINT_REGISTER_ADDRESS(ep_num) = 0;
 }
 

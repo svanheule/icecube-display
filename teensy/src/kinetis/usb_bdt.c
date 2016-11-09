@@ -1,10 +1,11 @@
 #include "kinetis/io.h"
 #include "kinetis/usb_bdt.h"
 #include <stdalign.h>
+#include <stdlib.h>
 #include <string.h>
 
 // Currently only EP0
-#define MAX_ENDPOINTS 1
+#define MAX_ENDPOINTS 2
 
 struct bdt_endpoint_direction_t {
   struct buffer_descriptor_t even;
@@ -45,14 +46,14 @@ uint8_t get_token_pid(const struct buffer_descriptor_t* descriptor) {
 }
 
 uint16_t get_byte_count(const struct buffer_descriptor_t* descriptor) {
-  return (descriptor->desc >> BDT_DESC_BC) & LSB_MASK(10);
+  return (descriptor->desc >> BDT_DESC_BC0) & LSB_MASK(10);
 }
 
 uint32_t generate_bdt_descriptor(uint16_t length, uint8_t data_toggle) {
   const uint32_t base_desc = _BV(BDT_DESC_OWN) | _BV(BDT_DESC_DTS);
   length &= LSB_MASK(10);
   data_toggle &= LSB_MASK(1);
-  return base_desc | (length << BDT_DESC_BC) | (data_toggle << BDT_DESC_DATA01);
+  return base_desc | (length << BDT_DESC_BC0) | (data_toggle << BDT_DESC_DATA01);
 }
 
 // Endpoint DATA01 toggles
@@ -70,4 +71,39 @@ uint8_t get_data_toggle(const uint8_t ep_num, const uint8_t tx) {
 
 void set_data_toggle(const uint8_t ep_num, const uint8_t tx, const uint8_t value) {
   *BITBAND_SRAM_ADDRESS(&toggles, TOGGLE_OFFSET(ep_num, tx)) = value;
+}
+
+// Quasi-static endpoint RX buffers
+void* ep_buffers[MAX_ENDPOINTS][2];
+
+bool transfer_mem_alloc(const uint8_t ep_num, const uint8_t ep_size, const bool use_double_buffer) {
+  uint8_t buffer_size = ep_size;
+  if (use_double_buffer) {
+    buffer_size *= 2;
+  }
+
+  uint8_t* buffer = malloc(buffer_size);
+  ep_buffers[ep_num][0] = buffer;
+  if (buffer && use_double_buffer) {
+    ep_buffers[ep_num][1] = buffer + ep_size;
+  }
+
+  return buffer != NULL;
+}
+
+void transfer_mem_free(const uint8_t ep_num) {
+  if (ep_buffers[ep_num][0]) {
+    free(ep_buffers[ep_num][0]);
+    ep_buffers[ep_num][0] = NULL;
+    ep_buffers[ep_num][1] = NULL;
+  }
+}
+
+void* get_ep_buffer(const uint8_t ep_num, const uint8_t odd) {
+  if (ep_num < MAX_ENDPOINTS) {
+    return ep_buffers[ep_num][odd];
+  }
+  else {
+    return NULL;
+  }
 }

@@ -3,8 +3,9 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
-#define BDT_DESC_BC 16
+#define BDT_DESC_BC0 16
 #define BDT_DESC_OWN 7
 #define BDT_DESC_DATA01 6
 #define BDT_DESC_KEEP 5
@@ -38,5 +39,11 @@ void reset_data_toggles();
 
 uint8_t get_data_toggle(const uint8_t ep_num, const uint8_t tx);
 void set_data_toggle(const uint8_t ep_num, const uint8_t tx, const uint8_t value);
+
+
+// Transfer memory management
+bool transfer_mem_alloc(const uint8_t ep_num, const uint8_t ep_size, const bool use_double_buffer);
+void transfer_mem_free(const uint8_t ep_num);
+void* get_ep_buffer(const uint8_t ep_num, const uint8_t odd);
 
 #endif // KINETIS_USB_BDT_H

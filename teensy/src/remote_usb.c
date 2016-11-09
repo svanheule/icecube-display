@@ -19,18 +19,29 @@ static inline uint16_t min(uint16_t a, uint16_t b) {
 }
 
 // Currently only EP0
-#define EP0_SIZE 64
+//#define EP0_SIZE 64
 
 // Align buffers to word boundary, just to make sure nothing weird happens with the DMA transfers
-static alignas(4) uint8_t ep0_rx_buffer[EP0_SIZE];
+//static alignas(4) uint8_t ep0_rx_buffer[EP0_SIZE];
 
-static void init_ep0_bdt() {
-  get_buffer_descriptor(0, BDT_DIR_TX, 0)->desc = 0;
+//static void init_ep0_bdt() {
+//  get_buffer_descriptor(0, BDT_DIR_TX, 0)->desc = 0;
 
-  struct buffer_descriptor_t* rx = get_buffer_descriptor(0, BDT_DIR_RX, 0);
-  rx->desc = generate_bdt_descriptor(EP0_SIZE, 0);
-  rx->buffer = &ep0_rx_buffer;
-}
+//  struct buffer_descriptor_t* rx = get_buffer_descriptor(0, BDT_DIR_RX, 0);
+//  rx->desc = generate_bdt_descriptor(EP0_SIZE, 0);
+//  rx->buffer = &ep0_rx_buffer;
+//}
+
+//#define EP1_SIZE 64
+//static alignas(4) uint8_t ep1_rx_buffer[2][EP1_SIZE];
+
+//static void init_ep1_bdt() {
+//  for (int odd = 0; odd < 2; odd++) {
+//    struct buffer_descriptor_t* bd = get_buffer_descriptor(1, BDT_DIR_RX, odd);
+//    bd->buffer = &ep1_rx_buffer[odd][0];
+//    bd->desc = generate_bdt_descriptor(EP1_SIZE, odd);
+//  }
+//}
 
 void init_remote() {
   // Based on PJCR code (cores/teensy3/usb_dev.c)
@@ -92,7 +103,7 @@ static uint16_t queue_in(const void* data, uint16_t max_length, uint8_t data01) 
   bool buffer_available = !(bd->desc & _BV(BDT_DESC_OWN));
 
   if (buffer_available) {
-    uint16_t packet_size = min(max_length, EP0_SIZE);
+    uint16_t packet_size = min(max_length, endpoint_get_size(0));
     // Send remaining transaction data
     bd->desc = generate_bdt_descriptor(packet_size, data01);
     bd->buffer = (void*) data;
@@ -120,7 +131,7 @@ static bool needs_extra_zlp(struct control_transfer_t* transfer) {
   // a packet smaller than wMaxPacketSize has to be sent. In case the data size is an
   // exact multiple of the endpoint buffer size, queue an extra ZLP.
   bool small_transfer = transfer->data_length < transfer->req->wLength;
-  bool buffer_aligned = (transfer->data_length % EP0_SIZE) == 0;
+  bool buffer_aligned = (transfer->data_length % endpoint_get_size(0)) == 0;
   return small_transfer && buffer_aligned;
 }
 
@@ -146,7 +157,8 @@ void usb_isr() {
 
     // Reset all buffer toggles to 0
     USB0_CTL |= USB_CTL_ODDRST;
-    init_ep0_bdt();
+//    init_ep0_bdt();
+//    init_ep1_bdt();
 
     // Load default configuration
     usb_set_address(0);
@@ -199,8 +211,10 @@ void usb_isr() {
 
     const uint8_t token_status = pop_token_status();
     const uint8_t bdt_index = token_status >> 2;
-    const uint8_t endpoint = token_status >> 4;
     struct buffer_descriptor_t* bdt_entry = get_bdt() + bdt_index;
+
+    const uint8_t endpoint = token_status >> 4;
+    const enum usb_pid_t token_pid = get_token_pid(bdt_entry);
 
     if (endpoint == 0) {
       static struct control_transfer_t control_transfer;
@@ -210,8 +224,6 @@ void usb_isr() {
       static uint8_t* control_data;
       static uint8_t* control_data_end;
       static bool queue_extra_zlp;
-
-      const enum usb_pid_t token_pid = get_token_pid(bdt_entry);
 
       if (token_pid == PID_SETUP) {
         // Since we may be using a dynamically allocated buffer that can get discarded when
@@ -226,8 +238,8 @@ void usb_isr() {
 
         // Wait for DATA1 OUT transfer.
         // This will be either first OUT data packet or the IN status stage (handshake)
-        void* rx_buffer = &ep0_rx_buffer[0];
-        uint16_t rx_len = EP0_SIZE;
+        void* rx_buffer = get_ep_buffer(0, 0);
+        uint16_t rx_len = endpoint_get_size(0);
 
         init_control_transfer(&control_transfer, &setup_packet);
         process_setup(&control_transfer);
@@ -245,7 +257,7 @@ void usb_isr() {
           }
           else {
             rx_len = min(rx_len, control_transfer.data_length);
-            if (rx_len >= EP0_SIZE) {
+            if (rx_len >= endpoint_get_size(0)) {
               rx_buffer = control_data;
             }
             control_data += rx_len;
@@ -288,6 +300,10 @@ void usb_isr() {
         }
       }
       else if (token_pid == PID_OUT) {
+        void* buffer = get_ep_buffer(0, 0);
+        uint8_t buffer_size = endpoint_get_size(0);
+        uint8_t data_toggle = 1;
+
         if (control_transfer.stage == CTRL_DATA_OUT) {
           // Copy data to data buffer
           uint16_t left = control_transfer.data_length - control_transfer.data_done;
@@ -306,21 +322,20 @@ void usb_isr() {
 
           if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
             queue_in(0, 0, 1);
-            return_ep0_rx(bdt_entry, ep0_rx_buffer, EP0_SIZE, 0);
+            data_toggle = 0;
           }
           else if (control_data != control_data_end) {
             // Queue more RX buffers
             uint16_t queue_left = control_data_end - control_data;
-            uint16_t queued = min(queue_left, EP0_SIZE);
-            void* rx_buffer;
-            if (queued < EP0_SIZE) {
-              rx_buffer = ep0_rx_buffer;
-            }
-            else {
-              rx_buffer = control_data;
+            uint16_t queued = min(queue_left, buffer_size);
+            // If the expected transfer size is equal to the endpoint size, use a direct write
+            // for better efficiency.
+            if (queued == buffer_size) {
+              buffer = control_data;
             }
 
-            return_ep0_rx(bdt_entry, rx_buffer, queued, get_data_toggle(0, 0) ^ 1);
+            data_toggle = get_data_toggle(0, 0) ^ 1;
+            buffer_size = queued;
             control_data += queued;
           }
         }
@@ -331,15 +346,11 @@ void usb_isr() {
               control_transfer.callback_handshake(&control_transfer);
             }
             control_transfer.stage = CTRL_IDLE;
-            return_ep0_rx(bdt_entry, ep0_rx_buffer, EP0_SIZE, 0);
-          }
-          else {
-            return_ep0_rx(bdt_entry, ep0_rx_buffer, EP0_SIZE, 1);
+            data_toggle = 0;
           }
         }
-        else {
-          return_ep0_rx(bdt_entry, ep0_rx_buffer, EP0_SIZE, 1);
-        }
+
+        return_ep0_rx(bdt_entry, buffer, buffer_size, data_toggle);
       }
     }
   }
