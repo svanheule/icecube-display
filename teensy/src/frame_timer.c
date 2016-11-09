@@ -111,6 +111,8 @@ void correct_display_frame_phase(const int8_t ms_shift) {
 
 
 /* USB SOF TRACKING */
+#include <util/atomic.h>
+
 // Valid values are 0 - 0x7FF
 static uint16_t current_usb_frame_counter;
 
@@ -145,7 +147,13 @@ void new_sof_received(const uint16_t usb_frame_counter) {
     register_ms_step(ms_step);
   }
 
-  current_usb_frame_counter = usb_frame_counter;
+  // Since using _Atomic uint16_t gives linking errors on AVR, work around it by using an
+  // atomic block.
+  // This completely disables interrupts while writing this variable, which is overkill for
+  // ARM, but at least ensures reads of this variable will always return a correct value.
+  ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+    current_usb_frame_counter = usb_frame_counter;
+  }
   usb_frame_delta_valid = true;
 
   previous_count = count;
