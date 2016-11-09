@@ -81,6 +81,8 @@ bool endpoint_configure(const struct ep_config_t* config);
 /// Deallocates the endpoint memory.
 void endpoint_deconfigure(const uint8_t ep_num);
 
+uint16_t endpoint_get_size(const uint8_t ep_num);
+
 /// @}
 
 

@@ -1,5 +1,6 @@
 #include "usb/endpoint.h"
 #include "avr/endpoint_stack.h"
+#include "usb/fifo.h"
 #include <avr/io.h>
 
 #define EP_TYPE_MASK (3<<6)
@@ -106,6 +107,15 @@ void endpoint_deconfigure(const uint8_t ep_num) {
   UECONX &= ~_BV(EPEN);
   UECFG1X &= ~_BV(ALLOC);
   endpoint_pop();
+}
+
+uint16_t endpoint_get_size(const uint8_t ep_num) {
+  uint16_t size = 0;
+  if (endpoint_push(ep_num)) {
+    size = fifo_size();
+    endpoint_pop();
+  }
+  return size;
 }
 
 bool endpoint_stall(const uint8_t ep_num) {

@@ -4,6 +4,9 @@
 
 #define ENDPOINT_REGISTER_ADDRESS(i) ((volatile uint8_t*)(&(USB0_ENDPT0) + 4*i))
 
+#define MAX_ENDPOINTS 2
+static uint8_t ep_sizes[MAX_ENDPOINTS];
+
 bool endpoint_configure(const struct ep_config_t* config) {
   uint8_t reg = 0;
 
@@ -30,14 +33,28 @@ bool endpoint_configure(const struct ep_config_t* config) {
   }
 
   // Memory is currently allocated in remote_usb.c
+  bool config_ok = reg != 0;
+
+  if (config_ok) {
+    ep_sizes[config->num] = config->size;
+  }
 
   endpoint_reset_data_toggle(config->num);
   *ENDPOINT_REGISTER_ADDRESS(config->num) = reg;
-  return reg != 0;
+  return config_ok;
 }
 
 void endpoint_deconfigure(const uint8_t ep_num) {
   *ENDPOINT_REGISTER_ADDRESS(ep_num) = 0;
+}
+
+uint16_t endpoint_get_size(const uint8_t ep_num) {
+  if (ep_num < MAX_ENDPOINTS) {
+    return ep_sizes[ep_num];
+  }
+  else {
+    return 0;
+  }
 }
 
 bool endpoint_stall(const uint8_t ep_num) {
