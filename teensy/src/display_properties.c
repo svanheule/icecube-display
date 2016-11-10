@@ -73,7 +73,7 @@ void init_display_properties() {
     led_count = 60*(dp_info_range_icecube.end-dp_info_range_icecube.start+1);
 
     if (eeprom_read_byte(&DP_LED_INFORMATION.has_deepcore)) {
-      led_count += 60*(dp_info_range_deepcore.end-dp_info_range_deepcore.start);
+      led_count += 60*(dp_info_range_deepcore.end-dp_info_range_deepcore.start+1);
       PROPERTIES_TLV_LIST[3] = (struct dp_tlv_item_t)
         TLV_ENTRY(DP_INFORMATION_RANGE, MEMSPACE_PROGMEM, &dp_info_range_deepcore);
     }
