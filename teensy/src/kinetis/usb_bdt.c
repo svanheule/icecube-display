@@ -56,21 +56,41 @@ uint32_t generate_bdt_descriptor(uint16_t length, uint8_t data_toggle) {
   return base_desc | (length << BDT_DESC_BC0) | (data_toggle << BDT_DESC_DATA01);
 }
 
-// Endpoint DATA01 toggles
-// Data toggles: bit array of (rx, tx) pairs: {EP0_RX, EP0_TX, EP1_RX, ...}
+// Toggles: bit array of (rx, tx) pairs: {EP0_RX, EP0_TX, EP1_RX, ...}
 #define TOGGLE_OFFSET(ep, tx) (((ep) << 1) | (tx))
-static uint32_t toggles;
+
+// Endpoint buffer toggles
+static uint32_t buffer_toggles;
+
+void reset_buffer_toggles() {
+  buffer_toggles = 0;
+}
+
+uint8_t get_buffer_toggle(const uint8_t ep_num, const uint8_t tx) {
+  return *BITBAND_SRAM_ADDRESS(&buffer_toggles, TOGGLE_OFFSET(ep_num, tx));
+}
+
+uint8_t pop_buffer_toggle(const uint8_t ep_num, const uint8_t tx) {
+  volatile uint32_t* toggle = BITBAND_SRAM_ADDRESS(&buffer_toggles, TOGGLE_OFFSET(ep_num, tx));
+  uint8_t odd = *toggle;
+  *toggle ^= 1;
+  return odd;
+}
+
+
+// Endpoint DATA01 toggles
+static uint32_t data_toggles;
 
 void reset_data_toggles() {
-  toggles = 0;
+  data_toggles = 0;
 }
 
 uint8_t get_data_toggle(const uint8_t ep_num, const uint8_t tx) {
-  return *BITBAND_SRAM_ADDRESS(&toggles, TOGGLE_OFFSET(ep_num, tx));
+  return *BITBAND_SRAM_ADDRESS(&data_toggles, TOGGLE_OFFSET(ep_num, tx));
 }
 
 void set_data_toggle(const uint8_t ep_num, const uint8_t tx, const uint8_t value) {
-  *BITBAND_SRAM_ADDRESS(&toggles, TOGGLE_OFFSET(ep_num, tx)) = value;
+  *BITBAND_SRAM_ADDRESS(&data_toggles, TOGGLE_OFFSET(ep_num, tx)) = value;
 }
 
 // Quasi-static endpoint RX buffers

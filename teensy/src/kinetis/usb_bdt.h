@@ -34,12 +34,15 @@ uint16_t get_byte_count(const struct buffer_descriptor_t* descriptor);
 
 uint32_t generate_bdt_descriptor(uint16_t length, uint8_t data_toggle);
 
+// Ping-pong buffer usage tracking
+void reset_buffer_toggles();
+uint8_t get_buffer_toggle(const uint8_t ep_num, const uint8_t tx);
+uint8_t pop_buffer_toggle(const uint8_t ep_num, const uint8_t tx);
 
+// Data toggle tracking
 void reset_data_toggles();
-
 uint8_t get_data_toggle(const uint8_t ep_num, const uint8_t tx);
 void set_data_toggle(const uint8_t ep_num, const uint8_t tx, const uint8_t value);
-
 
 // Transfer memory management
 bool transfer_mem_alloc(const uint8_t ep_num, const uint8_t ep_size, const bool use_double_buffer);
