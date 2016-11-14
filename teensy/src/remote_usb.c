@@ -6,6 +6,7 @@
 #include "usb/configuration.h"
 #include "usb/endpoint.h"
 #include "usb/endpoint_0.h"
+#include "usb/remote_renderer.h"
 #include "frame_timer.h"
 
 #include "kinetis/io.h"
@@ -351,6 +352,38 @@ void usb_isr() {
         }
 
         return_ep0_rx(bdt_entry, buffer, buffer_size, data_toggle);
+      }
+    }
+
+    else if (endpoint == 1) {
+      if (token_pid == PID_OUT) {
+        struct remote_transfer_t* transfer = remote_renderer_get_current();
+        if (transfer) {
+          const size_t transferred = get_byte_count(bdt_entry);
+          const size_t copy_len = min(transfer->buffer_remaining, transferred);
+          if (transfer->buffer_pos != bdt_entry->buffer) {
+            memcpy(transfer->buffer_pos, bdt_entry->buffer, copy_len);
+          }
+          transfer->buffer_pos += copy_len;
+          transfer->buffer_remaining -= copy_len;
+
+          uint8_t data_toggle = *BITBAND_SRAM_ADDRESS(&bdt_entry->desc, BDT_DESC_DATA01) ^ 1;
+          bdt_entry->desc = generate_bdt_descriptor(
+                endpoint_get_size(1)
+              , data_toggle
+          );
+          set_data_toggle(1, 0, data_toggle);
+
+          if (transfer->buffer_remaining == 0 || transferred < endpoint_get_size(1)) {
+            if (copy_len != transferred || !remote_renderer_finish()) {
+              remote_renderer_stop();
+              endpoint_stall(1);
+            }
+          }
+        }
+        else {
+          endpoint_stall(1);
+        }
       }
     }
   }

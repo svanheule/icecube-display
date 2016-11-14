@@ -72,6 +72,7 @@ set(SOURCES
   # Renderers
 #  src/render/boot_splash.c
   src/render/test.c
+  src/usb/remote_renderer.c
 #  src/render/demo.c
   # USB communication
   src/remote_usb.c
