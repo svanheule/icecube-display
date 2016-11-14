@@ -127,7 +127,7 @@ static void return_ep0_rx(
   set_data_toggle(0, 0, data01);
 }
 
-static bool needs_extra_zlp(struct control_transfer_t* transfer) {
+static inline bool needs_extra_zlp(struct control_transfer_t* transfer) {
   // When the amount of transmitted data is less then the amount of requested data,
   // a packet smaller than wMaxPacketSize has to be sent. In case the data size is an
   // exact multiple of the endpoint buffer size, queue an extra ZLP.
