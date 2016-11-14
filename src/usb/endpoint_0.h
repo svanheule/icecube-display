@@ -111,7 +111,7 @@ struct control_transfer_t {
   *   If the control transfer stage is still `CTRL_SETUP` when this function
   *   returns, the request should be considered invalid and the control endpoint
   *   stalled.
-  * \ingroup usb_endpoint_control 
+  * \ingroup usb_endpoint_control
   */
 void process_setup(struct control_transfer_t* transfer);
 

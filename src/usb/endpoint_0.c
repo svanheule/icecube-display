@@ -195,6 +195,7 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
           uint8_t ep_num = transfer->req->wIndex & 0xf;
           if (ep_num > 0 && endpoint_clear_stall(ep_num)) {
             endpoint_reset_data_toggle(ep_num);
+            // TODO Reset endpoint internal (non USB standard) state
             transfer->stage = CTRL_HANDSHAKE_OUT;
           }
         }
@@ -220,6 +221,9 @@ static void callback_set_configuration(struct control_transfer_t* transfer) {
     set_device_state(DEFAULT);
   }
   else {
+    // TODO Reset frame receiving state machine
+    // Step 1: Split off current logic from EP0
+    // Step 2: move/copy logic to EP1
     set_device_state(CONFIGURED);
   }
 }
