@@ -69,7 +69,8 @@ enum display_property_type_t {
   DP_INFORMATION_RANGE = 2,
   /// Type of LED used in the display, always length 1. See ::display_led_type_t.
   /// Allowed only once per metadata report.
-  DP_LED_TYPE = 3
+  DP_LED_TYPE = 3,
+  DP_BUFFER_SIZE = 4
 };
 
 /** \brief Type of information the display is capable of showing.

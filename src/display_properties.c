@@ -33,9 +33,12 @@ static const struct dp_led_information_t DP_LED_INFORMATION DISPLAYPROP = {
   , LED_ORDER_BGR
 };
 
+static uint16_t dp_buffer_size;
+
 void init_display_properties() {
   // Read actual value from EEPROM
   dp_info_range.end = eeprom_read_byte(&DP_LED_INFORMATION.count);
+  dp_buffer_size = dp_info_range.end * 4;
 }
 
 uint16_t get_led_count() {
@@ -55,6 +58,7 @@ static const struct dp_tlv_item_t PROPERTIES_TLV_LIST[] PROGMEM = {
     TLV_ENTRY(DP_LED_TYPE, MEMSPACE_EEPROM, &DP_LED_INFORMATION.type)
   , TLV_ENTRY(DP_INFORMATION_TYPE, MEMSPACE_PROGMEM, &DP_INFO_TYPE)
   , TLV_ENTRY(DP_INFORMATION_RANGE, MEMSPACE_RAM, &dp_info_range)
+  , TLV_ENTRY(DP_BUFFER_SIZE, MEMSPACE_RAM, &dp_buffer_size)
   , TLV_END
 };
 

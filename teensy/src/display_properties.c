@@ -1,4 +1,5 @@
 #include "display_properties.h"
+#include "frame_buffer.h"
 #include <avr/eeprom.h>
 #include <stdbool.h>
 
@@ -43,12 +44,15 @@ static const struct dp_led_information_t DP_LED_INFORMATION DISPLAYPROP = {
 static const enum display_led_type_t DP_INFO_LED_TYPE = LED_TYPE_WS2811;
 static const enum display_information_type_t DP_INFO_TYPE = INFORMATION_IC_STRING;
 
+static uint16_t dp_buffer_size;
+
 #define TLV_ENTRY(type, memspace, address) {type, sizeof(*address), memspace, address}
 #define TLV_END {DP_END, 0, MEMSPACE_NONE, 0}
 
-static struct dp_tlv_item_t PROPERTIES_TLV_LIST[5] = {
+static struct dp_tlv_item_t PROPERTIES_TLV_LIST[] = {
     TLV_ENTRY(DP_LED_TYPE, MEMSPACE_PROGMEM, &DP_INFO_LED_TYPE)
   , TLV_ENTRY(DP_INFORMATION_TYPE, MEMSPACE_PROGMEM, &DP_INFO_TYPE)
+  , TLV_ENTRY(DP_BUFFER_SIZE, MEMSPACE_RAM, &dp_buffer_size)
   , TLV_ENTRY(DP_INFORMATION_RANGE, MEMSPACE_RAM, &dp_info_range_icecube)
   , TLV_END
   , TLV_END
@@ -74,9 +78,11 @@ void init_display_properties() {
 
     if (eeprom_read_byte(&DP_LED_INFORMATION.has_deepcore)) {
       led_count += 60*(dp_info_range_deepcore.end-dp_info_range_deepcore.start+1);
-      PROPERTIES_TLV_LIST[3] = (struct dp_tlv_item_t)
+      PROPERTIES_TLV_LIST[4] = (struct dp_tlv_item_t)
         TLV_ENTRY(DP_INFORMATION_RANGE, MEMSPACE_PROGMEM, &dp_info_range_deepcore);
     }
+
+    dp_buffer_size = get_display_buffer_size();
   }
 }
 
