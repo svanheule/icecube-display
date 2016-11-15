@@ -20,14 +20,24 @@ void init_frame_timer_backend(void (*timer_callback)()) {
   pit_channels[0].LDVAL = F_BUS/DEVICE_FPS - 1; // F_BUS = 48M if F_CPU = 48M
   pit_channels[0].TCTRL = _BV(1); // enable timer interrupts
   pit_channels[0].TCTRL = _BV(1)|_BV(0); // ... and enable timer
+
+  // GPIO C2 init
+  ATOMIC_REGISTER_BIT_SET(GPIOC_PDDR, 2);
+  ATOMIC_REGISTER_BIT_SET(GPIOC_PCOR, 2);
+  PORTC_PCR2 = PORT_PCR_MUX(1);
 }
 
 // ISR must be visible to other modules, so don't declare this static
 void pit0_isr() {
   pit_channels[0].TFLG = 1;
+  // GPIO C2 set
+  ATOMIC_REGISTER_BIT_SET(GPIOC_PSOR, 2);
+  GPIOC_PSOR |= _BV(2);
   if (callback) {
     callback();
   }
+  // GPIO C2 clear
+  ATOMIC_REGISTER_BIT_SET(GPIOC_PCOR, 2);
 }
 
 timer_count_t get_counts_max() {
