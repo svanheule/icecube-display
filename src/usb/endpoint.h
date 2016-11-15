@@ -48,9 +48,9 @@ enum ep_type_t {
 
 /// Endpoint directions
 enum ep_direction_t {
-    EP_DIRECTION_OUT
-  , EP_DIRECTION_IN
-  , EP_DIRECTION_BIDIR
+    EP_DIRECTION_OUT = (1 << 0)
+  , EP_DIRECTION_IN = (1 << 1)
+  , EP_DIRECTION_BIDIR = EP_DIRECTION_IN | EP_DIRECTION_OUT
 };
 
 struct ep_config_t {
