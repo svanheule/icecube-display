@@ -4,8 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// Currently only EP0
-#define MAX_ENDPOINTS 2
+#define MAX_ENDPOINTS 3
 
 #define BANK_COUNT 1
 
