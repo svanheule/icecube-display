@@ -38,14 +38,14 @@ bool endpoint_configure(const struct ep_config_t* config) {
   // which might be undesired behaviour for isochronous endpoints
   bool config_ok = reg != 0;
   if (config_ok && (config->dir & EP_DIRECTION_IN)) {
-    get_buffer_descriptor(config->num, BDT_DIR_TX, 0)->desc = 0;
+    get_buffer_descriptor(config->num, BDT_DIR_TX)->desc = 0;
   }
 
   if (config_ok && (config->dir & EP_DIRECTION_OUT)) {
     config_ok &= transfer_mem_alloc(config->num, config->size);
     if (config_ok) {
-      struct buffer_descriptor_t* bd = get_buffer_descriptor(config->num, BDT_DIR_RX, 0);
-      bd->buffer = get_ep_buffer(config->num, 0);
+      struct buffer_descriptor_t* bd = get_buffer_descriptor(config->num, BDT_DIR_RX);
+      bd->buffer = get_ep_buffer(config->num);
       bd->desc = generate_bdt_descriptor(config->size, 0);
     }
   }
@@ -60,11 +60,8 @@ bool endpoint_configure(const struct ep_config_t* config) {
 }
 
 void endpoint_deconfigure(const uint8_t ep_num) {
-  void* ep_buffer = get_ep_buffer(ep_num, 0);
-  if (ep_buffer) {
-    transfer_mem_free(ep_num);
-    ep_sizes[ep_num] = 0;
-  }
+  transfer_mem_free(ep_num);
+  ep_sizes[ep_num] = 0;
   *ENDPOINT_REGISTER_ADDRESS(ep_num) = 0;
 }
 
