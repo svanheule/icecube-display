@@ -41,20 +41,18 @@ bool endpoint_configure(const struct ep_config_t* config) {
     // Don't use ping-pong buffers for control endpoints
     get_buffer_descriptor(config->num, BDT_DIR_TX, 0)->desc = 0;
     struct buffer_descriptor_t* rx = get_buffer_descriptor(config->num, BDT_DIR_RX, 0);
-    config_ok &= transfer_mem_alloc(config->num, config->size, false);
+    config_ok &= transfer_mem_alloc(config->num, config->size);
     if (config_ok) {
       rx->desc = generate_bdt_descriptor(config->size, 0);
       rx->buffer = get_ep_buffer(config->num, 0);
     }
   }
   else if (config->dir == EP_DIRECTION_OUT) {
-    config_ok &= transfer_mem_alloc(config->num, config->size, true);
+    config_ok &= transfer_mem_alloc(config->num, config->size);
     if (config_ok) {
-      for (int odd = 0; odd < 2; ++odd) {
-        struct buffer_descriptor_t* bd = get_buffer_descriptor(config->num, BDT_DIR_RX, odd);
-        bd->desc = generate_bdt_descriptor(config->size, odd);
-        bd->buffer = get_ep_buffer(config->num, odd);
-      }
+      struct buffer_descriptor_t* bd = get_buffer_descriptor(config->num, BDT_DIR_RX, 0);
+      bd->desc = generate_bdt_descriptor(config->size, 0);
+      bd->buffer = get_ep_buffer(config->num, 0);
     }
   }
 

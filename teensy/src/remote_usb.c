@@ -157,9 +157,7 @@ void usb_isr() {
     USB0_INTEN |= USB_INTEN_SLEEPEN | USB_INTEN_TOKDNEEN | USB_INTEN_SOFTOKEN;
 
     // Reset all buffer toggles to 0
-    USB0_CTL |= USB_CTL_ODDRST;
-//    init_ep0_bdt();
-//    init_ep1_bdt();
+    reset_buffer_toggles();
 
     // Load default configuration
     usb_set_address(0);

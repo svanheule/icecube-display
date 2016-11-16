@@ -45,7 +45,7 @@ uint8_t get_data_toggle(const uint8_t ep_num, const uint8_t tx);
 void set_data_toggle(const uint8_t ep_num, const uint8_t tx, const uint8_t value);
 
 // Transfer memory management
-bool transfer_mem_alloc(const uint8_t ep_num, const uint8_t ep_size, const bool use_double_buffer);
+bool transfer_mem_alloc(const uint8_t ep_num, const uint8_t ep_size);
 void transfer_mem_free(const uint8_t ep_num);
 void* get_ep_buffer(const uint8_t ep_num, const uint8_t odd);
 

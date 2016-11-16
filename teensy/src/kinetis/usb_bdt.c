@@ -7,6 +7,8 @@
 // Currently only EP0
 #define MAX_ENDPOINTS 2
 
+#define BANK_COUNT 1
+
 struct bdt_endpoint_direction_t {
   struct buffer_descriptor_t even;
   struct buffer_descriptor_t odd;
@@ -63,18 +65,31 @@ uint32_t generate_bdt_descriptor(uint16_t length, uint8_t data_toggle) {
 static uint32_t buffer_toggles;
 
 void reset_buffer_toggles() {
+  uint8_t usb_ctl = USB0_CTL;
+  USB0_CTL = usb_ctl | USB_CTL_ODDRST;
   buffer_toggles = 0;
+#if BANK_COUNT > 1
+  USB0_CTL = usb_ctl & ~USB_CTL_ODDRST;
+#endif
 }
 
 uint8_t get_buffer_toggle(const uint8_t ep_num, const uint8_t tx) {
+#if BANK_COUNT > 1
   return *BITBAND_SRAM_ADDRESS(&buffer_toggles, TOGGLE_OFFSET(ep_num, tx));
+#else
+  return 0;
+#endif
 }
 
 uint8_t pop_buffer_toggle(const uint8_t ep_num, const uint8_t tx) {
+#if BANK_COUNT > 1
   volatile uint32_t* toggle = BITBAND_SRAM_ADDRESS(&buffer_toggles, TOGGLE_OFFSET(ep_num, tx));
   uint8_t odd = *toggle;
   *toggle ^= 1;
   return odd;
+#else
+  return 0;
+#endif
 }
 
 
@@ -94,19 +109,16 @@ void set_data_toggle(const uint8_t ep_num, const uint8_t tx, const uint8_t value
 }
 
 // Quasi-static endpoint RX buffers
-void* ep_buffers[MAX_ENDPOINTS][2];
+void* ep_buffers[MAX_ENDPOINTS][BANK_COUNT];
 
-bool transfer_mem_alloc(const uint8_t ep_num, const uint8_t ep_size, const bool use_double_buffer) {
-  uint8_t buffer_size = ep_size;
-  if (use_double_buffer) {
-    buffer_size *= 2;
-  }
-
-  uint8_t* buffer = malloc(buffer_size);
+bool transfer_mem_alloc(const uint8_t ep_num, const uint8_t ep_size) {
+  uint8_t* buffer = malloc(ep_size*BANK_COUNT);
   ep_buffers[ep_num][0] = buffer;
+#if BANK_COUNT > 1
   if (buffer && use_double_buffer) {
     ep_buffers[ep_num][1] = buffer + ep_size;
   }
+#endif
 
   return buffer != NULL;
 }
@@ -115,12 +127,14 @@ void transfer_mem_free(const uint8_t ep_num) {
   if (ep_buffers[ep_num][0]) {
     free(ep_buffers[ep_num][0]);
     ep_buffers[ep_num][0] = NULL;
+#if BANK_COUNT > 1
     ep_buffers[ep_num][1] = NULL;
+#endif
   }
 }
 
 void* get_ep_buffer(const uint8_t ep_num, const uint8_t odd) {
-  if (ep_num < MAX_ENDPOINTS) {
+  if (ep_num < MAX_ENDPOINTS && odd < BANK_COUNT) {
     return ep_buffers[ep_num][odd];
   }
   else {
