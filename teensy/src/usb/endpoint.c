@@ -37,22 +37,16 @@ bool endpoint_configure(const struct ep_config_t* config) {
   // generate_bdt_descriptor() enables data toggle synchronisation by default,
   // which might be undesired behaviour for isochronous endpoints
   bool config_ok = reg != 0;
-  if (config->type == EP_TYPE_CONTROL) {
-    // Don't use ping-pong buffers for control endpoints
+  if (config_ok && (config->dir & EP_DIRECTION_IN)) {
     get_buffer_descriptor(config->num, BDT_DIR_TX, 0)->desc = 0;
-    struct buffer_descriptor_t* rx = get_buffer_descriptor(config->num, BDT_DIR_RX, 0);
-    config_ok &= transfer_mem_alloc(config->num, config->size);
-    if (config_ok) {
-      rx->desc = generate_bdt_descriptor(config->size, 0);
-      rx->buffer = get_ep_buffer(config->num, 0);
-    }
   }
-  else if (config->dir == EP_DIRECTION_OUT) {
+
+  if (config_ok && (config->dir & EP_DIRECTION_OUT)) {
     config_ok &= transfer_mem_alloc(config->num, config->size);
     if (config_ok) {
       struct buffer_descriptor_t* bd = get_buffer_descriptor(config->num, BDT_DIR_RX, 0);
-      bd->desc = generate_bdt_descriptor(config->size, 0);
       bd->buffer = get_ep_buffer(config->num, 0);
+      bd->desc = generate_bdt_descriptor(config->size, 0);
     }
   }
 
