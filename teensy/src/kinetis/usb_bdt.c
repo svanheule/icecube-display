@@ -84,7 +84,7 @@ uint8_t pop_buffer_toggle(const uint8_t ep_num, const uint8_t tx) {
 #if BANK_COUNT > 1
   volatile uint32_t* toggle = BITBAND_SRAM_ADDRESS(&buffer_toggles, TOGGLE_OFFSET(ep_num, tx));
   uint8_t odd = *toggle;
-  *toggle ^= 1;
+  *toggle = odd ^ 1;
   return odd;
 #else
   return 0;
