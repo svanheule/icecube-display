@@ -147,7 +147,7 @@ static const struct usb_descriptor_body_configuration_t BODY_CONFIG = {
 static const struct usb_descriptor_body_interface_t BODY_INTERFACE = {
     .bInterfaceNumber = 0
   , .bAlternateSetting = 0
-  , .bNumEndPoints = 1
+  , .bNumEndPoints = 2
   , .bInterfaceClass = 0xFF
   , .bInterfaceSubClass = 0
   , .bInterfaceProtocol = 0
@@ -159,6 +159,13 @@ static const struct usb_descriptor_body_endpoint_t BULK_ENDPOINT = {
   , .bmAttributes = 2
   , .wMaxPacketSize = 64
   , .bInterval = 0
+};
+
+static const struct usb_descriptor_body_endpoint_t INTERRUPT_ENDPOINT = {
+    .bEndpointAddress = 2 | _BV(7)
+  , .bmAttributes = 3
+  , .wMaxPacketSize = 4
+  , .bInterval = 40
 };
 
 static const char16_t STR_MANUFACTURER[] = u"Ghent University";
@@ -217,6 +224,10 @@ struct descriptor_list_t* generate_descriptor_list(const struct usb_setup_packet
         descriptor_list_append(
               head
             , create_list_item(DESC_TYPE_ENDPOINT, &BULK_ENDPOINT, MEMSPACE_PROGMEM)
+        );
+        descriptor_list_append(
+              head
+            , create_list_item(DESC_TYPE_ENDPOINT, &INTERRUPT_ENDPOINT, MEMSPACE_PROGMEM)
         );
         // Calculate and fill in total configuration length
         descriptor_config.wTotalLength = get_list_total_length(head);

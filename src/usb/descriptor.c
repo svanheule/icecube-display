@@ -176,7 +176,7 @@ static const struct usb_descriptor_body_endpoint_t INTERRUPT_ENDPOINT PROGMEM = 
     2 | _BV(7)
   , 3
   , 4
-  , 255
+  , 40
 };
 
 static const char16_t STR_MANUFACTURER[] PROGMEM = u"Ghent University";
