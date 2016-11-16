@@ -19,31 +19,6 @@ static inline uint16_t min(uint16_t a, uint16_t b) {
   return a < b ? a : b;
 }
 
-// Currently only EP0
-//#define EP0_SIZE 64
-
-// Align buffers to word boundary, just to make sure nothing weird happens with the DMA transfers
-//static alignas(4) uint8_t ep0_rx_buffer[EP0_SIZE];
-
-//static void init_ep0_bdt() {
-//  get_buffer_descriptor(0, BDT_DIR_TX, 0)->desc = 0;
-
-//  struct buffer_descriptor_t* rx = get_buffer_descriptor(0, BDT_DIR_RX, 0);
-//  rx->desc = generate_bdt_descriptor(EP0_SIZE, 0);
-//  rx->buffer = &ep0_rx_buffer;
-//}
-
-//#define EP1_SIZE 64
-//static alignas(4) uint8_t ep1_rx_buffer[2][EP1_SIZE];
-
-//static void init_ep1_bdt() {
-//  for (int odd = 0; odd < 2; odd++) {
-//    struct buffer_descriptor_t* bd = get_buffer_descriptor(1, BDT_DIR_RX, odd);
-//    bd->buffer = &ep1_rx_buffer[odd][0];
-//    bd->desc = generate_bdt_descriptor(EP1_SIZE, odd);
-//  }
-//}
-
 void init_remote() {
   // Based on PJCR code (cores/teensy3/usb_dev.c)
   SIM_SOPT2 |= SIM_SOPT2_USBSRC | SIM_SOPT2_PLLFLLSEL;
