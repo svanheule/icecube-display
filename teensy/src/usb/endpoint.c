@@ -4,9 +4,6 @@
 
 #define ENDPOINT_REGISTER_ADDRESS(i) ((volatile uint8_t*)(&(USB0_ENDPT0) + 4*i))
 
-#define MAX_ENDPOINTS 2
-static uint8_t ep_sizes[MAX_ENDPOINTS];
-
 bool endpoint_configure(const struct ep_config_t* config) {
   endpoint_deconfigure(config->num);
   uint8_t reg = 0;
@@ -33,25 +30,23 @@ bool endpoint_configure(const struct ep_config_t* config) {
     }
   }
 
-  // Memory allocation
-  // generate_bdt_descriptor() enables data toggle synchronisation by default,
-  // which might be undesired behaviour for isochronous endpoints
-  bool config_ok = reg != 0;
-  if (config_ok && (config->dir & EP_DIRECTION_IN)) {
-    get_buffer_descriptor(config->num, BDT_DIR_TX)->desc = 0;
-  }
-
-  if (config_ok && (config->dir & EP_DIRECTION_OUT)) {
-    config_ok &= transfer_mem_alloc(config->num, config->size);
-    if (config_ok) {
-      struct buffer_descriptor_t* bd = get_buffer_descriptor(config->num, BDT_DIR_RX);
-      bd->buffer = get_ep_buffer(config->num);
-      bd->desc = generate_bdt_descriptor(config->size, 0);
-    }
-  }
-
+  bool config_ok = reg != 0 && set_endpoint_size(config->num, config->size);
   if (config_ok) {
-    ep_sizes[config->num] = config->size;
+    if (config->dir & EP_DIRECTION_IN) {
+      get_buffer_descriptor(config->num, BDT_DIR_TX)->desc = 0;
+    }
+
+    if (config->dir & EP_DIRECTION_OUT) {
+      // Memory allocation
+      config_ok &= transfer_mem_alloc(config->num);
+      if (config_ok) {
+        struct buffer_descriptor_t* bd = get_buffer_descriptor(config->num, BDT_DIR_RX);
+        bd->buffer = get_ep_buffer(config->num);
+        // generate_bdt_descriptor() enables data toggle synchronisation by default,
+        // which might be undesired behaviour for isochronous endpoints
+        bd->desc = generate_bdt_descriptor(config->size, 0);
+      }
+    }
   }
 
   endpoint_reset_data_toggle(config->num);
@@ -61,17 +56,12 @@ bool endpoint_configure(const struct ep_config_t* config) {
 
 void endpoint_deconfigure(const uint8_t ep_num) {
   transfer_mem_free(ep_num);
-  ep_sizes[ep_num] = 0;
+  set_endpoint_size(ep_num, 0);
   *ENDPOINT_REGISTER_ADDRESS(ep_num) = 0;
 }
 
 uint16_t endpoint_get_size(const uint8_t ep_num) {
-  if (ep_num < MAX_ENDPOINTS) {
-    return ep_sizes[ep_num];
-  }
-  else {
-    return 0;
-  }
+  return get_endpoint_size(ep_num);
 }
 
 bool endpoint_stall(const uint8_t ep_num) {

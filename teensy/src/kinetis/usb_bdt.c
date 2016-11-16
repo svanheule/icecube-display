@@ -107,18 +107,41 @@ void set_data_toggle(const uint8_t ep_num, const uint8_t tx, const uint8_t value
   *BITBAND_SRAM_ADDRESS(&data_toggles, TOGGLE_OFFSET(ep_num, tx)) = value;
 }
 
+// Endpoint sizes
+static uint8_t ep_sizes[MAX_ENDPOINTS];
+
+bool set_endpoint_size(const uint8_t ep_num, const uint8_t ep_size) {
+  const bool ep_valid = ep_num < MAX_ENDPOINTS;
+  if (ep_valid) {
+    ep_sizes[ep_num] = ep_size;
+  }
+  return ep_valid;
+}
+
+uint8_t get_endpoint_size(const uint8_t ep_num) {
+  if (ep_num < MAX_ENDPOINTS) {
+    return ep_sizes[ep_num];
+  }
+  else {
+    return 0;
+  }
+}
+
 // Quasi-static endpoint RX buffers
 void* ep_buffers[MAX_ENDPOINTS][BANK_COUNT];
 
-bool transfer_mem_alloc(const uint8_t ep_num, const uint8_t ep_size) {
-  uint8_t* buffer = malloc(ep_size*BANK_COUNT);
-  ep_buffers[ep_num][0] = buffer;
+bool transfer_mem_alloc(const uint8_t ep_num) {
+  const uint8_t ep_size = get_endpoint_size(ep_num);
+  uint8_t* buffer = NULL;
+  if (ep_size) {
+    buffer = malloc(ep_size*BANK_COUNT);
+    ep_buffers[ep_num][0] = buffer;
 #if BANK_COUNT > 1
-  if (buffer && use_double_buffer) {
-    ep_buffers[ep_num][1] = buffer + ep_size;
-  }
+    if (buffer && use_double_buffer) {
+      ep_buffers[ep_num][1] = buffer + ep_size;
+    }
 #endif
-
+  }
   return buffer != NULL;
 }
 
