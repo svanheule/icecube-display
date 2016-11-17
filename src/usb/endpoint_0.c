@@ -248,6 +248,8 @@ const uint16_t EEPROM_SIZE = E2END + 1;
 static void callback_data_eeprom_write(struct control_transfer_t* transfer);
 static void callback_handshake_eeprom_write(struct control_transfer_t* transfer);
 
+#define VENDOR_REQUEST_FRAME_DRAW_STATUS 5
+#define FRAME_DRAW_STATUS_SIZE (sizeof(struct display_frame_usb_phase_t))
 #define VENDOR_REQUEST_SYNC_FRAME_DRAW 6
 
 static inline void process_vendor_request(struct control_transfer_t* transfer) {
@@ -351,6 +353,16 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
         uint8_t* buffer = init_data_in(transfer, length);
         if (buffer) {
           eeprom_read_block(buffer, (uint8_t*) __eeprom_start + offset, length);
+        }
+      }
+    }
+    else if (transfer->req->bRequest == VENDOR_REQUEST_FRAME_DRAW_STATUS) {
+      if (transfer->req->wLength == FRAME_DRAW_STATUS_SIZE
+          && init_data_in(transfer, FRAME_DRAW_STATUS_SIZE)) {
+        struct display_frame_usb_phase_t* buffer =
+              (struct display_frame_usb_phase_t*) transfer->data;
+        if (!get_display_frame_usb_phase(buffer)) {
+          buffer->usb_frame_counter = 0xffff;
         }
       }
     }
