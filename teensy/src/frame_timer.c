@@ -41,7 +41,7 @@ void init_frame_timer() {
   atomic_init(&draw_frame, false);
 
   frame_counter_phase.display_frame_counter = 0;
-  frame_counter_phase.usb_frame_counter = 0;
+  frame_counter_phase.usb_frame_counter = 0xffff;
   atomic_flag_clear(&frame_counter_phase_lock);
 
   init_frame_timer_backend(timer_rollover_callback);
