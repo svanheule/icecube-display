@@ -116,6 +116,8 @@ static inline bool needs_extra_zlp(struct control_transfer_t* transfer) {
 #define requested_wakeup() \
   ((USB0_USBTRC0 & USB_USBTRC_USBRESMEN) && (USB0_USBTRC0 & USB_USBTRC_USB_RESUME_INT))
 
+#define DATA_INTERRUPTS (USB_INTEN_TOKDNEEN | USB_INTEN_SOFTOKEN)
+
 void usb_isr() {
   // TODO VBUS transitions?
 
@@ -129,7 +131,7 @@ void usb_isr() {
     // Clear reset interrupt, suspend and token interrupt
     USB0_ISTAT = USB_ISTAT_USBRST | USB_ISTAT_SLEEP | USB_ISTAT_TOKDNE;
     // Enable suspend and token interrupt
-    USB0_INTEN |= USB_INTEN_SLEEPEN | USB_INTEN_TOKDNEEN | USB_INTEN_SOFTOKEN;
+    USB0_INTEN |= USB_INTEN_SLEEPEN | DATA_INTERRUPTS;
 
     // Reset all buffer toggles to 0
     reset_buffer_toggles();
@@ -144,7 +146,7 @@ void usb_isr() {
   // Wake-up, suspend
   if (IRQ_ENABLED_AND_SET(SLEEP)) {
     // Clear and disable suspend and token interrupt
-    USB0_INTEN &= ~(USB_INTEN_SLEEPEN | USB_INTEN_TOKDNEEN | USB_INTEN_SOFTOKEN);
+    USB0_INTEN &= ~(USB_INTEN_SLEEPEN | DATA_INTERRUPTS);
     USB0_ISTAT = USB_ISTAT_SLEEP | USB_ISTAT_TOKDNE;
     // Suspend transceiver
     USB0_USBCTRL |= USB_USBCTRL_SUSP;
@@ -163,7 +165,7 @@ void usb_isr() {
     USB0_USBCTRL &= ~USB_USBCTRL_SUSP;
     // Enable suspend and token interrupt
     USB0_ISTAT = USB_ISTAT_SLEEP;
-    USB0_INTEN |= USB_INTEN_SLEEPEN | USB_INTEN_TOKDNEEN;
+    USB0_INTEN |= USB_INTEN_SLEEPEN | DATA_INTERRUPTS;
 
     // Track device state
     if (get_configuration_index() > 0) {
