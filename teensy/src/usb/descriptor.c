@@ -1,4 +1,5 @@
 #include "usb/descriptor.h"
+#include "usb/endpoint.h"
 #include <stdlib.h>
 #include <string.h>
 #include <avr/eeprom.h>
@@ -154,16 +155,16 @@ static const struct usb_descriptor_body_interface_t BODY_INTERFACE = {
   , .iInterface = 3
 };
 
-static const struct usb_descriptor_body_endpoint_t BULK_ENDPOINT = {
+static const struct usb_descriptor_body_endpoint_t FRAME_DATA_ENDPOINT = {
     .bEndpointAddress = 1
-  , .bmAttributes = 2
+  , .bmAttributes = EP_TYPE_BULK
   , .wMaxPacketSize = 64
   , .bInterval = 0
 };
 
-static const struct usb_descriptor_body_endpoint_t INTERRUPT_ENDPOINT = {
+static const struct usb_descriptor_body_endpoint_t FEEDBACK_ENDPOINT = {
     .bEndpointAddress = 2 | _BV(7)
-  , .bmAttributes = 3
+  , .bmAttributes = EP_TYPE_INTERRUPT
   , .wMaxPacketSize = 4
   , .bInterval = 40
 };
@@ -223,11 +224,11 @@ struct descriptor_list_t* generate_descriptor_list(const struct usb_setup_packet
         );
         descriptor_list_append(
               head
-            , create_list_item(DESC_TYPE_ENDPOINT, &BULK_ENDPOINT, MEMSPACE_PROGMEM)
+            , create_list_item(DESC_TYPE_ENDPOINT, &FRAME_DATA_ENDPOINT, MEMSPACE_PROGMEM)
         );
         descriptor_list_append(
               head
-            , create_list_item(DESC_TYPE_ENDPOINT, &INTERRUPT_ENDPOINT, MEMSPACE_PROGMEM)
+            , create_list_item(DESC_TYPE_ENDPOINT, &FEEDBACK_ENDPOINT, MEMSPACE_PROGMEM)
         );
         // Calculate and fill in total configuration length
         descriptor_config.wTotalLength = get_list_total_length(head);

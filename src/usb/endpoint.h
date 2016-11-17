@@ -39,11 +39,13 @@
   */
 
 /// List of endpoint types
+/// Values of these constants corresponds to the bit values used in the USB endpoint descriptors.
+/// See Table 9-13 of the USB 2.0 standard.
 enum ep_type_t {
-    EP_TYPE_CONTROL
-  , EP_TYPE_BULK
-  , EP_TYPE_INTERRUPT
-  , EP_TYPE_ISOCHRONOUS
+    EP_TYPE_CONTROL = 0
+  , EP_TYPE_BULK = 2
+  , EP_TYPE_INTERRUPT = 3
+  , EP_TYPE_ISOCHRONOUS = 1
 };
 
 /// Endpoint directions
