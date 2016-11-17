@@ -64,6 +64,8 @@ struct ep_config_t {
   enum ep_direction_t dir;
   /// Endpoint buffer size
   uint16_t size;
+  /// Endpoint initialisation
+  void (*init)();
 };
 
 /** \brief Initialise the USB endpoint described by \a config.
