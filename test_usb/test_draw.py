@@ -89,61 +89,75 @@ class DisplayController:
           self.display_type = v[0]
         elif t == DP_TYPE_INFORMATION_RANGE:
           self.data_ranges.append((v[0], v[1]))
+          self.data_ranges = sorted(self.data_ranges, key=lambda data_range: data_range[0])
         elif t == DP_TYPE_LED_TYPE:
           self.led_type = v[0]
 
+joined_ranges = list()
+controller_buffer_slices = dict()
+string_buffer_offset = dict()
 
 def join_controller_ranges(controllers):
   """
   Determine unified display string range
-  Returns a list of (start, end, {controllers}) tuples
+  Sets a list of ((start, end), {controllers}) tuples
+       a dict of {controller : buffer_slice} items
+       a dict of {string : buffer_offset} items
   """
   segments = list()
-  for key in controllers:
-    controller = controllers[key]
+  global string_buffer_offset
+  offset = 0
+  offset_subbuffer = 0
+
+  for key,controller in controllers.items():
+    string_count = 0
     for data_range in controller.data_ranges:
       segments.append((key, data_range))
+      start,end = data_range
+      string_count += end-start+1
+      for string in range(start,end+1):
+        string_buffer_offset[string] = offset
+        offset += 1
+
+    controller_buffer_slices[key] = slice(offset_subbuffer, offset_subbuffer+string_count*60)
+    offset_subbuffer += string_count*60
 
   segments = sorted(segments, key=lambda seg: seg[1][0])
 
-  joined = []
-  if len(segments) > 0:
-    joined_controllers = set()
-    start,end = segments[0][1]
-    joined_start = start
-    joined_end = end
-    joined_controllers.add(segments[0][0])
-    for segment in segments[1:]:
-      start, end = segment[1]
-      if start-1 == joined_end:
-        # If the next range immediately follows the current, extend
-        joined_end = end
-        joined_controllers.add(segment[0])
-      else:
-        # Otherwise, store the current range and start a new one
-        joined.append((joined_start, joined_end, joined_controllers))
-        joined_start = start
-        joined_end = end
-        joined_controllers = set()
+  joined = list()
 
-    joined.append((joined_start, joined_end, joined_controllers))
+  for controller,segment_range in segments:
+    segment_start, segment_end = segment_range
+    i = len(joined)
+    while i > 0:
+      (start,end),controllers = joined[i-1]
+      if end+1 == segment_start:
+        end = segment_end
+        controllers.add(controller)
+        joined[i-1] = ((start,end), controllers)
+        break
+      i -= 1
 
-  return joined
+    if i == 0:
+      joined.append( ((segment_start, segment_end), {controller}) )
 
+  global joined_ranges
+  joined_ranges = joined
 
 controllers = dict()
 for dev in usb.core.find(idVendor=0x1CE3, idProduct=2, find_all=True):
   controller = DisplayController(dev)
   controllers[dev.serial_number] = controller
 
-joined_ranges = join_controller_ranges(controllers)
+join_controller_ranges(controllers)
 string_count = 0
 pixel_size = 3
 
-print(joined_ranges)
+#print(string_buffer_offset)
+#print({key :3*(s.stop-s.start) for (key,s) in controller_buffer_slices.items()})
 
 if len(joined_ranges) == 1:
-  start,end,controllers = joined_ranges[0]
+  (start,end),controllers = joined_ranges[0]
   string_count = (end-start+1)
 
 if string_count > 0:
