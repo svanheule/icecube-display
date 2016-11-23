@@ -34,7 +34,17 @@ def get_status_ep1(device):
   )
   print(status)
 
+
 class DisplayController:
+  "Object with USB display properties and some auxiliary functions."
+  # Information types
+  INFO_TYPE_IT_STATION = 0
+  INFO_TYPE_IC_STRING = 1
+
+  # LED types
+  LED_TYPE_APA102 = 0
+  LED_TYPE_WS2811 = 1
+
   def __init__(self, device):
     device.default_timeout = 500
     # work-around for xHCI behaviour
@@ -58,7 +68,6 @@ class DisplayController:
       if field_length > 0:
         field_value = data[offset:offset+field_length]
         offset += field_length
-
       yield (field_type, field_length, field_value)
 
   def __queryController(self):
@@ -68,7 +77,7 @@ class DisplayController:
     DP_TYPE_BUFFER_SIZE = 4
     DP_TYPE_END = 0xff
 
-    self.display_type = None
+    self.data_type = None
     self.data_ranges = list()
     self.led_type = None
 
@@ -86,82 +95,176 @@ class DisplayController:
 
       for t,l,v in self.__parseTlvData(data[2:]):
         if t == DP_TYPE_INFORMATION_TYPE:
-          self.display_type = v[0]
+          self.data_type = v[0]
         elif t == DP_TYPE_INFORMATION_RANGE:
           self.data_ranges.append((v[0], v[1]))
           self.data_ranges = sorted(self.data_ranges, key=lambda data_range: data_range[0])
         elif t == DP_TYPE_LED_TYPE:
           self.led_type = v[0]
 
-joined_ranges = list()
-controller_buffer_slices = dict()
-string_buffer_offset = dict()
+  def transmitDisplayBuffer(self, data):
+    try:
+      # DEPRECATED
+      # Write data via control command
+#      self.device.ctrl_transfer(out_request, 1, 0, 0, data, 40)
+      # NEW METHOD
+      # Write data to EP1
+      self.device.write(1, data, 40)
+    except usb.core.USBError as usb_error:
+      # TODO Error handling
+      pass
+#      if usb_error.errno == 32: # EP stall
+#        try:
+#          self.device.clear_halt(1)
+#        except:
+#          pass
 
-def join_controller_ranges(controllers):
-  """
-  Determine unified display string range
-  Sets a list of ((start, end), {controllers}) tuples
-       a dict of {controller : buffer_slice} items
-       a dict of {string : buffer_offset} items
-  """
-  segments = list()
-  global string_buffer_offset
-  offset = 0
-  offset_subbuffer = 0
 
-  for key,controller in controllers.items():
-    string_count = 0
-    for data_range in controller.data_ranges:
-      segments.append((key, data_range))
-      start,end = data_range
-      string_count += end-start+1
-      for string in range(start,end+1):
-        string_buffer_offset[string] = offset
-        offset += 1
+class DisplayRange:
+  def __init__(self, serial_number, range_type, start, end):
+    self.serial_number = serial_number
+    self.type = range_type
+    self.start = start
+    self.end = end
 
-    controller_buffer_slices[key] = slice(offset_subbuffer, offset_subbuffer+string_count*60)
-    offset_subbuffer += string_count*60
+  def __lt__(self, other):
+    # display range sorting:
+    #   * Range type
+    #   * Range start
+    #   * Serial number
+    if self.type != other.type:
+      return self.type < other.type
+    elif self.start != other.start:
+      return self.start < other.start
+    else:
+      # Assume key is of form XX-YY-III-KKKK
+      return int(self.serial_number.split('-')[:-1]) < int(other.serial_number.split('-')[:-1])
 
-  segments = sorted(segments, key=lambda seg: seg[1][0])
+  def __repr__(self):
+    return "({}:{}) for '{}'".format(self.start, self.end, self.serial_number)
 
-  joined = list()
 
-  for controller,segment_range in segments:
-    segment_start, segment_end = segment_range
-    i = len(joined)
-    while i > 0:
-      (start,end),controllers = joined[i-1]
-      if end+1 == segment_start:
-        end = segment_end
-        controllers.add(controller)
-        joined[i-1] = ((start,end), controllers)
-        break
-      i -= 1
+class LogicalDisplay:
+  def __init__(self, controllers):
+    self.controllers = controllers
 
-    if i == 0:
-      joined.append( ((segment_start, segment_end), {controller}) )
+    # Determine unified display string range
+    # Sets a dict of {controller : led_buffer_slice} items
+    #   a dict of {string_number : led_buffer_offset} items
+    self.__controller_buffer_slices = dict()
+    self.__string_buffer_offset = dict()
+    offset = 0
+    offset_subbuffer = 0
 
-  global joined_ranges
-  joined_ranges = joined
+    for controller in controllers:
+      key = controller.serial_number
+      controller_string_count = 0
+      for data_range in controller.data_ranges:
+        start,end = data_range
+        controller_string_count += end-start+1
+        for string in range(start,end+1):
+          self.__string_buffer_offset[string] = offset
+          offset += 1
 
+      if controller.data_type == DisplayController.INFO_TYPE_IC_STRING:
+        led_count = controller_string_count*60
+      elif controller.data_type == DisplayController.INFO_TYPE_IT_STATION:
+        led_count = controller_string_count
+      else:
+        raise ValueError("Unknown LED display type")
+
+      self.__controller_buffer_slices[key] = slice(offset_subbuffer, offset_subbuffer+led_count)
+      offset_subbuffer += led_count
+
+    if self.string_count == 0:
+      raise ValueError("Cannot create logical display with 0 detector strings")
+
+  @property
+  def string_count(self):
+    return len(self.__string_buffer_offset)
+
+  @property
+  def data_type(self):
+    return self.controllers[0].data_type
+
+  def get_led_index(self, omkey):
+    """Only provide om_key values for which canDisplayOMKey() returns True.
+    Returns the buffer offset, modulo the LED data size.
+    The first LED is at offset 0, second at offset 1, etc."""
+    offset = self.__string_buffer_offset[omkey.string]
+    if self.data_type == DisplayController.INFO_TYPE_IC_STRING:
+        dom_offset = omkey.om - 1
+        offset = 60*offset + dom_offset
+    return offset
+
+  @staticmethod
+  def group_controllers(controllers):
+    """
+    Determine unified display string range
+    Return a list of ((start, end), {controllers}) tuples
+    """
+    ranges = list()
+    if isinstance(controllers, dict):
+      for key,controller in controllers.items():
+        for data_range in controller.data_ranges:
+          ranges.append(DisplayRange(key, controller.data_type, *data_range))
+    else:
+      try:
+        for controller in controllers:
+          for data_range in controller.data_ranges:
+            ranges.append(DisplayRange(controller.serial_number, controller.data_type, *data_range))
+      except:
+        raise ValueError("'controllers' is not iterable")
+
+    # The following loop searches a (the last) range whose current end corresponds to the
+    # start of the next segment. If multiple logical displays are present which can show
+    # the same range, this will result in them being joined into multiple groups.
+    # If multiple display groups exist for the same range, they will be grouped by serial number
+    # FIXME If one range is longer than the other, the first range encountered by the loop will be
+    #       the extended, irrespective of whether this is the correct serial number grouping
+    groups = list()
+    for display_range in sorted(ranges):
+      segment_start = display_range.start
+      segment_end = display_range.end
+      segment_type = display_range.type
+      segment_serial = display_range.serial_number
+      i = len(groups)
+      while i > 0:
+        (start, end), group_controllers = groups[i-1]
+        if end+1 == segment_start and display_range:
+          end = segment_end
+          group_controllers.add(segment_serial)
+          groups[i-1] = ((start,end), group_controllers)
+          break
+        i -= 1
+
+      if i == 0:
+        groups.append( ((segment_start, segment_end), {segment_serial}) )
+
+    return groups
+
+# Controller discovery
+# TODO Put in DisplayManager
 controllers = dict()
 for dev in usb.core.find(idVendor=0x1CE3, idProduct=2, find_all=True):
   controller = DisplayController(dev)
   controllers[dev.serial_number] = controller
 
-join_controller_ranges(controllers)
+groups = LogicalDisplay.group_controllers(controllers)
+displays = list()
+for group_range,group_controllers in groups:
+  displays.append( LogicalDisplay([controllers[serial] for serial in group_controllers]) )
+
+# end display management
+
 string_count = 0
 pixel_size = 3
 
-#print(string_buffer_offset)
-#print({key :3*(s.stop-s.start) for (key,s) in controller_buffer_slices.items()})
-
-if len(joined_ranges) == 1:
-  (start,end),controllers = joined_ranges[0]
-  string_count = (end-start+1)
-
-if string_count > 0:
+if len(displays) > 0:
+  display = displays[0]
+  string_count = display.string_count
   print("Found display with {} strings".format(string_count))
+
   if len(sys.argv) > 1:
     offset = int(sys.argv[1])
   else:
@@ -176,6 +279,11 @@ if string_count > 0:
 
     frame = bytes(frame)
 
+    class OmKey:
+      def __init__(self, string, om):
+        self.string = string
+        self.om = om
+
     try:
       pass
 #      written = device.write(1, frame, 40)
@@ -185,6 +293,6 @@ if string_count > 0:
         # Try to recover and resend
         device.clear_halt(1)
       raise e
-    
+
     offset -= 1
     sleep(0.05)
