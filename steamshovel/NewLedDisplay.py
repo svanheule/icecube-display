@@ -17,7 +17,7 @@ except:
 from icecube.shovelart import PyArtist
 from icecube.shovelart import RangeSetting, ChoiceSetting, I3TimeColorMap
 from icecube.shovelart import PyQColor, TimeWindowColor, StepFunctionFloat
-from icecube.dataclasses import I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion
+from icecube.dataclasses import I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion, I3OMGeo
 import struct
 import threading
 
@@ -319,15 +319,14 @@ class LogicalDisplay:
   def buffer_length(self):
     return self.__buffer_length
 
-  def canDisplayOMKey(self, om_key):
-    """Check wether the display can display a certain DOM. Requires UsbDisplayProperties to be
-    set to a valid value. Otherwise this function will always return False."""
+  def canDisplayOMKey(self, geometry, om_key):
+    """Check wether the display can display a certain DOM."""
     valid_dom = False
-    # FIXME change this to dataclasses.I3OMGeo.IceTop/IceCube
+    omgeo = geometry.omgeo
     if self.__data_type == DisplayController.DATA_TYPE_IC_STRING:
-        valid_dom = (om_key.om >= 1) and (om_key.om <= 60)
+        valid_dom = om_key in omgeo and omgeo[om_key].omtype == I3OMGeo.IceCube
     elif self.__data_type == DisplayController.DATA_TYPE_IT_STATION:
-        valid_dom = (om_key >= 60) and (om_key.om <= 64)
+        valid_dom = om_key in omgeo and omgeo[om_key].omtype == I3OMGeo.IceTop
     return valid_dom and (om_key.string in self.__string_buffer_offset)
 
   def getLedIndex(self, om_key):
@@ -435,7 +434,7 @@ class DisplayManager:
 
 
 class NewLedDisplay(PyArtist):
-    numRequiredKeys = 1
+    numRequiredKeys = 2
     _SETTING_DEVICE = "Device"
     _SETTING_COLOR_STATIC = "Static color"
     _SETTING_BRIGHTNESS_STATIC = "Static brightness"
@@ -511,6 +510,8 @@ class NewLedDisplay(PyArtist):
           , "LedDisplay"
         )
         if key_idx == 0:
+            return "I3Geometry" == key_type
+        elif key_idx == 1:
             # Key may be any container of OMKeys or a mask
             # copied from Bubbles.py
             return (   ("OMKey" in key_type and not "I3ParticleID" in key_type )
@@ -544,7 +545,7 @@ class NewLedDisplay(PyArtist):
 
         return merged
 
-    def _handleOMKeyMapTimed(self, output, omkey_pulses_map):
+    def _handleOMKeyMapTimed(self, output, geometry, omkey_pulses_map):
         """Parse a map of OMKey to pulse series.
         :returns: A dict of LED buffer offsets to LedDisplay objects."""
         color_map = self.setting(self._SETTING_COLOR)
@@ -562,7 +563,7 @@ class NewLedDisplay(PyArtist):
                 "Data available for DOM {}-{}".format(omkey.string, omkey.om)
               , "LedDisplay"
             )
-            if self._display.canDisplayOMKey(omkey):
+            if self._display.canDisplayOMKey(geometry, omkey):
                 led = self._display.getLedIndex(omkey)
                 logging.log_trace("Placing data at buffer index {}".format(led), "LedDisplay")
                 # Ensure we're dealing with a list of pulses
@@ -662,7 +663,7 @@ class NewLedDisplay(PyArtist):
 
         return led_curves
 
-    def _handleOMKeyListStatic(self, output, omkey_list):
+    def _handleOMKeyListStatic(self, output, geometry, omkey_list):
         """Parse a map of OMKey to static values.
         :returns: A dict of LED buffer offsets to LedDisplay objects."""
         color_static = self.setting(self._SETTING_COLOR_STATIC)
@@ -675,7 +676,7 @@ class NewLedDisplay(PyArtist):
                 "Data available for DOM {}-{}".format(omkey.string, omkey.om)
               , "LedDisplay"
             )
-            if self._display.canDisplayOMKey(omkey):
+            if self._display.canDisplayOMKey(geometry, omkey):
                 led = self._display.getLedIndex(omkey)
                 if led not in led_curves:
                     led_curves[led] = self._display.led_class(
@@ -697,8 +698,9 @@ class NewLedDisplay(PyArtist):
             self._display = new_display
 
         if self._display:
-            (frame_key,) = self.keys()
-            omkey_object = frame[frame_key]
+            (geom_key, data_key) = self.keys()
+            geometry = frame[geom_key]
+            omkey_object = frame[data_key]
 
             # If we are displaying a mask/union, ensure omkey_object is a I3RecoPulseSeries object
             if isinstance(omkey_object, (I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion)):
@@ -709,9 +711,9 @@ class NewLedDisplay(PyArtist):
                     first_value = omkey_object[omkey_object.keys()[0]]
                     if hasattr(first_value, "__len__") and len(first_value) > 0:
                         if hasattr(first_value[0], "time"):
-                            self._leds = self._handleOMKeyMapTimed(output, omkey_object)
+                            self._leds = self._handleOMKeyMapTimed(output, geometry, omkey_object)
                     elif hasattr(first_value, "time"):
-                        self._leds = self._handleOMKeyMapTimed(output, omkey_object)
+                        self._leds = self._handleOMKeyMapTimed(output, geometry, omkey_object)
                     else:
                         self._leds = self._handleOMKeyListStatic(output, omkey_object.keys())
             elif hasattr(omkey_object, "__len__"):
