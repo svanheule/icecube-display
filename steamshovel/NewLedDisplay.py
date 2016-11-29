@@ -223,14 +223,15 @@ class DisplayRange:
 class DisplayWorker(threading.Thread):
   "Helper thread to transmit frame data to a single USB device."
 
-  def __init__(self, controller, buffer):
+  def __init__(self, controller, buffer_slice):
     super(DisplayWorker, self).__init__()
-    self.__buffer = buffer
+    self.buffer = None
+    self.__buffer_slice = buffer_slice
     self.__controller = controller
 
   def run(self):
-    if self.__buffer is not None:
-      self.__controller.transmitDisplayBuffer(self.__buffer)
+    if self.buffer is not None:
+      self.__controller.transmitDisplayBuffer(self.buffer[self.__buffer_slice])
 
 
 class LogicalDisplay:
@@ -299,6 +300,12 @@ class LogicalDisplay:
       raise ValueError("Unknown LED type: {}".format(led_type))
       self.__led_class = None
 
+    # Worker threads
+    self.__workers = list()
+    for key in self.controllers.keys():
+      w = DisplayWorker(self.controllers[key], self.__buffer_slices[key])
+      self.__workers.append(w)
+
   @property
   def string_count(self):
     return len(self.__string_buffer_offset)
@@ -349,13 +356,11 @@ class LogicalDisplay:
         self.controllers[key].transmitDisplayBuffer(data[self.__buffer_slices[key]])
     else:
       # Multi process code
-      workers = list()
-      for key in self.controllers.keys():
-        w = DisplayWorker(self.controllers[key], data[self.__buffer_slices[key]])
-        w.start()
-        workers.append(w)
+      for worker in self.__workers:
+        worker.buffer = data
+        worker.start()
 
-      for w in workers:
+      for worker in self.__workers:
         w.join()
 
   def close(self):
