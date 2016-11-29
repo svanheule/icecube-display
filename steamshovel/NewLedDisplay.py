@@ -706,19 +706,17 @@ class NewLedDisplay(PyArtist):
             if isinstance(omkey_object, (I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion)):
                 omkey_object = omkey_object.apply(frame)
 
-            if hasattr(omkey_object, "keys"): # I3Map of OMKeys
-                if len(omkey_object) > 0:
-                    first_value = omkey_object[omkey_object.keys()[0]]
-                    if hasattr(first_value, "__len__") and len(first_value) > 0:
-                        if hasattr(first_value[0], "time"):
-                            self._leds = self._handleOMKeyMapTimed(output, geometry, omkey_object)
-                    elif hasattr(first_value, "time"):
-                        self._leds = self._handleOMKeyMapTimed(output, geometry, omkey_object)
-                    else:
-                        self._leds = self._handleOMKeyListStatic(output, omkey_object.keys())
-            elif hasattr(omkey_object, "__len__"):
-                if len(omkey_object) > 0:
-                    self._leds = self._handleOMKeyListStatic(output, omkey_object)
+            if hasattr(omkey_object, "keys") and len(omkey_object) > 0: # I3Map of OMKeys
+               first_value = omkey_object[omkey_object.keys()[0]]
+               if hasattr(first_value, "__len__") and len(first_value) > 0:
+                   if hasattr(first_value[0], "time"):
+                       self._leds = self._handleOMKeyMapTimed(output, geometry, omkey_object)
+               elif hasattr(first_value, "time"):
+                   self._leds = self._handleOMKeyMapTimed(output, geometry, omkey_object)
+               else:
+                   self._leds = self._handleOMKeyListStatic(output, omkey_object.keys())
+            elif hasattr(omkey_object, "__len__") and len(omkey_object) > 0:
+               self._leds = self._handleOMKeyListStatic(output, omkey_object)
 
             output.addPhantom(self._cleanupEvent, self._updateEvent)
 
