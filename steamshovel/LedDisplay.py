@@ -556,8 +556,7 @@ class LedDisplay(PyArtist):
             for display in self._manager.displays:
                 # Collect device info
                 info = {
-                      "start" : display.string_range[0]
-                    , "end" : display.string_range[1]
+                      "length" : display.string_count
                     , "range_type" : "range"
                     , "product" : "LED display"
                 }
@@ -568,7 +567,7 @@ class LedDisplay(PyArtist):
                     info["product"] = "IceTop display"
                     info["range_type"] = "stations"
                 # Add to list of descriptors
-                description = "{product} ({range_type} {start}-{end})".format(**info)
+                description = "{product} ({length} {range_type})".format(**info)
                 device_descriptions.append(description)
         else:
             device_descriptions.append("no devices detected")
