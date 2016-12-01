@@ -1,4 +1,5 @@
 #include "usb/descriptor.h"
+#include "usb/endpoint.h"
 #include <stdlib.h>
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>
@@ -151,7 +152,7 @@ static const struct usb_descriptor_body_configuration_t BODY_CONFIG PROGMEM = {
   , 1
   , 1
   , 0
-  , _BV(7) | _BV(6)
+  , USB_CONFIG_ATTRIBUTES(1, 0)
   , 25
 };
 
@@ -167,7 +168,7 @@ static const struct usb_descriptor_body_interface_t BODY_INTERFACE PROGMEM = {
 
 static const struct usb_descriptor_body_endpoint_t BULK_ENDPOINT PROGMEM = {
     1
-  , 2
+  , EP_TYPE_BULK
   , 64
   , 0
 };
