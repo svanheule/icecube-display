@@ -262,26 +262,53 @@ class DisplayRange:
             return int(self.serial_number.split('-')[:-1]) < int(other.serial_number.split('-')[:-1])
 
     def __repr__(self):
-        return "({}:{}) for '{}'".format(self.start, self.end, self.serial_number)
+        return "<({}:{}) for '{}'>".format(self.start, self.end, self.serial_number)
 
 
 class DisplayWorker(threading.Thread):
-    "Helper thread to transmit frame data to a single USB device."
+    """
+    Helper thread to transmit frame data to a single USB device.
+    DisplayWorker.buffer can be set to a bytes() object of the required length, or None if no
+    data is to be transmitted.
+
+    Transmitting frames with multiple threads requires some synchronisation mechanisms.
+
+    When the worker's buffer is set to a valid value, DisplayWorker.buffer_ready.notify()
+    should be called, which triggers the sending of display frame data.
+    The dispatching thread should then wait for DisplayWorker.transmit_done to become set,
+    which happens after the slow USB write is completed.
+
+    Killing the thread can be done by calling DisplayWorker.halt(). The dispatching thread should
+    then call DisplayWorker.join() to wait for the thread to halt.
+    """
 
     def __init__(self, controller, buffer_slice):
         super(DisplayWorker, self).__init__()
+        self.buffer_ready = threading.Condition()
+        self.transmit_done = threading.Event()
+        self.__halt = threading.Event()
+
         self.buffer = None
         self.__buffer_slice = buffer_slice
         self.__controller = controller
 
+    def halt(self):
+        with self.buffer_ready:
+            self.buffer = None
+            self.__halt.set()
+            self.buffer_ready.notify()
+
     def run(self):
-        if self.buffer is not None:
-            self.__controller.transmitDisplayBuffer(self.buffer[self.__buffer_slice])
+        with self.buffer_ready:
+            while not self.__halt.is_set():
+                self.buffer_ready.wait()
+                if self.buffer is not None:
+                    self.__controller.transmitDisplayBuffer(self.buffer[self.__buffer_slice])
+                self.transmit_done.set()
 
 
 class LogicalDisplay:
     def __init__(self, controllers, multithreading=False):
-        self.__multithreading = multithreading
         # \a controllers should be a list of controllers that displays a continuous string range
         if len(controllers) == 0:
             raise ValueError("Cannot create a display with 0 controllers")
@@ -345,11 +372,17 @@ class LogicalDisplay:
             raise ValueError("Unknown LED type: {}".format(led_type))
             self.__led_class = None
 
-        # Worker threads
+        # Optional multithreading
+        self.__multithreading = multithreading
         self.__workers = list()
-        for key in self.controllers.keys():
-            w = DisplayWorker(self.controllers[key], self.__buffer_slices[key])
-            self.__workers.append(w)
+
+    def open(self):
+        self.__workers = list()
+        if self.__multithreading:
+            for key in self.controllers.keys():
+                w = DisplayWorker(self.controllers[key], self.__buffer_slices[key])
+                w.start()
+                self.__workers.append(w)
 
     @property
     def string_count(self):
@@ -403,14 +436,19 @@ class LogicalDisplay:
             # Multi process code
             for worker in self.__workers:
                 worker.buffer = data
-                worker.start()
+                with worker.buffer_ready:
+                    worker.buffer_ready.notify()
 
             for worker in self.__workers:
-                worker.join()
+                worker.transmit_done.wait()
+                worker.transmit_done.clear()
 
     def close(self):
-        # Placeholder function
-        pass
+        for worker in self.__workers:
+            worker.halt()
+
+        for worker in self.__workers:
+            worker.join()
 
 
 class DisplayManager:
@@ -424,7 +462,7 @@ class DisplayManager:
 
         self.__displays = list()
         for group_range,group_controllers in groups:
-            display = LogicalDisplay([controllers[serial] for serial in group_controllers], False)
+            display = LogicalDisplay([controllers[serial] for serial in group_controllers], True)
             self.__displays.append(display)
 
             # Log device
@@ -543,16 +581,6 @@ class LedDisplay(PyArtist):
         self.addSetting(self._SETTING_INFINITE_DURATION, True)
         self.addSetting(self._SETTING_DURATION, RangeSetting(1.0, 6.0, 40, 5.0))
         self.addCleanupAction(self._cleanupDisplay)
-
-    def _connectToDisplay(self, display):
-        # Close any old connection
-        if self._display:
-            self._display.close()
-        # New connection
-        if display:
-            self._display = display
-        else:
-            self._display = None
 
     def _cleanupDisplay(self):
         if self._display:
@@ -751,6 +779,12 @@ class LedDisplay(PyArtist):
           new_display = None
 
         if self._display != new_display:
+            # Close any old connection
+            if self._display is not None:
+                self._display.close()
+            # New connection
+            if new_display is not None:
+                new_display.open()
             self._display = new_display
 
         if self._display:
