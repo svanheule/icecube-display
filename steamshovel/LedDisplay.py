@@ -243,30 +243,6 @@ class DisplayController:
             logger.error("Could not write frame to controller %s: %s", self.serial_number, e)
 
 
-class DisplayRange:
-    def __init__(self, serial_number, range_type, start, end):
-        self.serial_number = serial_number
-        self.type = range_type
-        self.start = start
-        self.end = end
-
-    def __lt__(self, other):
-        # display range sorting:
-        #   * Range type
-        #   * Range start
-        #   * Serial number
-        if self.type != other.type:
-            return self.type < other.type
-        elif self.start != other.start:
-            return self.start < other.start
-        else:
-            # Assume key is of form XX-YY-III-KKKK
-            return int(self.serial_number.split('-')[:-1]) < int(other.serial_number.split('-')[:-1])
-
-    def __repr__(self):
-        return "<({}:{}) for '{}'>".format(self.start, self.end, self.serial_number)
-
-
 class DisplayWorker(threading.Thread):
     """
     Helper thread to transmit frame data to a single USB device.
@@ -451,6 +427,30 @@ class LogicalDisplay:
 
         for worker in self.__workers:
             worker.join()
+
+
+class DisplayRange:
+    def __init__(self, serial_number, range_type, start, end):
+        self.serial_number = serial_number
+        self.type = range_type
+        self.start = start
+        self.end = end
+
+    def __lt__(self, other):
+        # display range sorting:
+        #   * Range type
+        #   * Range start
+        #   * Serial number
+        if self.type != other.type:
+            return self.type < other.type
+        elif self.start != other.start:
+            return self.start < other.start
+        else:
+            # Assume key is of form XX-YY-III-KKKK
+            return int(self.serial_number.split('-')[:-1]) < int(other.serial_number.split('-')[:-1])
+
+    def __repr__(self):
+        return "<({}:{}) for '{}'>".format(self.start, self.end, self.serial_number)
 
 
 class DisplayManager:
