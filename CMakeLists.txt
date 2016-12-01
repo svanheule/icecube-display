@@ -92,6 +92,7 @@ set(SOURCES
   src/render/boot_splash.c
   src/render/test_scan.c
   src/render/test_ring.c
+  src/render/hex_geometry.c
   src/render/demo.c
   src/switches.c
 )
