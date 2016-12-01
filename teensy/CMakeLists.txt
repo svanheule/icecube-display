@@ -70,10 +70,8 @@ set(SOURCES
   src/frame_timer.c
   src/frame_timer_backend.c
   # Renderers
-#  src/render/boot_splash.c
-  src/render/test.c
+  src/render/rain.c
   src/usb/remote_renderer.c
-#  src/render/demo.c
   # USB communication
   src/remote_usb.c
   src/usb/led.c

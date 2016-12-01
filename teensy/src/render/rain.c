@@ -1,4 +1,4 @@
-#include "render/test.h"
+#include "render/rain.h"
 #include "frame_buffer.h"
 #include <stdint.h>
 #include "usb/led.h"
@@ -8,14 +8,14 @@
 static uint8_t color;
 static uint8_t dom_index;
 
-static void init_test() {
+static void init_rain() {
   color = 0;
   dom_index = 0;
 }
 
-static void stop_test() {}
+static void stop_rain() {}
 
-struct frame_buffer_t* render_test() {
+struct frame_buffer_t* render_rain() {
   struct frame_buffer_t* frame = create_empty_frame();
 
   if (frame) {
@@ -40,13 +40,13 @@ struct frame_buffer_t* render_test() {
   return frame;
 }
 
-static const struct renderer_t TEST_RENDERER = {
-    init_test
-  , stop_test
-  , render_test
+static const struct renderer_t RAIN_RENDERER = {
+    init_rain
+  , stop_rain
+  , render_rain
 };
 
-const struct renderer_t* get_test_renderer() {
-  return &TEST_RENDERER;
+const struct renderer_t* get_rain_renderer() {
+  return &RAIN_RENDERER;
 }
 
