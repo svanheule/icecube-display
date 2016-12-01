@@ -206,8 +206,10 @@ class DisplayController:
                 if t == DP_TYPE_INFORMATION_TYPE:
                     self.data_type = v[0]
                 elif t == DP_TYPE_INFORMATION_RANGE:
-                    self.data_ranges.append((v[0], v[1]))
-                    self.data_ranges = sorted(self.data_ranges, key=lambda data_range: data_range[0])
+                    i = 0
+                    while i < len(self.data_ranges) and self.data_ranges[i][0] < v[0]:
+                          i += 1
+                    self.data_ranges.insert(i, (v[0], v[1]))
                 elif t == DP_TYPE_LED_TYPE:
                     self.led_type = v[0]
 
