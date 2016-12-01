@@ -140,7 +140,7 @@ static const struct usb_descriptor_body_configuration_t BODY_CONFIG = {
   , .bConfigurationValue = 1
   , .iConfiguration = 0
   , .bmAttributes = USB_CONFIG_ATTRIBUTES(0, 0)
-  , .bMaxPower = 1
+  , .bMaxPower = 25
 };
 
 static const struct usb_descriptor_body_interface_t BODY_INTERFACE = {

@@ -153,7 +153,7 @@ static const struct usb_descriptor_body_configuration_t BODY_CONFIG PROGMEM = {
   , 1
   , 0
   , USB_CONFIG_ATTRIBUTES(1, 0)
-  , 25
+  , 1
 };
 
 static const struct usb_descriptor_body_interface_t BODY_INTERFACE PROGMEM = {
