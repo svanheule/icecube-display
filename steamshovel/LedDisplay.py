@@ -5,13 +5,51 @@
 __all__ = ["LedDisplay"]
 
 # Initialise logging
-from icecube.icetray import logging
+from icecube.icetray import i3logging, I3Logger, I3LogLevel
+import logging
+
+class I3LoggingHandler(logging.Handler):
+    def __init__(self):
+        super(I3LoggingHandler, self).__init__()
+
+    def emit(self, record):
+        if record.levelno in i3logging.LoggingBridge.i3levels:
+            level = i3logging.LoggingBridge.i3levels[record.levelno]
+        else:
+            levels = sorted(i3logging.LoggingBridge.pylevels.items(), lambda x,y: x[1]<y[1])
+            i = len(levels)
+            while i and levels[i-1][1] > record.levelno:
+                i -= 1
+            if i:
+              level = levels[i-1][0]
+            else:
+              level = I3LogLevel.LOG_TRACE
+        message = self.format(record)
+        if record.name.startswith("icecube."):
+            name = record.name[len("icecube."):]
+        else:
+            name = record.name
+        I3Logger.global_logger.log(
+              level
+            , name
+            , record.filename
+            , record.lineno
+            , record.funcName
+            , message
+        )
+
+logger = logging.getLogger("icecube.LedDisplay")
+log_handler = I3LoggingHandler()
+logger.addHandler(log_handler)
+
+i3_log_level = i3logging.LoggingBridge.global_logger.get_level_for_unit("LedDisplay")
+logger.setLevel(i3logging.LoggingBridge.pylevels[i3_log_level])
 
 try:
     import usb.core
     import usb.util
 except:
-    logging.log_notice("Failed to load USB support. LED displays are not supported.", "LedDisplay")
+    i3logging.log_notice("Failed to load USB support. LED displays are not supported.", "LedDisplay")
     raise ImportError
 
 from icecube.shovelart import PyArtist
@@ -22,423 +60,441 @@ import struct
 import threading
 
 class DisplayLed(object):
-  "Class representing the color of an RGB LED with time dependent color and brightness."
+    "Class representing the color of an RGB LED with time dependent color and brightness."
 
-  def __init__(self, brightness, color):
-    """Create a new DisplayLed object with given `brightness` and `color` values.
-    Both arguments may either be a function taking a single argument (time), or a static value.
-    :param brightness: Float in range [0,1] or a function that returns such a value.
-    :param color: PyQColor or a function that returns such a value."""
-    if not hasattr(brightness, "__call__"):
-      self._brightness = (lambda time : brightness)
-    else:
-      self._brightness = brightness
+    def __init__(self, brightness, color):
+        """Create a new DisplayLed object with given `brightness` and `color` values.
+        Both arguments may either be a function taking a single argument (time), or a static value.
+        :param brightness: Float in range [0,1] or a function that returns such a value.
+        :param color: PyQColor or a function that returns such a value."""
+        if not hasattr(brightness, "__call__"):
+            self._brightness = (lambda time : brightness)
+        else:
+            self._brightness = brightness
 
-    if not hasattr(color, "__call__"):
-      self._color = (lambda time : color)
-    else:
-      self._color = color
+        if not hasattr(color, "__call__"):
+            self._color = (lambda time : color)
+        else:
+            self._color = color
 
-  @classmethod
-  def float_to_led_data(cls, rgb):
-    "Convert a 3-tuple of floats to the binary RGB format required by the supported LED."
-    raise NotImplementedError
+    @classmethod
+    def float_to_led_data(cls, rgb):
+        "Convert a 3-tuple of floats to the binary RGB format required by the supported LED."
+        raise NotImplementedError
 
-  def get_value(self, time):
-    "Return a list of bytes containing the data provided to the LED."
-    brightness = min(1.0, self._brightness(time)) # Clip brightness
-    color = self._color(time)
-    alpha = float(color.alpha)/255
-    value = [comp*brightness*alpha for comp in color.rgbF()]
-    return self.float_to_led_data(value)
+    def get_value(self, time):
+        "Return a list of bytes containing the data provided to the LED."
+        brightness = min(1.0, self._brightness(time)) # Clip brightness
+        color = self._color(time)
+        alpha = float(color.alpha)/255
+        value = [comp*brightness*alpha for comp in color.rgbF()]
+        return self.float_to_led_data(value)
 
 class LedAPA102(DisplayLed):
-  "APA102 data format: 5b global brightness, 3×8b RGB (4 bytes total)"
-  DATA_LENGTH = 4
-  MAX_BRIGHTNESS = 2**5-1
+    "APA102 data format: 5b global brightness, 3×8b RGB (4 bytes total)"
+    DATA_LENGTH = 4
+    MAX_BRIGHTNESS = 2**5-1
 
-  @classmethod
-  def float_to_led_data(cls, rgb):
-    # Factor out brightness from colour
-    brightness = max(1./cls.MAX_BRIGHTNESS, max(rgb))
-    scaling = brightness / cls.MAX_BRIGHTNESS
-    rgb = [int(round(255 * (c**2.2)/brightness)) for c in rgb]
-    return [int(round(brightness*cls.MAX_BRIGHTNESS)), rgb[0], rgb[1], rgb[2]]
+    @classmethod
+    def float_to_led_data(cls, rgb):
+        # Factor out brightness from colour
+        brightness = max(1./cls.MAX_BRIGHTNESS, max(rgb))
+        scaling = brightness / cls.MAX_BRIGHTNESS
+        rgb = [int(round(255 * (c**2.2)/brightness)) for c in rgb]
+        return [int(round(brightness*cls.MAX_BRIGHTNESS)), rgb[0], rgb[1], rgb[2]]
 
 
 class LedWS2811(DisplayLed):
-  "WS2811/WS2812 data format: 3×8b RGB"
-  DATA_LENGTH = 3
+    "WS2811/WS2812 data format: 3×8b RGB"
+    DATA_LENGTH = 3
 
-  @classmethod
-  def float_to_led_data(cls, rgb):
-    return [int(round(255 * (c**2.2))) for c in rgb]
+    @classmethod
+    def float_to_led_data(cls, rgb):
+        return [int(round(255 * (c**2.2))) for c in rgb]
 
 
 class DisplayController:
-  __USB_VND_DEV_IN = usb.util.build_request_type(
-    usb.util.CTRL_IN
-  , usb.util.CTRL_TYPE_VENDOR
-  , usb.util.CTRL_RECIPIENT_DEVICE
-  )
-  __USB_VND_DEV_OUT = usb.util.build_request_type(
-      usb.util.CTRL_OUT
+    __USB_VND_DEV_IN = usb.util.build_request_type(
+      usb.util.CTRL_IN
     , usb.util.CTRL_TYPE_VENDOR
     , usb.util.CTRL_RECIPIENT_DEVICE
-  )
+    )
+    __USB_VND_DEV_OUT = usb.util.build_request_type(
+        usb.util.CTRL_OUT
+      , usb.util.CTRL_TYPE_VENDOR
+      , usb.util.CTRL_RECIPIENT_DEVICE
+    )
 
-  "Object with USB display properties and some auxiliary functions."
-  # Information types
-  DATA_TYPE_IT_STATION = 0
-  DATA_TYPE_IC_STRING = 1
+    "Object with USB display properties and some auxiliary functions."
+    # Information types
+    DATA_TYPE_IT_STATION = 0
+    DATA_TYPE_IC_STRING = 1
 
-  # LED types
-  LED_TYPE_APA102 = 0
-  LED_TYPE_WS2811 = 1
+    # LED types
+    LED_TYPE_APA102 = 0
+    LED_TYPE_WS2811 = 1
 
-  def __init__(self, device):
-    device.default_timeout = 500
-    # work-around for xHCI behaviour
-    # Set USB default configuration and then restore device configuration to force
-    # endpoint data toggle reset in the host driver.
-    device.set_configuration(0)
-    device.set_configuration(1)
-    self.device = device
-    self.serial_number = device.serial_number
-    self.__queryController()
+    def __init__(self, device):
+        device.default_timeout = 500
+        # work-around for xHCI behaviour
+        # Set USB default configuration and then restore device configuration to force
+        # endpoint data toggle reset in the host driver.
+        device.set_configuration(0)
+        device.set_configuration(1)
+        self.device = device
+        self.serial_number = device.serial_number
+        self.__queryController()
 
-  @property
-  def buffer_length(self):
-    pixel_length = 0
-    if self.led_type == self.LED_TYPE_APA102:
-      pixel_length = LedAPA102.DATA_LENGTH
-    elif self.led_type == self.LED_TYPE_WS2811:
-      pixel_length = LedWS2811.DATA_LENGTH
+    @property
+    def buffer_length(self):
+        pixel_length = 0
+        if self.led_type == self.LED_TYPE_APA102:
+            pixel_length = LedAPA102.DATA_LENGTH
+        elif self.led_type == self.LED_TYPE_WS2811:
+            pixel_length = LedWS2811.DATA_LENGTH
 
-    string_length = 0
-    if self.data_type == self.DATA_TYPE_IT_STATION:
-      string_length = 1
-    elif self.data_type == self.DATA_TYPE_IC_STRING:
-      string_length = 60
+        string_length = 0
+        if self.data_type == self.DATA_TYPE_IT_STATION:
+            string_length = 1
+        elif self.data_type == self.DATA_TYPE_IC_STRING:
+            string_length = 60
 
-    string_count = 0
-    for (start, end) in self.data_ranges:
-      string_count += end - (start-1)
+        string_count = 0
+        for (start, end) in self.data_ranges:
+            string_count += end - (start-1)
 
-    return pixel_length*string_length*string_count
+        return pixel_length*string_length*string_count
 
-  @staticmethod
-  def __parseTlvData(data):
-    offset = 0
-    data = bytearray(data)
-    while offset < len(data) and offset+1 < len(data):
-      field_type = data[offset]
-      field_length = data[offset+1]
-      field_value = bytearray()
-      offset += 2
-      if field_length > 0:
-        field_value = data[offset:offset+field_length]
-        offset += field_length
-      yield (field_type, field_length, field_value)
+    @staticmethod
+    def __parseTlvData(data):
+        offset = 0
+        data = bytearray(data)
+        while offset < len(data) and offset+1 < len(data):
+            field_type = data[offset]
+            field_length = data[offset+1]
+            field_value = bytearray()
+            offset += 2
+            if field_length > 0:
+                field_value = data[offset:offset+field_length]
+                offset += field_length
+            yield (field_type, field_length, field_value)
 
-  def __queryController(self):
-    DP_TYPE_INFORMATION_TYPE = 1
-    DP_TYPE_INFORMATION_RANGE = 2
-    DP_TYPE_LED_TYPE = 3
-    DP_TYPE_BUFFER_SIZE = 4
-    DP_TYPE_END = 0xff
+    def __queryController(self):
+        DP_TYPE_INFORMATION_TYPE = 1
+        DP_TYPE_INFORMATION_RANGE = 2
+        DP_TYPE_LED_TYPE = 3
+        DP_TYPE_BUFFER_SIZE = 4
+        DP_TYPE_END = 0xff
 
-    self.data_type = None
-    self.data_ranges = list()
-    self.led_type = None
+        self.data_type = None
+        self.data_ranges = list()
+        self.led_type = None
 
-    if self.device:
-      data = self.device.ctrl_transfer(
-          self.__USB_VND_DEV_IN
-        , 2 # Vendor request DISPLAY_PROPERTIES
-        , 0
-        , 0
-        , (1<<8)
-      )
+        if self.device:
+            data = self.device.ctrl_transfer(
+                self.__USB_VND_DEV_IN
+              , 2 # Vendor request DISPLAY_PROPERTIES
+              , 0
+              , 0
+              , (1<<8)
+            )
 
-      if struct.unpack("<H", data[:2])[0] != len(data):
-        raise ValueError("Display information has invalid length")
+            if struct.unpack("<H", data[:2])[0] != len(data):
+                raise ValueError("Display information has invalid length")
 
-      for t,l,v in self.__parseTlvData(data[2:]):
-        if t == DP_TYPE_INFORMATION_TYPE:
-          self.data_type = v[0]
-        elif t == DP_TYPE_INFORMATION_RANGE:
-          self.data_ranges.append((v[0], v[1]))
-          self.data_ranges = sorted(self.data_ranges, key=lambda data_range: data_range[0])
-        elif t == DP_TYPE_LED_TYPE:
-          self.led_type = v[0]
+            for t,l,v in self.__parseTlvData(data[2:]):
+                if t == DP_TYPE_INFORMATION_TYPE:
+                    self.data_type = v[0]
+                elif t == DP_TYPE_INFORMATION_RANGE:
+                    self.data_ranges.append((v[0], v[1]))
+                    self.data_ranges = sorted(self.data_ranges, key=lambda data_range: data_range[0])
+                elif t == DP_TYPE_LED_TYPE:
+                    self.led_type = v[0]
 
-  def transmitDisplayBuffer(self, data):
-    try:
-      # Write data to EP1
-      self.device.write(1, data, 40)
-    except usb.core.USBError as usb_error:
-      # TODO Better error handling
-      print(usb_error.errno)
-      if usb_error.errno == 32:
-        # EP stalled, try to clear
+    def transmitDisplayBuffer(self, data):
         try:
-          self.device.clear_halt(1)
-        except:
-          pass
-      elif usb_error.errno == 19:
-        # No such device. Maybe it was reattached to the USB port, so try to find it back
-        try:
-          for device in usb.core.find(idVendor=0x1CE3, find_all=True):
-            if device.serial_number == self.serial_number:
-              self.device = device
-        except:
-          pass
+            # Write data to EP1
+            self.device.write(1, data, 40)
+        except usb.core.USBError as usb_error:
+            # TODO Better error handling
+            logger.error(
+                  "Could not write frame to controller %s (USB errno %d)"
+                , self.serial_number
+                , usb_error.errno
+            )
+            if usb_error.errno == 32:
+                # EP stalled, try to clear
+                logger.info("Endpoint stalled")
+                try:
+                    self.device.clear_halt(1)
+                except:
+                    pass
+            elif usb_error.errno == 19:
+                # No such device. Maybe it was reattached to the USB port, so try to find it back
+                logger.info("Device removed")
+                try:
+                    match_function = lambda d: d.serial_number == self.serial_number
+                    self.device = usb.core.find(idVendor=0x1CE3, custom_match=match_function)
+                except:
+                    pass
+        except Exception as e:
+            logger.error("Could not write frame to controller %s: %s", self.serial_number, e)
 
 
 class DisplayRange:
-  def __init__(self, serial_number, range_type, start, end):
-    self.serial_number = serial_number
-    self.type = range_type
-    self.start = start
-    self.end = end
+    def __init__(self, serial_number, range_type, start, end):
+        self.serial_number = serial_number
+        self.type = range_type
+        self.start = start
+        self.end = end
 
-  def __lt__(self, other):
-    # display range sorting:
-    #   * Range type
-    #   * Range start
-    #   * Serial number
-    if self.type != other.type:
-      return self.type < other.type
-    elif self.start != other.start:
-      return self.start < other.start
-    else:
-      # Assume key is of form XX-YY-III-KKKK
-      return int(self.serial_number.split('-')[:-1]) < int(other.serial_number.split('-')[:-1])
+    def __lt__(self, other):
+        # display range sorting:
+        #   * Range type
+        #   * Range start
+        #   * Serial number
+        if self.type != other.type:
+            return self.type < other.type
+        elif self.start != other.start:
+            return self.start < other.start
+        else:
+            # Assume key is of form XX-YY-III-KKKK
+            return int(self.serial_number.split('-')[:-1]) < int(other.serial_number.split('-')[:-1])
 
-  def __repr__(self):
-    return "({}:{}) for '{}'".format(self.start, self.end, self.serial_number)
+    def __repr__(self):
+        return "({}:{}) for '{}'".format(self.start, self.end, self.serial_number)
 
 
 class DisplayWorker(threading.Thread):
-  "Helper thread to transmit frame data to a single USB device."
+    "Helper thread to transmit frame data to a single USB device."
 
-  def __init__(self, controller, buffer_slice):
-    super(DisplayWorker, self).__init__()
-    self.buffer = None
-    self.__buffer_slice = buffer_slice
-    self.__controller = controller
+    def __init__(self, controller, buffer_slice):
+        super(DisplayWorker, self).__init__()
+        self.buffer = None
+        self.__buffer_slice = buffer_slice
+        self.__controller = controller
 
-  def run(self):
-    if self.buffer is not None:
-      self.__controller.transmitDisplayBuffer(self.buffer[self.__buffer_slice])
+    def run(self):
+        if self.buffer is not None:
+            self.__controller.transmitDisplayBuffer(self.buffer[self.__buffer_slice])
 
 
 class LogicalDisplay:
-  def __init__(self, controllers, multithreading=False):
-    self.__multithreading = multithreading
-    # \a controllers should be a list of controllers that displays a continuous string range
-    if len(controllers) == 0:
-      raise ValueError("Cannot create a display with 0 controllers")
+    def __init__(self, controllers, multithreading=False):
+        self.__multithreading = multithreading
+        # \a controllers should be a list of controllers that displays a continuous string range
+        if len(controllers) == 0:
+            raise ValueError("Cannot create a display with 0 controllers")
 
-    # Determine unified display string range
-    # Sets a dict of {controller : led_buffer_slice} items
-    #   a dict of {string_number : led_buffer_offset} items
-    self.__buffer_slices = dict()
-    self.__string_buffer_offset = dict()
-    self.__buffer_length = 0
-    offset = 0
+        # Determine unified display string range
+        # Sets a dict of {controller : led_buffer_slice} items
+        #   a dict of {string_number : led_buffer_offset} items
+        self.__buffer_slices = dict()
+        self.__string_buffer_offset = dict()
+        self.__buffer_length = 0
+        offset = 0
 
-    self.controllers = dict()
-    self.__data_type = None
-    led_type = None
-    self.__range_start = None
-    self.__range_end = None
-    for controller in controllers:
-      key = controller.serial_number
-      self.controllers[key] = controller
+        self.controllers = dict()
+        self.__data_type = None
+        led_type = None
+        self.__range_start = None
+        self.__range_end = None
+        for controller in controllers:
+            key = controller.serial_number
+            self.controllers[key] = controller
 
-      if self.__data_type is None:
-        self.__data_type = controller.data_type
-        led_type = controller.led_type
-      elif self.__data_type != controller.data_type:
-        raise ValueError("Cannot create a single display with multiple data types")
-      elif led_type != controller.led_type:
-        raise ValueError("Cannot create a single display with multiple LED types")
+            if self.__data_type is None:
+                self.__data_type = controller.data_type
+                led_type = controller.led_type
+            elif self.__data_type != controller.data_type:
+                raise ValueError("Cannot create a single display with multiple data types")
+            elif led_type != controller.led_type:
+                raise ValueError("Cannot create a single display with multiple LED types")
 
 
-      controller_string_count = 0
-      for data_range in controller.data_ranges:
-        start, end = data_range
-        # Determine display string range
-        if self.__range_start is None:
-          self.__range_start = start
-          self.__range_end = end
+            controller_string_count = 0
+            for data_range in controller.data_ranges:
+                start, end = data_range
+                # Determine display string range
+                if self.__range_start is None:
+                    self.__range_start = start
+                    self.__range_end = end
+                else:
+                    self.__range_start = min(self.__range_start, start)
+                    self.__range_end = max(self.__range_end, end)
+                # Calculate string to buffer offset mapping
+                for string in range(start,end+1):
+                    self.__string_buffer_offset[string] = offset
+                    offset += 1
+
+            self.__buffer_slices[key] = slice(
+                self.__buffer_length
+              , self.__buffer_length + controller.buffer_length
+            )
+            self.__buffer_length += controller.buffer_length
+
+        if self.__buffer_length == 0:
+            raise ValueError("Cannot create logical display with 0 buffer length")
+
+        # If control gets here, the internal state should be valid
+        if led_type == DisplayController.LED_TYPE_APA102:
+            self.__led_class = LedAPA102
+        elif led_type == DisplayController.LED_TYPE_WS2811:
+            self.__led_class = LedWS2811
         else:
-          self.__range_start = min(self.__range_start, start)
-          self.__range_end = max(self.__range_end, end)
-        # Calculate string to buffer offset mapping
-        for string in range(start,end+1):
-          self.__string_buffer_offset[string] = offset
-          offset += 1
+            raise ValueError("Unknown LED type: {}".format(led_type))
+            self.__led_class = None
 
-      self.__buffer_slices[key] = slice(
-          self.__buffer_length
-        , self.__buffer_length + controller.buffer_length
-      )
-      self.__buffer_length += controller.buffer_length
+        # Worker threads
+        self.__workers = list()
+        for key in self.controllers.keys():
+            w = DisplayWorker(self.controllers[key], self.__buffer_slices[key])
+            self.__workers.append(w)
 
-    if self.__buffer_length == 0:
-      raise ValueError("Cannot create logical display with 0 buffer length")
+    @property
+    def string_count(self):
+        return len(self.__string_buffer_offset)
 
-    # If control gets here, the internal state should be valid
-    if led_type == DisplayController.LED_TYPE_APA102:
-      self.__led_class = LedAPA102
-    elif led_type == DisplayController.LED_TYPE_WS2811:
-      self.__led_class = LedWS2811
-    else:
-      raise ValueError("Unknown LED type: {}".format(led_type))
-      self.__led_class = None
+    @property
+    def string_range(self):
+        return (self.__range_start, self.__range_end)
 
-    # Worker threads
-    self.__workers = list()
-    for key in self.controllers.keys():
-      w = DisplayWorker(self.controllers[key], self.__buffer_slices[key])
-      self.__workers.append(w)
+    @property
+    def data_type(self):
+        return self.__data_type
 
-  @property
-  def string_count(self):
-    return len(self.__string_buffer_offset)
+    @property
+    def led_class(self):
+        return self.__led_class
 
-  @property
-  def string_range(self):
-    return (self.__range_start, self.__range_end)
+    @property
+    def buffer_length(self):
+        return self.__buffer_length
 
-  @property
-  def data_type(self):
-    return self.__data_type
+    def canDisplayOMKey(self, geometry, om_key):
+        """Check wether the display can display a certain DOM."""
+        valid_dom = False
+        omgeo = geometry.omgeo
+        if self.__data_type == DisplayController.DATA_TYPE_IC_STRING:
+              valid_dom = om_key in omgeo and omgeo[om_key].omtype == I3OMGeo.IceCube
+        elif self.__data_type == DisplayController.DATA_TYPE_IT_STATION:
+              valid_dom = om_key in omgeo and omgeo[om_key].omtype == I3OMGeo.IceTop
+        return valid_dom and (om_key.string in self.__string_buffer_offset)
 
-  @property
-  def led_class(self):
-    return self.__led_class
+    def getLedIndex(self, om_key):
+        """Only provide om_key values for which canDisplayOMKey() returns True.
+        Returns the buffer offset, divided by the LED data size.
+        The first LED is at offset 0, second at offset 1, etc."""
+        offset = self.__string_buffer_offset[om_key.string]
+        if self.data_type == DisplayController.DATA_TYPE_IC_STRING:
+            dom_offset = om_key.om - 1
+            offset = 60*offset + dom_offset
+        return offset
 
-  @property
-  def buffer_length(self):
-    return self.__buffer_length
+    def transmitDisplayBuffer(self, data):
+        if len(data) != self.__buffer_length:
+            raise ValueError("Data buffer has invalid length")
 
-  def canDisplayOMKey(self, geometry, om_key):
-    """Check wether the display can display a certain DOM."""
-    valid_dom = False
-    omgeo = geometry.omgeo
-    if self.__data_type == DisplayController.DATA_TYPE_IC_STRING:
-        valid_dom = om_key in omgeo and omgeo[om_key].omtype == I3OMGeo.IceCube
-    elif self.__data_type == DisplayController.DATA_TYPE_IT_STATION:
-        valid_dom = om_key in omgeo and omgeo[om_key].omtype == I3OMGeo.IceTop
-    return valid_dom and (om_key.string in self.__string_buffer_offset)
+        if not self.__multithreading:
+            # Single threaded working code
+            for key in self.controllers.keys():
+                self.controllers[key].transmitDisplayBuffer(data[self.__buffer_slices[key]])
+        else:
+            # Multi process code
+            for worker in self.__workers:
+                worker.buffer = data
+                worker.start()
 
-  def getLedIndex(self, om_key):
-    """Only provide om_key values for which canDisplayOMKey() returns True.
-    Returns the buffer offset, modulo the LED data size.
-    The first LED is at offset 0, second at offset 1, etc."""
-    offset = self.__string_buffer_offset[om_key.string]
-    if self.data_type == DisplayController.DATA_TYPE_IC_STRING:
-        dom_offset = om_key.om - 1
-        offset = 60*offset + dom_offset
-    return offset
+            for worker in self.__workers:
+                worker.join()
 
-  def transmitDisplayBuffer(self, data):
-    if len(data) != self.__buffer_length:
-      raise ValueError("Data buffer has invalid length")
-
-    if not self.__multithreading:
-      # Single threaded working code
-      for key in self.controllers.keys():
-        self.controllers[key].transmitDisplayBuffer(data[self.__buffer_slices[key]])
-    else:
-      # Multi process code
-      for worker in self.__workers:
-        worker.buffer = data
-        worker.start()
-
-      for worker in self.__workers:
-        w.join()
-
-  def close(self):
-    # Placeholder function
-    pass
+    def close(self):
+        # Placeholder function
+        pass
 
 
 class DisplayManager:
-  def __init__(self):
-    controllers = dict()
-    for dev in usb.core.find(idVendor=0x1CE3, find_all=True):
-      controller = DisplayController(dev)
-      controllers[dev.serial_number] = controller
+    def __init__(self):
+        controllers = dict()
+        for dev in usb.core.find(idVendor=0x1CE3, find_all=True):
+            controller = DisplayController(dev)
+            controllers[dev.serial_number] = controller
 
-    groups = self.__groupControllers(controllers)
+        groups = self.__groupControllers(controllers)
 
-    self.__displays = list()
-    for group_range,group_controllers in groups:
-      display = LogicalDisplay([controllers[serial] for serial in group_controllers], False)
-      self.__displays.append(display)
-      # Log device TODO
-#      logging.log_info(
-#           "Found [usb:{bus:03d}-{address:03d}] {product} for {range_type} {ranges} (SN: {serial})".format(**info)
-#         , "LedDisplay"
-#      )
+        self.__displays = list()
+        for group_range,group_controllers in groups:
+            display = LogicalDisplay([controllers[serial] for serial in group_controllers], False)
+            self.__displays.append(display)
 
-  @property
-  def displays(self):
-    return self.__displays
+            # Log device
+            display_info = {
+                  "strings" : display.string_count
+                , "led" : display.led_class.__name__
+                , "buffer" : display.buffer_length
+            }
+            if display.data_type == DisplayController.DATA_TYPE_IT_STATION:
+                display_info["type"] = "stations"
+            else:
+                display_info["type"] = "strings"
 
-  @staticmethod
-  def __groupControllers(controllers):
-    """
-    Determine unified display string range
-    Return a list of ((start, end), {controllers}) tuples
-    """
-    ranges = list()
-    if isinstance(controllers, dict):
-      for key,controller in controllers.items():
-        for data_range in controller.data_ranges:
-          ranges.append(DisplayRange(key, controller.data_type, *data_range))
-    else:
-      try:
-        for controller in controllers:
-          for data_range in controller.data_ranges:
-            ranges.append(DisplayRange(controller.serial_number, controller.data_type, *data_range))
-      except:
-        raise ValueError("'controllers' is not iterable")
+            logger.info(
+                  "Found display with %(strings)d %(type)s (%(led)s, buffer size %(buffer)d)"
+                , display_info
+            )
 
-    # The following loop searches a (the last) range whose current end corresponds to the
-    # start of the next segment. If multiple logical displays are present which can show
-    # the same range, this will result in them being joined into multiple groups.
-    # If multiple display groups exist for the same range, they will be grouped by serial number
-    # FIXME If one range is longer than the other, the first range encountered by the loop will be
-    #       the extended, irrespective of whether this is the correct serial number grouping
-    groups = list()
-    for display_range in sorted(ranges):
-      segment_start = display_range.start
-      segment_end = display_range.end
-      segment_type = display_range.type
-      segment_serial = display_range.serial_number
-      i = len(groups)
-      while i > 0:
-        (start, end), group_controllers = groups[i-1]
-        if end+1 == segment_start and display_range:
-          end = segment_end
-          group_controllers.add(segment_serial)
-          groups[i-1] = ((start,end), group_controllers)
-          break
-        i -= 1
+    @property
+    def displays(self):
+        return self.__displays
 
-      if i == 0:
-        groups.append( ((segment_start, segment_end), {segment_serial}) )
+    @staticmethod
+    def __groupControllers(controllers):
+        """
+        Determine unified display string range
+        Return a list of ((start, end), {controllers}) tuples
+        """
+        ranges = list()
+        if isinstance(controllers, dict):
+            for key,controller in controllers.items():
+                for data_range in controller.data_ranges:
+                    ranges.append(DisplayRange(key, controller.data_type, *data_range))
+        else:
+            try:
+                for controller in controllers:
+                    for data_range in controller.data_ranges:
+                        ranges.append(DisplayRange(controller.serial_number, controller.data_type, *data_range))
+            except:
+                raise ValueError("'controllers' is not iterable")
 
-    return groups
+        # The following loop searches a (the last) range whose current end corresponds to the
+        # start of the next segment. If multiple logical displays are present which can show
+        # the same range, this will result in them being joined into multiple groups.
+        # If multiple display groups exist for the same range, they will be grouped by serial number
+        # FIXME If one range is longer than the other, the first range encountered by the loop will be
+        #       the extended, irrespective of whether this is the correct serial number grouping
+        groups = list()
+        for display_range in sorted(ranges):
+            segment_start = display_range.start
+            segment_end = display_range.end
+            segment_type = display_range.type
+            segment_serial = display_range.serial_number
+            i = len(groups)
+            while i > 0:
+                (start, end), group_controllers = groups[i-1]
+                if end+1 == segment_start and display_range:
+                    end = segment_end
+                    group_controllers.add(segment_serial)
+                    groups[i-1] = ((start,end), group_controllers)
+                    break
+                i -= 1
+
+            if i == 0:
+                groups.append( ((segment_start, segment_end), {segment_serial}) )
+
+        return groups
 
 
-class NewLedDisplay(PyArtist):
+class LedDisplay(PyArtist):
     numRequiredKeys = 2
     _SETTING_DEVICE = "Device"
     _SETTING_COLOR_STATIC = "Static color"
@@ -500,7 +556,7 @@ class NewLedDisplay(PyArtist):
 
     def _cleanupDisplay(self):
         if self._display:
-            logging.log_debug("Clearing display", "LedDisplay")
+            i3logging.log_debug("Clearing display", "LedDisplay")
             # Blank display and release USB device interface
             self._display.transmitDisplayBuffer(bytes(bytearray(self._display.buffer_length)))
             self._display.close()
@@ -510,10 +566,6 @@ class NewLedDisplay(PyArtist):
 
     def isValidKey(self, frame, key_idx, key):
         key_type = frame.type_name(key)
-        logging.log_trace(
-            "key '{}' of type '{}' offered for key index {}".format(key, key_type, key_idx)
-          , "LedDisplay"
-        )
         if key_idx == 0:
             return "I3Geometry" == key_type
         elif key_idx == 1:
@@ -564,13 +616,12 @@ class NewLedDisplay(PyArtist):
         led_pulses = {}
 
         for omkey, pulses in omkey_pulses_map:
-            logging.log_trace(
-                "Data available for DOM {}-{}".format(omkey.string, omkey.om)
-              , "LedDisplay"
-            )
             if self._display.canDisplayOMKey(geometry, omkey):
+                i3logging.log_trace(
+                    "Data available for DOM {}-{}".format(omkey.string, omkey.om)
+                  , "LedDisplay"
+                )
                 led = self._display.getLedIndex(omkey)
-                logging.log_trace("Placing data at buffer index {}".format(led), "LedDisplay")
                 # Ensure we're dealing with a list of pulses
                 if not hasattr(pulses, "__len__"):
                     pulses = list(pulses)
@@ -677,11 +728,11 @@ class NewLedDisplay(PyArtist):
         led_curves = {}
 
         for omkey in omkey_list:
-            logging.log_trace(
-                "Data available for DOM {}-{}".format(omkey.string, omkey.om)
-              , "LedDisplay"
-            )
             if self._display.canDisplayOMKey(geometry, omkey):
+                i3logging.log_trace(
+                      "Data available for DOM {}-{}".format(omkey.string, omkey.om)
+                    , "LedDisplay"
+                )
                 led = self._display.getLedIndex(omkey)
                 if led not in led_curves:
                     led_curves[led] = self._display.led_class(
@@ -734,7 +785,9 @@ class NewLedDisplay(PyArtist):
                 led_value = self._leds[led].get_value(event_time)
                 frame[led*data_length:(led+1)*data_length] = led_value
 
+            i3logging.log_trace("Sending frame data", "LedDisplay")
             self._display.transmitDisplayBuffer(bytes(frame))
 
     def _cleanupEvent(self):
         self._leds = {}
+
