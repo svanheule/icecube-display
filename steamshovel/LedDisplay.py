@@ -506,6 +506,8 @@ class DisplayManager:
             except:
                 raise ValueError("'controllers' is not iterable")
 
+        ranges.sort()
+
         # The following loop searches a (the last) range whose current end corresponds to the
         # start of the next segment. If multiple logical displays are present which can show
         # the same range, this will result in them being joined into multiple groups.
@@ -513,7 +515,7 @@ class DisplayManager:
         # FIXME If one range is longer than the other, the first range encountered by the loop will be
         #       the extended, irrespective of whether this is the correct serial number grouping
         groups = list()
-        for display_range in sorted(ranges):
+        for display_range in ranges:
             segment_start = display_range.start
             segment_end = display_range.end
             segment_type = display_range.type
@@ -521,7 +523,7 @@ class DisplayManager:
             i = len(groups)
             while i > 0:
                 (start, end), group_controllers = groups[i-1]
-                if end+1 == segment_start and display_range:
+                if end+1 == segment_start:
                     end = segment_end
                     group_controllers.add(segment_serial)
                     groups[i-1] = ((start,end), group_controllers)
