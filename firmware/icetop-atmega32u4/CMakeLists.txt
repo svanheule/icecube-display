@@ -80,20 +80,22 @@ set(CMAKE_C_OUTPUT_EXTENSION ".o")
 #set(CMAKE_VERBOSE_MAKEFILE true)
 
 # Source files
-include_directories(src)
+include_directories(../include)
+include_directories(include)
 set(SOURCES
   src/avr_main.c
-  src/memspace.c
   src/display_driver.c
   src/display_properties.c
-  src/frame_buffer.c
-  src/frame_queue.c
   src/frame_timer_backend.c
   src/render/boot_splash.c
   src/render/test_scan.c
   src/render/test_ring.c
   src/render/demo.c
   src/switches.c
+  ../common/memspace.c
+  ../common/frame_buffer.c
+  ../common/frame_queue.c
+  ../common/frame_timer.c
 )
 
 if(ARDUINO)
@@ -105,17 +107,16 @@ else()
     src/avr/endpoint_stack.c
     src/remote_usb.c
     src/usb/led.c
-    src/usb/device.c
     src/usb/address.c
     src/usb/endpoint.c
-    src/usb/endpoint_0.c
-    src/usb/remote_renderer.c
     src/usb/fifo.c
     src/usb/descriptor.c
-    src/usb/configuration.c
-    src/frame_timer.c
+    ../common/usb/device.c
+    ../common/usb/endpoint_0.c
+    ../common/usb/remote_renderer.c
+    ../common/usb/configuration.c
   )
-  configure_file(src/usb/serial.c.in serial.c)
+  configure_file(../common/usb/serial.c.in serial.c)
   list(APPEND SOURCES "${CMAKE_BINARY_DIR}/serial.c")
 endif()
 

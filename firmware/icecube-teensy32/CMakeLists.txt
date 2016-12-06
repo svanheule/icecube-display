@@ -56,40 +56,38 @@ set(CMAKE_C_OUTPUT_EXTENSION ".o")
 #set(CMAKE_VERBOSE_MAKEFILE true)
 
 # Source files
-include_directories(../src)
-include_directories(src)
+include_directories(../include)
+include_directories(include)
 include_directories(cores/teensy3)
 set(SOURCES
   src/main.c
-  src/memspace.c
+  ../common/memspace.c
+  ../common/frame_buffer.c
+  ../common/frame_queue.c
+  ../common/frame_timer.c
   # Frame management
   src/display_driver.c
   src/display_properties.c
-  src/frame_buffer.c
-  src/frame_queue.c
-  src/frame_timer.c
   src/frame_timer_backend.c
   # Renderers
-#  src/render/boot_splash.c
   src/render/test.c
-  src/usb/remote_renderer.c
-#  src/render/demo.c
+  ../common/usb/remote_renderer.c
   # USB communication
   src/remote_usb.c
   src/usb/led.c
-  src/usb/device.c
+  ../common/usb/device.c
   src/usb/address.c
   src/usb/endpoint.c
-  src/usb/endpoint_0.c
+  ../common/usb/endpoint_0.c
   src/usb/descriptor.c
-  src/usb/configuration.c
+  ../common/usb/configuration.c
   # Teensy specific
   src/kinetis/pit.c
   src/kinetis/ftm.c
   src/kinetis/dma.c
   src/kinetis/usb_bdt.c
 )
-configure_file(src/usb/serial.c.in serial.c)
+configure_file(../common/usb/serial.c.in serial.c)
 list(APPEND SOURCES "${CMAKE_BINARY_DIR}/serial.c")
 
 # modified source files from PJRC
@@ -98,7 +96,7 @@ list(APPEND SOURCES
   src/eeprom.c
 )
 
-set(PATH_LINKER_SCRIPT ${CMAKE_SOURCE_DIR}/src)
+set(PATH_LINKER_SCRIPT ${CMAKE_SOURCE_DIR})
 
 # Build program and generate associated hex file
 add_executable(icecube_display ${SOURCES})
@@ -144,7 +142,7 @@ add_custom_target(
 # Custom make target for uploading to microcontroller
 set(
   PROGRAM_COMMAND
-  ${CMAKE_SOURCE_DIR}/loader/teensy_loader_cli --mcu=$<UPPER_CASE:${TARGET_DEVICE}> -w
+  ${CMAKE_SOURCE_DIR}../../teensy/loader/teensy_loader_cli --mcu=$<UPPER_CASE:${TARGET_DEVICE}> -w
 )
 
 add_custom_target(
