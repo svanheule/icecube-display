@@ -4,6 +4,3 @@
 [submodule "teensy/loader"]
 	path = teensy/loader
 	url = git@github.com:PaulStoffregen/teensy_loader_cli.git
-[submodule "teensy/OctoWS2811"]
-	path = teensy/OctoWS2811
-	url = git@github.com:PaulStoffregen/OctoWS2811.git
