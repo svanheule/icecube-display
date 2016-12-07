@@ -49,7 +49,6 @@ size_t fifo_write_P(const void* restrict data, const size_t length);
   * \returns The number of bytes actually read from the FIFO. This may be less than \a length.
   */
 size_t fifo_read(void* restrict buffer, size_t length);
-size_t fifo_discard(size_t length);
 
 /// @}
 
