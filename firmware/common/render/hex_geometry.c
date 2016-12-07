@@ -1,5 +1,6 @@
 #include "render/hex_geometry.h"
 #include "avr/pgmspace.h"
+#include <stdlib.h>
 
 struct string_coordinates_t {
   int8_t v;
