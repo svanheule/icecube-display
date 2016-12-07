@@ -96,6 +96,7 @@ set(SOURCES
   ../common/frame_buffer.c
   ../common/frame_queue.c
   ../common/frame_timer.c
+  ../common/render/hex_geometry.c
 )
 
 if(ARDUINO)

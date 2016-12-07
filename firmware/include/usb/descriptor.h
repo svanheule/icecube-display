@@ -133,6 +133,9 @@ struct usb_descriptor_body_configuration_t {
   uint8_t bMaxPower;
 } __attribute__((packed));
 
+#define USB_CONFIG_ATTRIBUTES(self_powered, remote_wakeup) \
+    ((1<<7)|((self_powered)<<6)|((remote_wakeup)<<5))
+
 /// Interface descriptor body
 struct usb_descriptor_body_interface_t {
   uint8_t bInterfaceNumber;

@@ -1,7 +1,7 @@
 #include <stdint.h>
 
 #include "display_driver.h"
-#include "render/test.h"
+#include "render/rain.h"
 #include "remote.h"
 #include "frame_buffer.h"
 #include "frame_queue.h"
@@ -13,38 +13,26 @@ enum display_state_t {
   , DISPLAY_STATE_IDLE
   , DISPLAY_STATE_BOOT_SPLASH
   , DISPLAY_STATE_EXTERNAL
-  , DISPLAY_STATE_DEMO
-  , DISPLAY_STATE_TEST_RING
-  , DISPLAY_STATE_TEST_SNAKE
 };
 
 static volatile enum display_state_t display_state = DISPLAY_STATE_BOOT;
 static const struct renderer_t* volatile renderer = 0;
 // If boot splash duration is > 0, display splash first.
 // Otherwise go straight to idle.
-static uint8_t boot_splash_duration = 0;
+static uint8_t boot_splash_duration = DEVICE_FPS-1;
 
 static inline const struct renderer_t* get_renderer() {
   switch (display_state) {
 #ifdef DEVICE_TEST_MODE
     case DISPLAY_STATE_IDLE:
 #endif
-    case DISPLAY_STATE_TEST_SNAKE:
-      return get_test_renderer();
-      break;
-    case DISPLAY_STATE_DEMO:
-/*      return get_demo_renderer();*/
-/*      break;*/
-    case DISPLAY_STATE_TEST_RING:
-/*      return get_ring_renderer();*/
-/*      break;*/
     case DISPLAY_STATE_BOOT_SPLASH:
-/*      return get_boot_splash_renderer();*/
-/*      break;*/
-    case DISPLAY_STATE_BOOT:
+      return get_rain_renderer();
+      break;
 #ifndef DEVICE_TEST_MODE
     case DISPLAY_STATE_IDLE:
 #endif
+    case DISPLAY_STATE_BOOT:
     case DISPLAY_STATE_EXTERNAL:
     default:
       return 0;

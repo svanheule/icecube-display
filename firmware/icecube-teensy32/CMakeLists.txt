@@ -70,7 +70,7 @@ set(SOURCES
   src/display_properties.c
   src/frame_timer_backend.c
   # Renderers
-  src/render/test.c
+  src/render/rain.c
   ../common/usb/remote_renderer.c
   # USB communication
   src/remote_usb.c

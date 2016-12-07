@@ -1,4 +1,5 @@
 #include "usb/descriptor.h"
+#include "usb/endpoint.h"
 #include <stdlib.h>
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>
@@ -142,7 +143,7 @@ static const struct usb_descriptor_body_device_t BODY_DEVICE PROGMEM = {
   , 0x0010
   , 1
   , 2
-  , 3
+  , 4
   , 1
 };
 
@@ -151,8 +152,8 @@ static const struct usb_descriptor_body_configuration_t BODY_CONFIG PROGMEM = {
   , 1
   , 1
   , 0
-  , _BV(7) | _BV(6)
-  , 25
+  , USB_CONFIG_ATTRIBUTES(1, 0)
+  , 1
 };
 
 static const struct usb_descriptor_body_interface_t BODY_INTERFACE PROGMEM = {
@@ -162,23 +163,22 @@ static const struct usb_descriptor_body_interface_t BODY_INTERFACE PROGMEM = {
   , 0xFF
   , 0
   , 0
-  , 4
+  , 3
 };
 
 static const struct usb_descriptor_body_endpoint_t BULK_ENDPOINT PROGMEM = {
     1
-  , 2
+  , EP_TYPE_BULK
   , 64
   , 0
 };
 
 static const char16_t STR_MANUFACTURER[] PROGMEM = u"Ghent University";
 static const char16_t STR_PRODUCT[] PROGMEM = u"IceTop event display";
-extern const char16_t STR_SERIAL_NUMBER[] EEMEM;
 static const char16_t STR_IFACE_DESCR[] PROGMEM = u"Steamshovel display";
+extern const char16_t STR_SERIAL_NUMBER[] EEMEM;
 
 #define LANG_ID_EN_US 0x0409
-#define STRING_COUNT 4
 
 struct string_pointer_t {
   const char16_t* const p;
@@ -186,12 +186,13 @@ struct string_pointer_t {
 };
 
 static const uint16_t LANG_IDS[] PROGMEM = {LANG_ID_EN_US, 0x0000};
-static const struct string_pointer_t STR_EN_US[STRING_COUNT] PROGMEM = {
+static const struct string_pointer_t STR_EN_US[] PROGMEM = {
     {STR_MANUFACTURER, MEMSPACE_PROGMEM}
   , {STR_PRODUCT, MEMSPACE_PROGMEM}
-  , {STR_SERIAL_NUMBER, MEMSPACE_EEPROM}
   , {STR_IFACE_DESCR, MEMSPACE_PROGMEM}
+  , {STR_SERIAL_NUMBER, MEMSPACE_EEPROM}
 };
+static const uint8_t STRING_COUNT = sizeof(STR_EN_US)/sizeof(struct string_pointer_t);
 
 static struct usb_descriptor_body_configuration_t descriptor_config;
 

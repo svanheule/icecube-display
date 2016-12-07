@@ -4,8 +4,6 @@
 #include <string.h>
 #include <avr/eeprom.h>
 
-#include "kinetis/io.h"
-
 typedef __CHAR16_TYPE__ char16_t;
 
 // Return the number of 16b words in str.
@@ -141,8 +139,8 @@ static const struct usb_descriptor_body_configuration_t BODY_CONFIG = {
   , .bNumInterfaces = 1
   , .bConfigurationValue = 1
   , .iConfiguration = 0
-  , .bmAttributes = _BV(7)
-  , .bMaxPower = 1
+  , .bmAttributes = USB_CONFIG_ATTRIBUTES(0, 0)
+  , .bMaxPower = 25
 };
 
 static const struct usb_descriptor_body_interface_t BODY_INTERFACE = {
