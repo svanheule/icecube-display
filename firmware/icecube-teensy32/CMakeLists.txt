@@ -48,7 +48,7 @@ set(
   CACHE BOOL "Whether this display segment contains the DeepCore strings"
 )
 set(TEST_MODE OFF CACHE BOOL "Run display in test mode")
-set(DEVICE_FPS "1" CACHE STRING "Number of frames displayed per second")
+set(DEVICE_FPS "25" CACHE STRING "Number of frames displayed per second")
 
 # Set the GCC flags required
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=cortex-m4 -mthumb")
