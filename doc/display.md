@@ -73,7 +73,7 @@ The options of the LedDisplay artist have been modelled after the Bubbles artist
   * *Finite pulses*: If 'Use infinite pulses' is checked, a hit will be shown starting from its time
       of detection. Otherwise it will disappear after the selected duration. This is different from
       the Bubbles setting in that the highest value of the pulse duration slider isn't interpreted
-      as positive infinity, but just 10⁵ns.
+      as positive infinity, but just \f$10^5\f$ns.
 
 \image html screenshot-steamshovel.png "Steamshovel with LedDisplay artist"
 \image latex screenshot-steamshovel.png "Steamshovel with LedDisplay artist" width=0.7\textwidth
