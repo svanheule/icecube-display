@@ -1,6 +1,7 @@
 #include "render/test_ring.h"
 #include "render/hex_geometry.h"
 #include "frame_buffer.h"
+#include "display_types.h"
 #include <avr/pgmspace.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -26,7 +27,7 @@ struct frame_buffer_t* render_ring() {
     // Only expand every second frame
     uint8_t radius = ring_frame>>1;
 
-    uint8_t* buffer = (uint8_t*) frame->buffer;
+    uint8_t* buffer = frame->buffer;
 
     // Draw only IT78 stations, in-fill stations are already cleared
     for (uint8_t led = 0; led < LED_COUNT_IT78; ++led) {

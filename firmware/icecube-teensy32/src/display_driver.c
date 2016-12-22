@@ -10,6 +10,7 @@
 
 #include "display_driver.h"
 #include "display_properties.h"
+#include "display_types.h"
 
 
 // Buffer dimensions

@@ -105,12 +105,6 @@ enum display_led_color_order_t {
   , LED_ORDER_GRB = 5
 };
 
-/// Number of LEDs, which represent IceTop stations, present in the display.
-enum display_led_count_t {
-    LED_COUNT_IT78 = 78 ///< Stations 1-78, no in-fill stations.
-  , LED_COUNT_IT81 = 81 ///< Stations 1-81, includes the in-fill stations.
-};
-
 /// @}
 
 /** \brief Initialise the display properties cache.
@@ -128,6 +122,10 @@ void init_display_properties();
   *   been called yet.
   */
 uint16_t get_led_count();
+
+/// Return the number of bytes required to store the display information for a single LED.
+/// \see ::display_led_type_t
+uint8_t get_led_size();
 
 /// The order in which the RGB data should be transmitted per LED.
 enum display_led_color_order_t get_color_order();

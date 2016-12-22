@@ -14,7 +14,7 @@ static uint8_t* buffer_data;
 static uint8_t buffer_taken;
 
 size_t get_display_buffer_size() {
-  return sizeof(struct led_t)*get_led_count();
+  return get_led_size()*get_led_count();
 }
 
 void init_display_buffers() {
@@ -22,7 +22,7 @@ void init_display_buffers() {
   buffer_data = malloc(buffer_size*BUFFER_LIST_LENGTH);
   if (buffer_data) {
     for (uint8_t i = 0; i < BUFFER_LIST_LENGTH; ++i) {
-      buffer_list[i].buffer = (struct led_t*) (buffer_data + i*buffer_size);
+      buffer_list[i].buffer = buffer_data + i*buffer_size;
     }
   }
 }

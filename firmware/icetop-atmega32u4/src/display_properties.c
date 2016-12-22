@@ -1,4 +1,5 @@
 #include "display_properties.h"
+#include "display_types.h"
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>
 
@@ -43,6 +44,10 @@ void init_display_properties() {
 
 uint16_t get_led_count() {
   return dp_info_range.end;
+}
+
+uint8_t get_led_size() {
+  return sizeof(struct led_t);
 }
 
 enum display_led_color_order_t get_color_order() {

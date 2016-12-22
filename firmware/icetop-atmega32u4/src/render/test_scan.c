@@ -1,5 +1,6 @@
 #include "render/test_scan.h"
 #include "frame_buffer.h"
+#include "display_types.h"
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -27,7 +28,7 @@ struct frame_buffer_t* render_scan() {
 
   if (frame) {
     frame->flags = FRAME_FREE_AFTER_DRAW;
-    struct led_t* write_ptr = &frame->buffer[0];
+    struct led_t* write_ptr = (struct led_t*) frame->buffer;
 
     uint8_t tail = TAIL_LENGTH;
     while(tail--) {

@@ -1,6 +1,7 @@
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 #include <stdint.h>
+#include "display_types.h"
 #include "display_driver.h"
 #include "display_properties.h"
 
@@ -195,7 +196,7 @@ void display_frame(struct frame_buffer_t* frame) {
   frame->flags |= FRAME_DRAW_IN_PROGRESS;
 
   // Transmit LED data
-  const uint8_t* leds = (const uint8_t*) frame->buffer;
+  const uint8_t* leds = frame->buffer;
   const uint8_t* led_P = led_mapping_P;
   const uint8_t* led_end_P = led_mapping_P + led_count;
 

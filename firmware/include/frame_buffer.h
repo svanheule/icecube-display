@@ -6,23 +6,27 @@
   * \brief Description of the frame object.
   * \author Sander Vanheule (Universiteit Gent)
   *
-  * \defgroup led_display LED display usage
-  * \brief APA102 LED display implementation and usage.
-  * \details The LED display consists of a number of APA102 modules connected in
-  *   series. A frame buffer therefore contains 4×78 bytes of display data, plus one byte of flags.
+  * \defgroup led_display LED display buffer usage
+  * \brief LED display buffer implementation and usage.
+  * \details The LED display consists of a number of integrated LED modules driven by serial
+  *   communication. A frame buffer therefore contains the display data, plus one byte of flags.
   *   A pool of memory with room for multiple frames is pre-allocated and calling create_frame()
   *   will mark one the available frame buffers as used and return a pointer to it. This pointer
   *   can then be used to draw new frame contents, push it into the frame queue for display and
   *   release the memory with destroy_frame() when it is no longer of use.
   *
-  *   A frame buffer has room for as many ::led_t objects as LEDs. The order of these objects
-  *   corresponds to the IceTop station number, so frame_buffer_t::buffer[0] contains the data for
-  *   station 1, frame_buffer_t::buffer[1] for station 2, etc.
-  *   The contents of the frame are not written to the LED display in-order, but in alternating
-  *   directions per row of stations, with the array oriented such that stations 1-7 form the
-  *   bottom row.
-  *   Due to the way the data lines of the LEDs are connected stations 7 to 1 are written first in
-  *   decreasing order, then 8 to 13 in increasing order, etc.
+  *   frame_buffer_t::buffer has room for as many bytes as required by the display.
+  *   A display with for example 78 APA102 LEDs will have a buffer size of \f$312=78\times4\f$.
+  *   The contents of the buffer are stored in OM-key order. This means that LED data is
+  *   first sorted by string number, and then by DOM number.
+  *   The buffer data however will not be written to the display in-order, as following the
+  *   buffer layout for the physical layout of LEDs is usually subobtimal.
+  *   See the display documentation for more information on how the LEDs are physically connected.
+  *
+  *   RGB data for the LEDs is always stored in this order, independent of the data format taken
+  *   by the LED modules, to simplify the PC driver code.
+  *   In case of the APA102 modules, an extra brightness byte `b` is required. This is stored
+  *   _before_ the other data, resulting in a `bRGB` data pattern.
   *
   *   Two flags are currently supported as defined by ::frame_flag_t. A newly allocated frame will
   *   not have any of these set, so the user should take care of setting these as needed to prevent
@@ -43,20 +47,6 @@
 #include "display_properties.h"
 
 // Frame buffer size and structure definitions
-
-/** \brief A 4-tuple of bytes describing the data required by the APA102 LEDs.
-  * \details The 24-bit RGB values can be scaled using the brightness field to achieve
-  *   a larger dynamic range, e.g. to perform gamma correction.
-  * \ingroup led_display
-  */
-struct led_t {
-#if !defined(__MK20DX256__)
-  uint8_t brightness; ///< Global brightness bits; only 5 LSB are valid.
-#endif
-  uint8_t red; ///< 8 bit red component.
-  uint8_t green; ///< 8 bit green component.
-  uint8_t blue; ///< 8 bit blue component.
-} __attribute__((packed));
 
 /// Total frame byte count
 /// \ingroup led_display
@@ -83,7 +73,7 @@ struct frame_buffer_t {
   /// * flags(1): ::FRAME_DRAW_IN_PROGRESS
   enum frame_flag_t flags;
   /// Frame buffer LED data.
-  struct led_t* buffer;
+  uint8_t* buffer;
 };
 
 /// \name Frame buffer handling

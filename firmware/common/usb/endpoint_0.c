@@ -261,7 +261,7 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
         if (usb_frame) {
           usb_frame->flags = FRAME_FREE_AFTER_DRAW;
           usb_frame_done = 0;
-          usb_frame_buffer = (uint8_t*) usb_frame->buffer;
+          usb_frame_buffer = usb_frame->buffer;
         }
       }
       if (usb_frame) {

@@ -1,5 +1,6 @@
 #include "render/boot_splash.h"
 #include "frame_buffer.h"
+#include "display_types.h"
 #include <avr/pgmspace.h>
 #include <stdlib.h>
 
@@ -39,7 +40,7 @@ void init_splash()  {
   }
   if (ugent_frame) {
     const uint8_t led_count = get_led_count();
-    struct led_t* led_ptr = ugent_frame->buffer;
+    struct led_t* led_ptr = (struct led_t*) ugent_frame->buffer;
     uint8_t led = 0;
     while (led < LED_COUNT_IT78) {
       if (pgm_read_byte(&UGENT_LOGO[led]) == 0) {

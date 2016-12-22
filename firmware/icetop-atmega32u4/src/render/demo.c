@@ -1,5 +1,6 @@
 #include "render/demo.h"
 #include "frame_buffer.h"
+#include "display_types.h"
 #include "stdlib.h"
 #include "switches.h"
 #include <avr/pgmspace.h>
