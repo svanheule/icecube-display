@@ -33,7 +33,7 @@
   *   The information that is displayed corresponds to IceTop stations, so the pulses from
   *   DOMs 61-64 should be merged to determine the LED's color and brightness.
   *   The (inclusive) range of supported IceTop stations is 1-78, so a full display frame consists
-  *   of 4×78=312 bytes.
+  *   of \f$4 \times 78=312\f$ bytes.
   *
   *   ### IceCube display
   *   The design of the 2m×2m×2m IceCube display consists of three modules to facilitate transport.
@@ -45,11 +45,9 @@
   *   * ::DP_INFORMATION_RANGE (length 2): {79, 86}
   *
   *   This report describes the central part of the display/detector. A frame for this display
-  *   contains 3×60×(20+8)=5040 bytes. This is a lot more data than the IceTop display, but even
-  *   when using only control transfers, this is still less than 25% of the maximum capacity of a
-  *   full speed USB port.
-  *   When using an isochronous or bulk endpoint, more bandwidth is available which increases the
-  *   headroom on the USB port.
+  *   contains \f$ 3 \times 60 \times (20+8)=5040 \f$ bytes.
+  *   This is a lot more data than the IceTop display, but a 12Mb USB port should stil be able
+  *   to deliver 25FPS.
   *
   * @{
   */
@@ -70,6 +68,8 @@ enum display_property_type_t {
   /// Type of LED used in the display, always length 1. See ::display_led_type_t.
   /// Allowed only once per metadata report.
   DP_LED_TYPE = 3,
+  /// Display frame buffer size.
+  /// Depends on the number of LEDs present and the [LED type](\ref ::display_led_type_t).
   DP_BUFFER_SIZE = 4
 };
 
@@ -126,6 +126,8 @@ uint16_t get_led_count();
 /// Return the number of bytes required to store the display information for a single LED.
 /// \see ::display_led_type_t
 uint8_t get_led_size();
+
+
 
 /// The order in which the RGB data should be transmitted per LED.
 enum display_led_color_order_t get_color_order();

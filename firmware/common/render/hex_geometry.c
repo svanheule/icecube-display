@@ -22,14 +22,7 @@ static const struct string_coordinates_t STRING_VECTOR[] PROGMEM = {
 
 #define STRING_COUNT (sizeof(STRING_VECTOR)/sizeof(STRING_VECTOR[0]))
 
-/* Extensive explanation at: [http://www.redblobgames.com/grids/hexagons/]
- * A hexagonal lattice may be constructed from a regular, 3D square grid by taking the plane
- * satisfying the eqaution \f$x+y+z=0\f$. If the pair \f$(x,y)\f$ is mapped onto a 2D space
- * given by \f$(v,w)\f$, this plane equation determines \f$z\f$.
- * The distance between 2 points on a hexagonal grid is given by
- * \f$0.5 (|x_1-x_2| + |y_1-y_2| + |z_1-z_2|)\f$ or
- * \f$0.5 (|v_1-v_2| + |w_1-w_2| + |(v_1-v_2)-(w_1-w_2)|)\f$.
- */
+
 uint8_t get_string_distance(uint8_t x, uint8_t y) {
   if (x < STRING_COUNT && y < STRING_COUNT) {
     int8_t dv = pgm_read_byte(&STRING_VECTOR[x].v) - pgm_read_byte(&STRING_VECTOR[y].v);

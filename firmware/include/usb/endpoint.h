@@ -67,15 +67,11 @@ struct ep_config_t {
 };
 
 /** \brief Initialise the USB endpoint described by \a config.
-  *  \par ATmega32u4 implementation
-  *   This will allocate the hardware as described by the ATmega32U4 manual and enable
-  *   the required interrupts. Note that endpoints should be allocated starting from endpoint 0
-  *   up to the last endpoint. Failing to do so will likely result in endpoint memory corruption.
-  *  \par Teensy 3.2 implementation
-  *   The hardware will be configured to set up the requested endpoint, but no memory will be
-  *   allocated. The buffer descriptor table (BDT) and associated memory is managed by the
-  *   state machine that controlled by the endpoint interrupts.
-  *
+  *   This will allocate the hardware and memory as described by the manual and enable
+  *   the required interrupts.
+  * \note Not all platforms support random endpoint allocation, so endpoints should be allocated
+  *   starting from endpoint 0 up to the last endpoint.
+  *   Failing to do so may result in endpoint memory corruption.
   * \returns `true` if the endpoint configuration was succesful, `false` otherwise.
   */
 bool endpoint_configure(const struct ep_config_t* config);
@@ -83,6 +79,7 @@ bool endpoint_configure(const struct ep_config_t* config);
 /// Deallocates the endpoint memory.
 void endpoint_deconfigure(const uint8_t ep_num);
 
+/// Return the maximum endpoint packet size.
 uint16_t endpoint_get_size(const uint8_t ep_num);
 
 /// @}

@@ -14,10 +14,10 @@
   * \details The events are stored in the microcontroller's flash memory. Every event is first
   *   shown in a time lapse mode, after which an overview of the entire event is shown.
   *   Currently 9 events are included and displayed in the following order:
-  *     * Three 'vertical' events (cosine zenith \f$\in[0,0.1]\f$), displayed in increasing energy,
-  *     * Three slight inclination events (cosine zenith \f$\in[0.2,0.25]\f$), displayed in
+  *     * Three 'vertical' events (\f$ \cos\theta\in[0,0.1]\f$), displayed in increasing energy,
+  *     * Three slight inclination events (\f$\cos\theta \in[0.2,0.25]\f$), displayed in
   *       increasing energy,
-  *     * Three inclined events (cosine zenith \f$\in[0.3,0.35]\f$), displayed in increasing energy.
+  *     * Three inclined events (\f$\cos\theta \in[0.3,0.35]\f$), displayed in increasing energy.
   *
   *   The *Forward* button can be used to cycle through the stored events, and the *Play/Pause*
   *   button can be used to pause display to the current event.

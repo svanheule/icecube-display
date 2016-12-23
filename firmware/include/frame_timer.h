@@ -3,13 +3,23 @@
 
 /** \file
   * \brief Frame draw timing.
-  * \details Timer to trigger drawing of a new frame 25 times per second.
+  * \details Timer to trigger drawing of a new frame DEVICE_FPS times per second.
   * \author Sander Vanheule (Universiteit Gent)
   */
 
 /** \defgroup led_display_timing Frame timing
   * \ingroup led_display
   * \brief Timer that triggers drawing of a frame 25 times per second.
+  * \details When the device is connected to a USB host, it can also correct the timer
+  *   interval to correspond to 40ms. To achieve this synchronisation, new_sof_received() should
+  *   be called every (few) SOF token(s). The number of clock ticks between these calls will
+  *   be monitored and averaged out to slave the 25FPS timer to the USB SOF timer.
+  *   Using the correct_display_frame_counter() and correct_display_frame_phase() functions,
+  *   all display segments can be made to update within 1ms from each other.
+  *   Note that tearing can still occur if no mechanism is present to tell the segments when
+  *   the remotely rendered data should be displayed.
+  * \todo A USB UVC-like interface should be implemented for displays consisting of multiple
+  *   segments to prevent frame tearing.
   */
 
 #include <stdint.h>
