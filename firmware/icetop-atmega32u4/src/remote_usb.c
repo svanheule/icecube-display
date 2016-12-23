@@ -6,16 +6,14 @@
 #include "usb/std.h"
 #include "usb/device.h"
 #include "usb/configuration.h"
-#include "usb/address.h"
 
+#include "usb/address.h"
 #include "usb/led.h"
 #include "usb/fifo.h"
 #include "avr/endpoint_stack.h"
 #include "usb/endpoint.h"
 #include "usb/endpoint_0.h"
 #include "usb/remote_renderer.h"
-#include "usb/descriptor.h"
-#include "frame_buffer.h"
 #include "frame_timer.h"
 
 // Heavily based on LUFA code, stripped down to the specifics of the ATmega32U4.
