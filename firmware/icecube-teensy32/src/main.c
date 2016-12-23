@@ -109,7 +109,7 @@ int main () {
   init_display_properties();
 
   // Initialise frame buffer memory before rendering
-  init_display_buffers();
+  init_frame_buffers();
 
   // Init display pin configuration
   init_display_driver();

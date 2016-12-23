@@ -131,7 +131,7 @@ int main () {
   // Must be run *before* using any other display functions
   init_display_properties();
   // Initialise frame buffer memory before rendering
-  init_display_buffers();
+  init_frame_buffers();
   // Init display pin configuration and switches
   init_display_driver();
   display_blank();

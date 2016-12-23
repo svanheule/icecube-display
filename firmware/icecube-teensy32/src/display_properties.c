@@ -83,7 +83,7 @@ void init_display_properties() {
         TLV_ENTRY(DP_INFORMATION_RANGE, MEMSPACE_PROGMEM, &dp_info_range_deepcore);
     }
 
-    dp_buffer_size = get_display_buffer_size();
+    dp_buffer_size = get_frame_buffer_size();
   }
 }
 

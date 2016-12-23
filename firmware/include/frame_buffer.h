@@ -74,14 +74,13 @@ struct frame_buffer_t {
 /// \name Frame buffer handling
 /// @{
 
-
 /// Initialise data storage for display frames.
 /// \ingroup led_display_buffer
-void init_display_buffers();
+void init_frame_buffers();
 
 /// Total frame byte count
 /// \ingroup led_display_buffer
-size_t get_display_buffer_size();
+size_t get_frame_buffer_size();
 
 /// Allocate a new frame buffer if possible. Returns NULL on failure.
 /// \ingroup led_display_buffer

@@ -255,7 +255,7 @@ static void callback_handshake_eeprom_write(struct control_transfer_t* transfer)
 static inline void process_vendor_request(struct control_transfer_t* transfer) {
   if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_VENDOR | REQ_REC_DEVICE)) {
     if (transfer->req->bRequest == VENDOR_REQUEST_PUSH_FRAME) {
-      const size_t buffer_size = get_display_buffer_size();
+      const size_t buffer_size = get_frame_buffer_size();
       if (!usb_frame) {
         usb_frame = create_frame();
         if (usb_frame) {
@@ -374,7 +374,7 @@ static void callback_data_usb_frame(struct control_transfer_t* transfer) {
   if (transfer->data_length == transfer->data_done) {
     usb_frame_done += transfer->data_length;
     usb_frame_buffer += transfer->data_length;
-    if (usb_frame_done == get_display_buffer_size()) {
+    if (usb_frame_done == get_frame_buffer_size()) {
       if(!push_frame(usb_frame)) {
         // Prevent memory leaks and dangling pointers
         destroy_frame(usb_frame);

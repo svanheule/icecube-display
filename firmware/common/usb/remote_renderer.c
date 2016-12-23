@@ -12,7 +12,7 @@ static struct remote_transfer_t remote_transfer;
 static void inline init_state() {
   if (frame) {
     frame->flags = FRAME_FREE_AFTER_DRAW;
-    remote_transfer.buffer_remaining = get_display_buffer_size();
+    remote_transfer.buffer_remaining = get_frame_buffer_size();
     remote_transfer.buffer_pos = frame->buffer;
   }
   else {

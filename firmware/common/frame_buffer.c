@@ -13,12 +13,12 @@ static uint8_t* buffer_data;
 // Mask indicating which buffers are already handed out
 static uint8_t buffer_taken;
 
-size_t get_display_buffer_size() {
+size_t get_frame_buffer_size() {
   return get_led_size()*get_led_count();
 }
 
-void init_display_buffers() {
-  const size_t buffer_size = get_display_buffer_size();
+void init_frame_buffers() {
+  const size_t buffer_size = get_frame_buffer_size();
   buffer_data = malloc(buffer_size*BUFFER_LIST_LENGTH);
   if (buffer_data) {
     for (uint8_t i = 0; i < BUFFER_LIST_LENGTH; ++i) {
@@ -71,7 +71,7 @@ void destroy_frame(struct frame_buffer_t* frame) {
 // Commom frame operations
 void clear_frame(struct frame_buffer_t* frame_ptr) {
   if (frame_ptr) {
-    memset(frame_ptr->buffer, 0, get_display_buffer_size());
+    memset(frame_ptr->buffer, 0, get_frame_buffer_size());
   }
 }
 
