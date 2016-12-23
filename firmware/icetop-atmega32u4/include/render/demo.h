@@ -23,7 +23,7 @@
   *   button can be used to pause display to the current event.
   *   When paused, the display will show the event overview. If the user then presses play again,
   *   the renderer will again start in the time lapse mode for the event currently selected event.
-  * \ingroup display_renderer
+  * \ingroup led_display_renderer
   */
 const struct renderer_t* get_demo_renderer();
 

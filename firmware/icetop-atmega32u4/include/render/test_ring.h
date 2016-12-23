@@ -12,7 +12,7 @@
   * \details Concentric red, green, and blue rings expanding out from the centre of the display.
   *   Every second frame is skipped, so the rings move out at a pace of 12.5 station/pixels per
   *   second.
-  * \ingroup display_renderer
+  * \ingroup led_display_renderer
   */
 const struct renderer_t* get_ring_renderer();
 

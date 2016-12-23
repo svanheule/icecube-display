@@ -6,8 +6,6 @@
   * \details A few types, constants and macros used by the USB subsystem.
   * \author Sander Vanheule (Universiteit Gent)
   * \see [USB 2.0 specification](http://www.usb.org/developers/docs/usb20_docs/)
-  * \see src/usb/remote_usb.c
-  * \see src/usb/communication.c
   */
 
 #include <stdint.h>

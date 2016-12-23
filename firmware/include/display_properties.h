@@ -12,7 +12,7 @@
 #include "memspace.h"
 
 /** \defgroup led_display_metadata Display metadata reports
-  *  \ingroup led_display
+  * \ingroup led_display
   * \brief An extensible interface to provide metadata related to the LED display.
   * \details Display metadata can be requested [over USB](\ref usb_endpoint) as a
   *   type-length-value list. This is an easily extensible interface that can provide additional

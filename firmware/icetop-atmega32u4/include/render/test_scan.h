@@ -11,7 +11,7 @@
 /** \brief Render a number of pixels scanning from the start to end of the buffer, and back.
   * \details Generates three white pixels that slide through the buffer, effectively
   *   scanning the display line by line.
-  * \ingroup display_renderer
+  * \ingroup led_display_renderer
   */
 const struct renderer_t* get_scan_renderer();
 

@@ -16,7 +16,7 @@
   *   best I could do!
   * \copyright UGent logo is owned by Universiteit Gent
   * \see [Logo Universiteit Gent](http://www.ugent.be/nl/univgent/logo) (Dutch)
-  * \ingroup display_renderer
+  * \ingroup led_display_renderer
   */
 const struct renderer_t* get_boot_splash_renderer();
 

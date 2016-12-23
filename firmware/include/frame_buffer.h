@@ -1,12 +1,14 @@
 #ifndef FRAME_BUFFER_H
 #define FRAME_BUFFER_H
 
-/**
-  * \file
+/** \file
   * \brief Description of the frame object.
   * \author Sander Vanheule (Universiteit Gent)
   *
-  * \defgroup led_display LED display buffer usage
+  * \defgroup led_display LED display usage
+  *
+  * \defgroup led_display_buffer Display frame buffers
+  * \ingroup led_display
   * \brief LED display buffer implementation and usage.
   * \details The LED display consists of a number of integrated LED modules driven by serial
   *   communication. A frame buffer therefore contains the display data, plus one byte of flags.
@@ -48,15 +50,8 @@
 
 // Frame buffer size and structure definitions
 
-/// Total frame byte count
-/// \ingroup led_display
-size_t get_display_buffer_size();
-
-/// Initialise data storage for display frames.
-void init_display_buffers();
-
 /// Constants that can be used as metadata bit flags on a frame buffer.
-/// \ingroup led_display
+/// \ingroup led_display_buffer
 enum frame_flag_t {
   /// Indicate whether a frame buffer may be deallocated after drawing
   FRAME_FREE_AFTER_DRAW  = 1<<1,
@@ -66,7 +61,7 @@ enum frame_flag_t {
 };
 
 /// \brief Object constisting of a frame buffer and a number of associated (bit)flags.
-/// \ingroup led_display
+/// \ingroup led_display_buffer
 struct frame_buffer_t {
   /// Frame metadata as bit flags (see ::frame_flag_t)
   /// * flags(0): ::FRAME_FREE_AFTER_DRAW
@@ -79,23 +74,32 @@ struct frame_buffer_t {
 /// \name Frame buffer handling
 /// @{
 
+
+/// Initialise data storage for display frames.
+/// \ingroup led_display_buffer
+void init_display_buffers();
+
+/// Total frame byte count
+/// \ingroup led_display_buffer
+size_t get_display_buffer_size();
+
 /// Allocate a new frame buffer if possible. Returns NULL on failure.
-/// \ingroup led_display
+/// \ingroup led_display_buffer
 struct frame_buffer_t* create_frame();
 
 /// Deallocate a frame irrespective of whether the flag ::FRAME_FREE_AFTER_DRAW is set.
-/// \ingroup led_display
+/// \ingroup led_display_buffer
 void destroy_frame(struct frame_buffer_t* frame);
 
 /// Clear the frame contents, i.e. set `frame->buffer` to all zeros.
-/// \ingroup led_display
+/// \ingroup led_display_buffer
 void clear_frame(struct frame_buffer_t* frame);
 
 /** \brief Convenience method to create a new frame of which frame_buffer_t::buffer is set to
   * all zeros.
   * \details Identical to calling clear_frame() on a pointer returned by create_frame().
   * Note that *no flags will be set* on the newly created buffer.
-  * \ingroup led_display
+  * \ingroup led_display_buffer
   */
 struct frame_buffer_t* create_empty_frame();
 
