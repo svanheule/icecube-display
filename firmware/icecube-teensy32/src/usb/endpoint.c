@@ -49,10 +49,6 @@ bool endpoint_configure(const struct ep_config_t* config) {
     }
   }
 
-  if (config_ok && config->init) {
-    config->init();
-  }
-
   endpoint_reset_data_toggle(config->num);
   *ENDPOINT_REGISTER_ADDRESS(config->num) = reg;
   return config_ok;
