@@ -1,5 +1,4 @@
-IceTop LED event display {#mainpage}
-========================
+# IceTop LED event display # {#icetop-display}
 
 ## The IceTop detector ##
 
@@ -15,7 +14,7 @@ which would saturate the first DOM.
 Of the 81 stations, the 3 in-fill stations are placed in the middle to create a more densely
 instrumented region of the detector, allowing it to detect air showers of lower energy.
 
-The picture below shows the geometry of the detector, as well as the 3 in-fill stations in gray.
+The picture below shows the geometry of the detector, as well as the 3 in-fill stations in black.
 The LED display mimics this geometry, by putting each station on a regular hexagonal grid, instead
 of the slightly irregular grid of the actual detector.
 The in-fill stations have not been included in the small display due to a lack of space for the LEDs.
@@ -30,6 +29,7 @@ the user.
 The green *Power* LED indicates whether the display is receiving 5V power input.
 The orange *USB activity* LED will light up when there is a USB connection, and blink when there
 is bus activity, e.g. when display data is transmitted.
+Aside from Steamshovel connectivity, this display also supports stand-alone operation.
 
 \image html front.png "Side view of the LED display"
 \image latex front.pdf "Side view of the LED display" width=0.9\textwidth
@@ -56,25 +56,4 @@ Also, as the inclination of the showers increase, it becomes clear that the show
 contained in a moving surface when it hits the detector.
 Downgoing events activate the detector almost simultaneously, while inclined events seem move along
 the surface of the detector.
-
-### USB connectivity and steamshovel ###
-
-The device's USB port can be used to transfer display data from a USB host. A detailed overiew
-can be found in the [firmware documentation](\ref usb_endpoint). A Steamshovel artist has been
-implemented using this connectivity to be able to display any simulation or data file.
-
-The options of the LedDisplay artist have been modelled after the Bubbles artist:
-  * *Device*: select one of the detected LED displays. Detection happens once at start-up.
-  * *Static color* and *brightness*: Select a color and brightness for static DOM maps.
-  * *Compression*: Exponent of the power law used to compress hit info. Since a linear scale would
-      hide the details in low charges, the high charges are compressed, giving the display a larger
-      dynamic range. Note that display gamma correction is performed independently of this setting.
-  * *Colormap*: time to color mapping.
-  * *Finite pulses*: If 'Use infinite pulses' is checked, a hit will be shown starting from its time
-      of detection. Otherwise it will disappear after the selected duration. This is different from
-      the Bubbles setting in that the highest value of the pulse duration slider isn't interpreted
-      as positive infinity, but just \f$10^5\f$ns.
-
-\image html screenshot-steamshovel.png "Steamshovel with LedDisplay artist"
-\image latex screenshot-steamshovel.png "Steamshovel with LedDisplay artist" width=0.7\textwidth
 
