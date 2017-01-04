@@ -80,6 +80,84 @@ enum control_stage_t {
   , CTRL_POST_HANDSHAKE ///< Performing post-handshake action
 };
 
+/** \brief Vendor specific USB control request for display status and control.
+  * \details The default control endpoint is extended with some vendor specific control commands.
+  * See section 9.3 of the
+  * [USB 2.0 specification](http://www.usb.org/developers/docs/usb20_docs/) for more details.
+  *
+  * Request name       | bmRequestType | bRequest | wValue | wIndex |    wLength
+  * -------------------|---------------|----------|--------|--------|-----------
+  * PUSH_FRAME         |  0b0_10_00000 |        1 |      0 |      0 |     length
+  * DISPLAY_PROPERTIES |  0b1_10_00000 |        2 |      0 |      0 |    2-65535
+  * EEPROM_WRITE       |  0b0_10_00000 |        3 |      0 | offset |     length
+  * EEPROM_READ        |  0b1_10_00000 |        4 |      0 | offset |     length
+  * FRAME_DRAW_STATUS  |  0b1_10_00000 |        5 |      0 |      0 |          4
+  * FRAME_DRAW_SYNC    |  0b0_10_00000 |        6 |   [ms] |      0 |          0
+  * \ingroup usb_endpoint_control
+  */
+enum vendor_request_t {
+  /** Push a single frame to be shown on the display into the frame buffer queue.
+    * When connected via USB all other renderers are stopped, so this frame will be
+    * displayed until the next one is pushed.
+    * Note that the device only updates the display 25 times per second, so pushing frame more
+    * frequently than this will result in buffer overflows on the device and consequently control
+    * transfers will be stalled until memory is freed.
+    * Since some platforms may not support control transfers of the size needed to send a frame,
+    * it is possible to send a single frame using multiple *PUSH_FRAME* commands.
+    * \deprecated Use the bulk out endpoint EP1 to transmit frame data.
+    */
+  VENDOR_REQUEST_PUSH_FRAME = 1,
+  /** Request a TLV list of [display metadata](\ref led_display_metadata).
+    * A reply to this request will always consist of at least two bytes,
+    * which provide the total length of the response.
+    * A typical query of this metadata will be done the following way:
+    *   1. Perform an IN transfer of wLength 2. This will return the full length of
+    *      the TLV data as an unsigned 16 bit, little endian integer.
+    *   2. Perform an IN transfer of wLength N, with N being the response of the first request.
+    */
+  VENDOR_REQUEST_DISPLAY_PROPERTIES = 2,
+  /** To perform the (initial) configuration of the device, one may also use the USB interface
+    *  to read to and write from the microcontroller's EEPROM.
+    * *EEPROM_READ* and *EEPROM_WRITE* allow access to an EEPROM segment of arbitrary length,
+    * starting from any offset address that is within the size of the EEPROM.
+    *
+    * The wIndex field of the setup request is used to provide the address offset of the EEPROM
+    * memory segment that is to be written.
+    * A request with `wIndex=0x00` will start writing at the first byte, while a request
+    * with `wIndex=0x30` will start writing at the 49th byte.
+    * The wLength field provides the length of the EEPROM segment that is to be written.
+    * If either wIndex or wIndex+wLength is larger than the size of the device's EEPROM, the
+    * control endpoint will be stalled indicating a bad request.
+    *
+    * Use the *EEPROM_WRITE* command with care, as writing bad data to the EEPROM may render the
+    * device unusable.
+    */
+  VENDOR_REQUEST_EEPROM_WRITE = 3,
+  /** Read a segment from the device's EEPROM. See ::VENDOR_REQUEST_EEPROM_WRITE on how to use
+    * the wIndex and wLength fields.
+    * For example, the IceCube string to buffer offset mapping of IceCube display microcontrollers
+    * can be read using `wIndex=0x30` and `wLength=36`.
+    */
+  VENDOR_REQUEST_EEPROM_READ = 4,
+  /** Get the latest frame draw time.
+    * The request response consists of two unsigned 16 bit (little endian) integers a defined
+    * by ::display_frame_usb_phase_t.
+    */
+  VENDOR_REQUEST_FRAME_DRAW_STATUS = 5,
+  /** Correct the frame counter ms value by the provided amount.
+    * The ms correction \f$\delta\f$ is provided as a _signed_ (little endian) 16 bit integer
+    * contained in the wValue field of the setup request.
+    * Corrections larger than \f$\pm(2^{15}-1)\f$ms should be performed using multiple request.
+    * In this case the first request should perform the largest possible correction including
+    * the full USB frame counter phase slip, i.e.
+    * \f$(\delta \mod 40) + N \times 40 = \Delta_0\f$ with \f$|\Delta_0| \le 2^{15}-1\f$.
+    * This synchronises the fraw draws down to the millisecond, but leaves the frame counters out
+    * of phase.
+    * Subsequent requests can then correct the remaining offset as multiples of 40ms.
+    */
+  VENDOR_REQUEST_FRAME_DRAW_SYNC = 6
+};
+
 /// \brief Control transfer state tracking.
 /// \ingroup usb_endpoint_control
 struct control_transfer_t {

@@ -228,17 +228,14 @@ static void callback_set_configuration(struct control_transfer_t* transfer) {
   }
 }
 
-#define VENDOR_REQUEST_PUSH_FRAME 1
+// Remote frame transfer
 static struct frame_buffer_t* usb_frame;
 static uint8_t* usb_frame_buffer;
 static uint16_t usb_frame_done;
 static void callback_data_usb_frame(struct control_transfer_t* transfer);
 static void callback_cancel_usb_frame();
 
-#define VENDOR_REQUEST_DISPLAY_PROPERTIES 2
-
-#define VENDOR_REQUEST_EEPROM_WRITE 3
-#define VENDOR_REQUEST_EEPROM_READ 4
+// EEPROM read/write
 #if defined(__MK20DX256__)
 extern uint8_t __eeprom_start[];
 #elif defined(__AVR_ARCH__) && __AVR_ARCH__ == 5
@@ -248,9 +245,8 @@ const uint16_t EEPROM_SIZE = E2END + 1;
 static void callback_data_eeprom_write(struct control_transfer_t* transfer);
 static void callback_handshake_eeprom_write(struct control_transfer_t* transfer);
 
-#define VENDOR_REQUEST_FRAME_DRAW_STATUS 5
+// Frame draw status/sync
 #define FRAME_DRAW_STATUS_SIZE (sizeof(struct display_frame_usb_phase_t))
-#define VENDOR_REQUEST_SYNC_FRAME_DRAW 6
 
 static inline void process_vendor_request(struct control_transfer_t* transfer) {
   if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_VENDOR | REQ_REC_DEVICE)) {
@@ -286,7 +282,7 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
         transfer->stage = CTRL_DATA_OUT;
       }
     }
-    else if (transfer->req->bRequest == VENDOR_REQUEST_SYNC_FRAME_DRAW) {
+    else if (transfer->req->bRequest == VENDOR_REQUEST_FRAME_DRAW_SYNC) {
       // wValue is the number of ms the frame timer should be corrected.
       // This can be factored as (40*frame_correction + ms_correction) to split the
       // display counter value correction and display phase correction.

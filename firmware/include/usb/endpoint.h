@@ -18,12 +18,38 @@
   *   ~~~
   * \author Sander Vanheule (Universiteit Gent)
   * \see [ATmega32U4 documentation §21-22](http://www.atmel.com/devices/ATMEGA32U4.aspx)
-  *
-  * \defgroup usb_endpoint USB endpoint operations
-  * \details All communications on the USB bus happen between the host and a device endpoint.
-  *   A number of functions is provided to facilitate endpoint manipulation on the microcontroller.
   *   Since the ATmega32U4 microcontroller only allows access to one endpoint at a time, an
   *   \ref usb_endpoint_stack "endpoint selection system" is provided.
+  *
+  * \defgroup usb_endpoint USB endpoint operation
+  * \details
+  *   ## USB interface
+  *   The LED display is equiped with a USB port to provide the possibility of using a PC
+  *   to display IceCube event data not embedded in the device's firmware,
+  *   or make use of nicer effects that aren't so easy to produce using only the microcontroller.
+  *   A full-speed USB 2.0 compliant interface is provided, using `0x1CE3` as a vendor ID.
+  *   The vendor ID is *not* registered with the [USB-IF](http://usb.org), as this would be
+  *   [rather expensive](http://www.usb.org/developers/vendor/) for a small scale project like this.
+  *
+  *   The full-speed interface provides a bandwidth of 12Mbps, enough to run thousands of LEDs
+  *   at 25 FPS.
+  *   The display interface is provided in a very generic fashion, so any application that can
+  *   render (low resolution) RGB data at video frame rates, can show this on the display.
+  *
+  *
+  *   * Remote communication:
+  *     * \ref usb_endpoint_control
+  *     * [Display specific commands](\ref ::vendor_request_t)
+  *     * \ref usb_endpoint_remote_renderer
+  *   * Firmware USB configuration details:
+  *     * \ref usb_endpoint_status
+  *     * \ref usb_endpoint_config
+  *     * \ref usb_endpoint_stack
+  *     * \ref usb_endpoint_fifo
+  *
+  *   ## Communication example
+  *   The following example reads the display information from all connected devices using pyusb:
+  *   \include usb.py
   */
 
 #include <stdbool.h>
