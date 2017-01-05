@@ -176,7 +176,7 @@ static const struct usb_descriptor_body_endpoint_t BULK_ENDPOINT PROGMEM = {
 static const char16_t STR_MANUFACTURER[] PROGMEM = u"Ghent University";
 static const char16_t STR_PRODUCT[] PROGMEM = u"IceTop event display";
 static const char16_t STR_IFACE_DESCR[] PROGMEM = u"Steamshovel display";
-extern const char16_t STR_SERIAL_NUMBER[] EEMEM;
+extern const char16_t STR_SERIAL_NUMBER[];
 
 #define LANG_ID_EN_US 0x0409
 
