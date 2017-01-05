@@ -2,6 +2,7 @@
 #include "usb/endpoint.h"
 #include <stdlib.h>
 #include <string.h>
+#include <avr/pgmspace.h>
 #include <avr/eeprom.h>
 
 typedef __CHAR16_TYPE__ char16_t;
@@ -12,6 +13,17 @@ static size_t strlen16(const char16_t* str) {
   const char16_t* end = str;
   while (*end != 0) {
     ++end;
+  }
+  return end-str;
+}
+
+static size_t strlen16_P(const char16_t* str) {
+  const char16_t* end = str;
+  uint16_t word = pgm_read_word((const uint16_t*) end);
+  // See strlen16_E for more information on `word != 0xffff`
+  while (word != 0 && word != 0xffff) {
+    ++end;
+    word = pgm_read_word((const uint16_t*) end);
   }
   return end-str;
 }
@@ -59,8 +71,10 @@ uint8_t usb_descriptor_body_size(
     case DESC_TYPE_STRING:
       switch (memspace) {
         case MEMSPACE_RAM:
-        case MEMSPACE_PROGMEM:
           return 2*strlen16((const char16_t*) body);
+          break;
+        case MEMSPACE_PROGMEM:
+          return 2*strlen16_P((const char16_t*) body);
           break;
         case MEMSPACE_EEPROM:
           return 2*strlen16_E((const char16_t*) body);
@@ -119,7 +133,7 @@ static void descriptor_list_append(
 }
 
 // Descriptor transaction definitions
-static const struct usb_descriptor_body_device_t BODY_DEVICE = {
+static const struct usb_descriptor_body_device_t BODY_DEVICE PROGMEM = {
     .bcdUSB = 0x0200
   , .bDeviceClass = 0
   , .bDeviceSubClass = 0
@@ -134,7 +148,7 @@ static const struct usb_descriptor_body_device_t BODY_DEVICE = {
   , .bNumConfigurations = 1
 };
 
-static const struct usb_descriptor_body_configuration_t BODY_CONFIG = {
+static const struct usb_descriptor_body_configuration_t BODY_CONFIG PROGMEM = {
     .wTotalLength = 0 // to be filled in at runtime
   , .bNumInterfaces = 1
   , .bConfigurationValue = 1
@@ -143,7 +157,7 @@ static const struct usb_descriptor_body_configuration_t BODY_CONFIG = {
   , .bMaxPower = 25
 };
 
-static const struct usb_descriptor_body_interface_t BODY_INTERFACE = {
+static const struct usb_descriptor_body_interface_t BODY_INTERFACE PROGMEM = {
     .bInterfaceNumber = 0
   , .bAlternateSetting = 0
   , .bNumEndPoints = 1
@@ -153,16 +167,16 @@ static const struct usb_descriptor_body_interface_t BODY_INTERFACE = {
   , .iInterface = 3
 };
 
-static const struct usb_descriptor_body_endpoint_t FRAME_DATA_ENDPOINT = {
+static const struct usb_descriptor_body_endpoint_t FRAME_DATA_ENDPOINT PROGMEM = {
     .bEndpointAddress = 1
   , .bmAttributes = EP_TYPE_BULK
   , .wMaxPacketSize = 64
   , .bInterval = 0
 };
 
-static const char16_t STR_MANUFACTURER[] = u"Ghent University";
-static const char16_t STR_PRODUCT[] = u"IceCube event display";
-static const char16_t STR_IFACE_DESCR[] = u"Steamshovel display";
+static const char16_t STR_MANUFACTURER[] PROGMEM = u"Ghent University";
+static const char16_t STR_PRODUCT[] PROGMEM = u"IceCube event display";
+static const char16_t STR_IFACE_DESCR[] PROGMEM = u"Steamshovel display";
 extern const char16_t STR_SERIAL_NUMBER[];
 
 #define LANG_ID_EN_US 0x0409
@@ -172,8 +186,8 @@ struct string_pointer_t {
   const enum memspace_t memspace;
 };
 
-static const uint16_t LANG_IDS[] = {LANG_ID_EN_US, 0x0000};
-static const struct string_pointer_t STR_EN_US[] = {
+static const uint16_t LANG_IDS[] PROGMEM = {LANG_ID_EN_US, 0x0000};
+static const struct string_pointer_t STR_EN_US[] PROGMEM = {
     {STR_MANUFACTURER, MEMSPACE_PROGMEM}
   , {STR_PRODUCT, MEMSPACE_PROGMEM}
   , {STR_IFACE_DESCR, MEMSPACE_PROGMEM}
@@ -200,14 +214,18 @@ struct descriptor_list_t* generate_descriptor_list(const struct usb_setup_packet
       else if (index-1 < STRING_COUNT) {
         if (req->wIndex == LANG_ID_EN_US) {
           const struct string_pointer_t* str = &STR_EN_US[index-1];
-          head = create_list_item(DESC_TYPE_STRING, str->p, str->memspace);
+          // Create local variable to point to string and copy using pointer-to-pointer
+          // This works around the variable pointer size for different platforms
+          const char16_t* val;
+          memcpy_P(&val, &str->p, sizeof(val));
+          head = create_list_item(DESC_TYPE_STRING, val, pgm_read_byte(&str->memspace));
         }
       }
       break;
     case DESC_TYPE_CONFIGURATION:
       // Create appropriate configuration descriptor
       if (index == 0) {
-        memcpy(&descriptor_config, &BODY_CONFIG, sizeof(BODY_CONFIG));
+        memcpy_P(&descriptor_config, &BODY_CONFIG, sizeof(BODY_CONFIG));
         head = create_list_item(DESC_TYPE_CONFIGURATION, &descriptor_config, MEMSPACE_RAM);
         descriptor_list_append(
               head

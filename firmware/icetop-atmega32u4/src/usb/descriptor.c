@@ -1,6 +1,7 @@
 #include "usb/descriptor.h"
 #include "usb/endpoint.h"
 #include <stdlib.h>
+#include <string.h>
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>
 
@@ -166,7 +167,7 @@ static const struct usb_descriptor_body_interface_t BODY_INTERFACE PROGMEM = {
   , 3
 };
 
-static const struct usb_descriptor_body_endpoint_t BULK_ENDPOINT PROGMEM = {
+static const struct usb_descriptor_body_endpoint_t FRAME_DATA_ENDPOINT PROGMEM = {
     1
   , EP_TYPE_BULK
   , 64
@@ -213,11 +214,11 @@ struct descriptor_list_t* generate_descriptor_list(const struct usb_setup_packet
       else if (index-1 < STRING_COUNT) {
         if (req->wIndex == LANG_ID_EN_US) {
           const struct string_pointer_t* str = &STR_EN_US[index-1];
-          head = create_list_item(
-                DESC_TYPE_STRING
-              , (const void*) pgm_read_word(&str->p)
-              , pgm_read_byte(&str->memspace)
-          );
+          // Create local variable to point to string and copy using pointer-to-pointer
+          // This works around the variable pointer size for different platforms
+          const char16_t* val;
+          memcpy_P(&val, &str->p, sizeof(val));
+          head = create_list_item(DESC_TYPE_STRING, val, pgm_read_byte(&str->memspace));
         }
       }
       break;
@@ -232,7 +233,7 @@ struct descriptor_list_t* generate_descriptor_list(const struct usb_setup_packet
         );
         descriptor_list_append(
               head
-            , create_list_item(DESC_TYPE_ENDPOINT, &BULK_ENDPOINT, MEMSPACE_PROGMEM)
+            , create_list_item(DESC_TYPE_ENDPOINT, &FRAME_DATA_ENDPOINT, MEMSPACE_PROGMEM)
         );
         // Calculate and fill in total configuration length
         descriptor_config.wTotalLength = get_list_total_length(head);
