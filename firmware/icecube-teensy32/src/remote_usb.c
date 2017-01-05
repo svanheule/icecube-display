@@ -359,19 +359,6 @@ void usb_isr() {
         endpoint_stall(1);
       }
     }
-
-    else if (endpoint == 2 && token_pid == PID_IN) {
-      struct display_frame_usb_phase_t data;
-      if (!get_display_frame_usb_phase(&data)) {
-        // Set to invalid value
-        data.usb_frame_counter = 0xffff;
-      }
-      // Queue new data
-      uint8_t data_toggle = get_data_toggle(2, BDT_DIR_TX) ^ 1;
-      *((struct display_frame_usb_phase_t*) bdt_entry->buffer) = data;
-      bdt_entry->desc = generate_bdt_descriptor(endpoint_get_size(2), data_toggle);
-      set_data_toggle(2, BDT_DIR_TX, data_toggle);
-    }
   }
 }
 
