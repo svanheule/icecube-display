@@ -142,6 +142,7 @@ static struct frame_buffer_t* render_demo() {
   if (frame) {
     // Allow frame to be released
     frame->flags = FRAME_FREE_AFTER_DRAW;
+    struct led_t* buffer = (struct led_t*) frame->buffer;
 
     // Loop over currently shown pulses
     const struct pulse_t* pulse = current_pulse;
@@ -149,7 +150,7 @@ static struct frame_buffer_t* render_demo() {
         && (paused || pgm_read_word(&(pulse->time)) <= frame_number)
     ) {
       uint8_t index = pgm_read_byte(&(pulse->led_index));
-      memcpy_P(&(frame->buffer[index]), &(pulse->led), sizeof(struct led_t));
+      memcpy_P(&(buffer[index]), &(pulse->led), sizeof(struct led_t));
       ++pulse;
     }
 
