@@ -1,4 +1,4 @@
-#include "usb/fifo.h"
+#include "usb/endpoint_fifo.h"
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 

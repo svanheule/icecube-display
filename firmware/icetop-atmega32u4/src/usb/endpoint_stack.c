@@ -1,4 +1,4 @@
-#include "avr/endpoint_stack.h"
+#include "usb/endpoint_stack.h"
 #include <avr/io.h>
 
 static uint8_t ep_stack[EP_STACK_DEPTH];

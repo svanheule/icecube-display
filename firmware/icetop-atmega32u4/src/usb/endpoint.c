@@ -1,6 +1,6 @@
 #include "usb/endpoint.h"
-#include "avr/endpoint_stack.h"
-#include "usb/fifo.h"
+#include "usb/endpoint_stack.h"
+#include "usb/endpoint_fifo.h"
 #include <avr/io.h>
 
 #define EP_TYPE_MASK (3<<6)
