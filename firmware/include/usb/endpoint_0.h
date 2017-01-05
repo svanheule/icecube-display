@@ -1,10 +1,10 @@
 #ifndef USB_ENDPOINT_0_H
 #define USB_ENDPOINT_0_H
 
-/** \defgroup usb_endpoint_control Default control endpoint
-  * \ingroup usb_endpoint
-  * \brief Default control endpoint (endpoint 0) behaviour.
-  * \details Control transfers are handled entirely asynchronously via interrupts. When the device
+/** \file
+  * \brief USB Endpoint 0 state machine interface.
+  * \details
+  *   Control transfers are handled entirely asynchronously via interrupts. When the device
   *   has to wait for an answer from the host for example, this means that the firmware won't wait
   *   and poll to see if an answer has been received, but resumes normal operation until an
   *   interrupt is fired. This implies the use of task specific callbacks, since different setup
@@ -13,19 +13,19 @@
   *
   *   The control endpoint process requests in the following way, as illustrated by the diagram
   *   below:
-  *   - Initially, the control endpoint's FSM is in the ::CTRL_IDLE state and transitions to
+  *   * Initially, the control endpoint's FSM is in the ::CTRL_IDLE state and transitions to
   *     the ::CTRL_SETUP state if a new setup packet has been received.
-  *   - If the direction is IN, the endpoint prepares the data for transmission and enters the
+  *   * If the direction is IN, the endpoint prepares the data for transmission and enters the
   *     ::CTRL_DATA_IN state. Once this data is transmitted, the FSM proceeds to the
   *     ::CTRL_HANDSHAKE_IN state, waiting for a zero-length packet (ZLP) confirming the data was
   *     correctly received. This is then followed by possible a post-handshake action.
   *     and state if needed. The FSM then transitions back to the ::CTRL_IDLE state, waiting
   *     for a new setup request.
-  *   - If the direction of the request is OUT, it is possible no extra data except for the request
+  *   * If the direction of the request is OUT, it is possible no extra data except for the request
   *     will be provided by the host. In this case, the FSM transitions to ::CTRL_HANDSHAKE_OUT to
   *     acknowledge the transaction. If extra data will be sent, the FSM first enters the
   *     ::CTRL_DATA_OUT state, waiting to receive more data.
-  *   - If an unknown or bad request is received, or the device is unable
+  *   * If an unknown or bad request is received, or the device is unable
   *     handle the requested/provided data, the FSM will enter the ::CTRL_STALL state and
   *     stall the endpoint, notifying the host of a failed transaction.
   *     The stall is automatically cleared once the next setup request is received.
@@ -62,6 +62,18 @@
   *       {handshake_in handshake_out post_handshake} -> idle;
   *     }
   *   \enddot
+  *
+  * \see See section 9.3 of the
+  * [USB 2.0 specification](http://www.usb.org/developers/docs/usb20_docs/) for more details.
+  *
+  * \author Sander Vanheule (Universiteit Gent)
+  */
+
+/** \page usb_endpoint_control Default control endpoint
+  * ## Supported requests
+  * Aside from the \ref ::usb_request_code_t "standard request" support required by
+  * the USB standard for proper functioning of the device, a number of
+  * \ref ::vendor_request_t "vendor specific requests" can also be handled.
   */
 
 #include <stdint.h>
@@ -80,20 +92,15 @@ enum control_stage_t {
   , CTRL_POST_HANDSHAKE ///< Performing post-handshake action
 };
 
-/** \brief Vendor specific USB control request for display status and control.
-  * \details The default control endpoint is extended with some vendor specific control commands.
-  * See section 9.3 of the
-  * [USB 2.0 specification](http://www.usb.org/developers/docs/usb20_docs/) for more details.
-  *
-  * Request name       | bmRequestType | bRequest | wValue | wIndex |    wLength
-  * -------------------|---------------|----------|--------|--------|-----------
-  * PUSH_FRAME         |  0b0_10_00000 |        1 |      0 |      0 |     length
-  * DISPLAY_PROPERTIES |  0b1_10_00000 |        2 |      0 |      0 |    2-65535
-  * EEPROM_WRITE       |  0b0_10_00000 |        3 |      0 | offset |     length
-  * EEPROM_READ        |  0b1_10_00000 |        4 |      0 | offset |     length
-  * FRAME_DRAW_STATUS  |  0b1_10_00000 |        5 |      0 |      0 |          4
-  * FRAME_DRAW_SYNC    |  0b0_10_00000 |        6 |   [ms] |      0 |          0
-  * \ingroup usb_endpoint_control
+/** Vendor specific USB control request for display status and control.
+  * Request name                        | bmRequestType | bRequest | wValue | wIndex |    wLength
+  * ------------------------------------|---------------|----------|--------|--------|-----------
+  * ::VENDOR_REQUEST_DISPLAY_PROPERTIES |  0b1_10_00000 |        2 |      0 |      0 |    2-65535
+  * ::VENDOR_REQUEST_EEPROM_WRITE       |  0b0_10_00000 |        3 |      0 | offset |     length
+  * ::VENDOR_REQUEST_EEPROM_READ        |  0b1_10_00000 |        4 |      0 | offset |     length
+  * ::VENDOR_REQUEST_FRAME_DRAW_STATUS  |  0b1_10_00000 |        5 |      0 |      0 |          4
+  * ::VENDOR_REQUEST_FRAME_DRAW_SYNC    |  0b0_10_00000 |        6 |   [ms] |      0 |          0
+  * \see \ref usb_endpoint_control
   */
 enum vendor_request_t {
   /** Push a single frame to be shown on the display into the frame buffer queue.
@@ -107,7 +114,7 @@ enum vendor_request_t {
     * \deprecated Use the bulk out endpoint EP1 to transmit frame data.
     */
   VENDOR_REQUEST_PUSH_FRAME = 1,
-  /** Request a TLV list of [display metadata](\ref led_display_metadata).
+  /** Request a TLV list of [display metadata](\ref display_metadata).
     * A reply to this request will always consist of at least two bytes,
     * which provide the total length of the response.
     * A typical query of this metadata will be done the following way:
@@ -193,13 +200,17 @@ struct control_transfer_t {
   */
 void process_setup(struct control_transfer_t* transfer);
 
+/// Initialise all fields of \a transfer, set the transfer stage to SETUP and store the provided
+/// setup packet \a setup as the corresping request for the transfer.
 void init_control_transfer(
       struct control_transfer_t* transfer
     , const struct usb_setup_packet_t* setup
 );
 
+/// Change the transfer state to STALL and perform the cancel callback, if any.
 void cancel_control_transfer(struct control_transfer_t* transfer);
 
+/// Mark \a length bytes of the control transfer as done and perform the data callback.
 void control_mark_data_done(struct control_transfer_t* transfer, uint16_t length);
 
 #endif //USB_ENDPOINT_0_H

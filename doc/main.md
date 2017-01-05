@@ -1,4 +1,4 @@
-IceCube event data LED display
+IceCube event data LED display {#mainpage}
 ==============================
 
 The IceCube Neutrino Observatory is a high energy neutrino and cosmic ray detector located at the
@@ -24,15 +24,16 @@ By allowing the PC to send frames of raw RGB LED data, these displays are essent
 video display, albeit one arranged in a rather odd layout that matches the IceCube detector.
 
 Two displays were built at UGent, sharing much of the firmware code:
-* [IceTop LED display](\ref icetop-display)
-* [IceCube LED display](\ref icecube-display)
+* \subpage icetop-display
+* \subpage icecube-display
 
 
 ## USB connectivity and steamshovel ##
 
 The device's USB port can be used to transfer display data from a USB host. A detailed overiew
-can be found in the [firmware documentation](\ref usb_endpoint). A Steamshovel artist has been
-implemented using this connectivity to be able to display any simulation or data file.
+can be found in the \ref usb_communication "firmware documentation".
+A Steamshovel artist has been implemented using this connectivity to be able to display
+any simulation or data file.
 
 The options of the LedDisplay artist have been modelled after the Bubbles artist:
   * *Device*: select one of the detected LED displays. Detection happens once at start-up.
@@ -48,4 +49,3 @@ The options of the LedDisplay artist have been modelled after the Bubbles artist
 
 \image html screenshot-steamshovel.png "Steamshovel with LedDisplay artist"
 \image latex screenshot-steamshovel.png "Steamshovel with LedDisplay artist" width=0.7\textwidth
-

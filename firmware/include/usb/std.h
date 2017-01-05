@@ -49,6 +49,7 @@ enum usb_request_code_t {
 };
 
 /// \name USB request direction
+/// \ingroup usb_endpoint_control
 /// @{
 #define REQ_DIR_MASK (0x1<<7)
 #define REQ_DIR_OUT (0<<7)
@@ -57,6 +58,7 @@ enum usb_request_code_t {
 /// @}
 
 /// \name USB request type
+/// \ingroup usb_endpoint_control
 /// @{
 #define REQ_TYPE_MASK (0x3<<5)
 #define REQ_TYPE_STANDARD (0<<5)
@@ -66,6 +68,7 @@ enum usb_request_code_t {
 /// @}
 
 /// \name USB request recipient
+/// \ingroup usb_endpoint_control
 /// @{
 #define REQ_REC_MASK 0x1F
 #define REQ_REC_DEVICE 0
@@ -76,6 +79,7 @@ enum usb_request_code_t {
 /// @}
 
 /// \name USB device status
+/// \ingroup usb_endpoint_control
 /// @{
 #define DEVICE_STATUS_SELF_POWERED 1
 #define DEVICE_STATUS_REMOTE_WAKEUP 2
@@ -83,14 +87,19 @@ enum usb_request_code_t {
 /// @}
 
 /// USB device or endpoint features.
+/// \ingroup usb_endpoint_control
 enum usb_feature_t {
-    ENDPOINT_HALT = 0
-  , REMOTE_WAKEUP = 1
-  , TEST_MODE = 2
+  /// If the endpoint is/should be stalled.
+  ENDPOINT_HALT = 0,
+  /// Remote wake-up of host by device.
+  REMOTE_WAKEUP = 1,
+  /// Switch the device to test mode -- a high-speed feature, so not supported.
+  TEST_MODE = 2
 };
 
 
 /// USB control endpoint setup packet
+/// \ingroup usb_endpoint_control
 struct usb_setup_packet_t {
   /// bitwise OR of a `REQ_DIR_*`, a `REQ_TYPE_*`, and a `REQ_REC_*` constant. See std.h.
   uint8_t bmRequestType;

@@ -1,4 +1,4 @@
-## EEPROM layout ##
+# EEPROM layout {#eeprom_layout}
 
 The display's microcontroller uses its available EEPROM to store some display-specific details
 such as the serial number, the number and type of LEDs, etc.
@@ -12,7 +12,7 @@ Display LED information  | 0x020           | varies; at most 16
 Display string map       | 0x030           | varies
 
 
-### Serial number ###
+## Serial number
 The serial number is stored as a null-terminated UTF16-LE string, as required by the USB
 specification. The used format is "ICD-XX-YYY-ZZZZ":
 * XX: 'IT' or 'IC', depending on whether the device is meant to display IceTop or IceCube.
@@ -21,7 +21,7 @@ specification. The used format is "ICD-XX-YYY-ZZZZ":
 * ZZZZ: Sequential number to provide a unique identifier for the hardware.
 
 
-### Display LED information ###
+## Display LED information
 For the IceTop displays (ICD-IT-001-ZZZZ),
 3 bytes of EEPROM are used to store display specific information:
 
@@ -45,7 +45,7 @@ Address offset | Description
 0x20 + 0x4     | Support for DeepCore strings (boolean)
 
 
-### String/strip segment map ###
+## String/strip segment map
 Currently, only the IceCube displays store a string-to-buffer offset mapping in the EEPROM as there
 may be quite some variability in how the connections between LED strips is layed out.
 If only one IceCube string range is supported, these are equal to the string number, minus the
@@ -91,6 +91,3 @@ file segment.
     <td>4</td><td>0x30 + 27</td><td><kbd>05</kbd></td><td><kbd>00 0A 05 09 13 00 00 00</kbd></td>
   </tr>
 </table>
-
-\image html  segment-layout.png "Display segment strip layout"
-\image latex segment-layout.pdf "Display segment strip layout" width=0.7\textwidth

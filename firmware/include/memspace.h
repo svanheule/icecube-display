@@ -14,7 +14,7 @@
 /// Define which memory space the body of a data block is in.
 enum memspace_t {
     MEMSPACE_RAM ///< RAM storage.
-  , MEMSPACE_PROGMEM ///< Flash (or *prog*ram *mem*ory) storage.
+  , MEMSPACE_PROGMEM ///< Flash (or program memory) storage.
   , MEMSPACE_EEPROM ///< EEPROM storage.
   , MEMSPACE_NONE ///< Placeholder if the refering entity only provides metadata.
 };

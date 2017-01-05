@@ -1,5 +1,5 @@
-#ifndef USB_H
-#define USB_H
+#ifndef USB_DEVICE_H
+#define USB_DEVICE_H
 
 /** \file
   * \brief USB device state management
@@ -37,4 +37,4 @@ void set_device_state(enum usb_device_state_t state);
 /// Get the current USB device state.
 enum usb_device_state_t get_device_state();
 
-#endif
+#endif // USB_DEVICE_H

@@ -12,22 +12,41 @@
 #include <stddef.h>
 #include <stdint.h>
 
-/** \defgroup usb_endpoint_fifo Endpoint FIFO operations
-  * \ingroup usb_endpoint
-  * \brief Endpoint FIFO reading, writing and information.
-  * \details USB communication happens asynchronously to microcontroller operation. Any data
-  *   transferred to one of the device's endpoints is therefore stored in the memory buffer
-  *   associated with this endpoint.
-  *   Before reading from or writing to an endpoint's FIFO, the endpoint needs to be
-  *   selected. See \ref usb_endpoint_stack for more information.
-  * @{
+/** \page usb_endpoint_fifo Endpoint FIFO operations
+  * USB communication happens asynchronously to microcontroller operation. Any data
+  * transferred to one of the device's USB endpoints is stored in the memory buffer
+  * associated with this endpoint.
+  * Since this endpoint memory is separated from the rest of the microcontroller's RAM,
+  * this memory has to be read out via a special register acting as a FIFO buffer.
+  * Before reading from or writing to an endpoint's FIFO, the endpoint needs to be
+  * selected. See \ref usb_endpoint_stack for more information.
+  *
+  * ~~~{.c}
+  * // Read all bytes currently stored in the FIFO
+  * uint8_t buffer[64];
+  * fifo_read(&buffer[0], fifo_byte_count());
+  *
+  * // Write a buffer to the endpoint FIFO
+  * uint8_t buffer[] = {...};
+  * fifo_write(&buffer[0], sizeof(buffer));
+  * ~~~
+  *
+  * \see usb/endpoint_fifo.h
   */
+
+/// \name FIFO information
+/// @{
 
 /// Current number of bytes in the FIFO.
 uint16_t fifo_byte_count();
 
 /// Total capacity of the endpoint FIFO.
 uint16_t fifo_size();
+
+/// @}
+
+/// \name FIFO data access
+/// @{
 
 /** \brief Copy a block of data of from RAM to the FIFO.
   * \param data Pointer to the data block.

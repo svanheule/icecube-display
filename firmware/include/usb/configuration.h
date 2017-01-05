@@ -6,10 +6,10 @@
   * \details Since currently only one device configuration is present, only two configurations
   *   are supported:
   *   - Configuration 0: USB default configuration
-  *   - Configuration 1: Default device configuration with only the standard control endpoint.
+  *   - Configuration 1: Default device configuration with the standard control endpoint
+  *     and a bulk OUT endpoint for remote frame data transfer.
   *
   * \author Sander Vanheule (Universiteit Gent)
-  * \todo Add configuration 2 with an additional isochronous IN endpoint
   */
 
 #include <stdint.h>

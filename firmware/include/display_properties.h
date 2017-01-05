@@ -11,45 +11,45 @@
 #include <stdint.h>
 #include "memspace.h"
 
-/** \defgroup led_display_metadata Display metadata reports
-  * \ingroup led_display
-  * \brief An extensible interface to provide metadata related to the LED display.
-  * \details Display metadata can be requested [over USB](\ref usb_endpoint) as a
-  *   type-length-value list. This is an easily extensible interface that can provide additional
-  *   information if future firmwares may require so.
-  *   An application like Steamshovel can use these metadata reports to automatically configure
-  *   which data to send to which display, using the correct buffer format.
-  *   With these reports different displays types can be supported without having to hard-code the
-  *   specific configuration of each existing device in the application.
+/** \page display_metadata Display metadata reports
+  * Display metadata can be requested over USB as a type-length-value list.
+  * This is an easily extensible interface that can provide additional
+  * information if future firmwares may require so.
+  * An application like Steamshovel can use these metadata reports to automatically configure
+  * which data to send to which display, using the correct buffer format.
+  * With these reports different displays types can be supported without having to hard-code the
+  * specific configuration of each existing device in the application.
   *
-  *   ### IceTop display
-  *   A typical pocket-icetop TLV list looks as follows:
-  *   * ::DP_LED_TYPE (length 1): ::LED_TYPE_APA102
-  *   * ::DP_INFORMATION_TYPE (length 1): ::INFORMATION_IT_STATION
-  *   * ::DP_INFORMATION_RANGE (length 2): {1, 78}
+  * ## Report examples
+  * ### IceTop display
+  * A typical IceTop display TLV list looks as follows:
+  * * ::DP_LED_TYPE (length 1): ::LED_TYPE_APA102
+  * * ::DP_INFORMATION_TYPE (length 1): ::INFORMATION_IT_STATION
+  * * ::DP_INFORMATION_RANGE (length 2): {1, 78}
   *
-  *   This implies that LED display consist of APA102 LEDs, which means 4 bytes of information
-  *   should be provided per LED.
-  *   The information that is displayed corresponds to IceTop stations, so the pulses from
-  *   DOMs 61-64 should be merged to determine the LED's color and brightness.
-  *   The (inclusive) range of supported IceTop stations is 1-78, so a full display frame consists
-  *   of \f$4 \times 78=312\f$ bytes.
+  * This implies that LED display consist of APA102 LEDs, which means 4 bytes of information
+  * should be provided per LED.
+  * The information that is displayed corresponds to IceTop stations, so the pulses from
+  * DOMs 61-64 should be merged to determine the LED's color and brightness.
+  * The (inclusive) range of supported IceTop stations is 1-78, so a full display frame consists
+  * of \f$4 \times 78=312\f$ bytes.
   *
-  *   ### IceCube display
-  *   The design of the 2m×2m×2m IceCube display consists of three modules to facilitate transport.
-  *   If the display controllers were to be ported to the same protocol as the IceTop display, an
-  *   example report might look as follows:
-  *   * ::DP_LED_TYPE (length 1): ::LED_TYPE_WS2811
-  *   * ::DP_INFORMATION_TYPE (length 1): ::INFORMATION_IC_STRING
-  *   * ::DP_INFORMATION_RANGE (length 2): {31, 50}
-  *   * ::DP_INFORMATION_RANGE (length 2): {79, 86}
+  * ### IceCube display
+  * The design of the 2m×2m×2m IceCube display consists of three modules to facilitate transport.
+  * An example report of looks as follows:
+  * * ::DP_LED_TYPE (length 1): ::LED_TYPE_WS2811
+  * * ::DP_INFORMATION_TYPE (length 1): ::INFORMATION_IC_STRING
+  * * ::DP_INFORMATION_RANGE (length 2): {31, 50}
+  * * ::DP_INFORMATION_RANGE (length 2): {79, 86}
   *
-  *   This report describes the central part of the display/detector. A frame for this display
-  *   contains \f$ 3 \times 60 \times (20+8)=5040 \f$ bytes.
-  *   This is a lot more data than the IceTop display, but a 12Mb USB port should stil be able
-  *   to deliver 25FPS.
+  * This report describes the central part of the display/detector.
+  * A frame for this display contains \f$ 3 \times 60 \times (20+8)=5040 \f$ bytes.
+  * This is a lot more data than the IceTop display, but a 12Mb USB port should stil be able
+  * to deliver 25FPS.
   *
-  * @{
+  * ## Communication example
+  * The following example reads the display information from all connected devices using pyusb:
+  * \include usb.py
   */
 
 /** \brief Different TLV types
@@ -104,8 +104,6 @@ enum display_led_color_order_t {
   , LED_ORDER_RBG = 4
   , LED_ORDER_GRB = 5
 };
-
-/// @}
 
 /** \brief Initialise the display properties cache.
   * \details Some display properties are stored in EEPROM which results in slow responses if this
