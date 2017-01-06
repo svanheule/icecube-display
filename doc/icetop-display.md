@@ -19,8 +19,8 @@ The LED display mimics this geometry, by putting each station on a regular hexag
 of the slightly irregular grid of the actual detector.
 The in-fill stations have not been included in the small display due to a lack of space for the LEDs.
 
-\image html icetop-array.png "IceTop detector array layout"
-\image latex icetop-array.pdf "IceTop detector array layout" width=0.7\textwidth
+\image html geometry/icetop-array.png "IceTop detector array layout"
+\image latex geometry/icetop-array.pdf "IceTop detector array layout" width=0.7\textwidth
 
 ## Display usage ##
 

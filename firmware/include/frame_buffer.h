@@ -51,7 +51,6 @@
 // Frame buffer size and structure definitions
 
 /// Constants that can be used as metadata bit flags on a frame buffer.
-/// \ingroup led_display_buffer
 enum frame_flag_t {
   /// Indicate whether a frame buffer may be deallocated after drawing
   FRAME_FREE_AFTER_DRAW  = 1<<1,
@@ -61,7 +60,6 @@ enum frame_flag_t {
 };
 
 /// \brief Object constisting of a frame buffer and a number of associated (bit)flags.
-/// \ingroup led_display_buffer
 struct frame_buffer_t {
   /// Frame metadata as bit flags (see ::frame_flag_t)
   /// * flags(0): ::FRAME_FREE_AFTER_DRAW
@@ -75,7 +73,7 @@ struct frame_buffer_t {
 /// @{
 
 /// Initialise data storage for display frames.
-/// \ingroup led_display_buffer
+/// \ingroup display_initialisation
 void init_frame_buffers();
 
 /// Total frame byte count

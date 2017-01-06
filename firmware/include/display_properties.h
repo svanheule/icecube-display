@@ -113,9 +113,8 @@ enum display_led_color_order_t {
 void init_display_properties();
 
 /** \brief Return the (cached) number of LEDs present in the display.
-  * \details This function will return 0 before the cache is initialised, or 255 if the EEPROM has
-  *   been left unprogrammed. If this function returns a value different from 78 or 81,
-  *   you may need to reprogram the EEPROM.
+  * \details This function will return 0 before the cache is initialised,
+  *   or 0xFFFF if the EEPROM has been left unprogrammed.
   * \return The number of LEDs present in the display, or 0 if init_display_properties() has not
   *   been called yet.
   */

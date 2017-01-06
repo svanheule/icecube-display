@@ -200,8 +200,12 @@ struct control_transfer_t {
   */
 void process_setup(struct control_transfer_t* transfer);
 
-/// Initialise all fields of \a transfer, set the transfer stage to SETUP and store the provided
-/// setup packet \a setup as the corresping request for the transfer.
+/** \brief Initialise the control transfer.
+  * \details Sets the transfer stage to SETUP and stores the provided
+  *   setup packet \a setup as the corresping request for the transfer.
+  * \see Process the assigned setup packet using process_setup().
+  * \ingroup usb_endpoint_control
+  */
 void init_control_transfer(
       struct control_transfer_t* transfer
     , const struct usb_setup_packet_t* setup

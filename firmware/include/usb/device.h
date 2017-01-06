@@ -11,7 +11,7 @@
 enum usb_device_state_t {
   /// USB hardware is initialised
   ATTACHED,
-  /// USB VBUS is connected, i.e. th 5V USB power supply is present.
+  /// USB VBUS is connected, i.e.\ the 5V USB power supply is present.
   POWERED,
   /// The USB device is configured with only the default endpoint zero, and address zero.
   DEFAULT,
@@ -19,7 +19,7 @@ enum usb_device_state_t {
   ADDRESSED,
   /// The USB device is in a device defined configuration.
   CONFIGURED,
-  /// The USB device is suspended, i.e. no bus communication has been seen for at least 3ms.
+  /// The USB device is suspended, i.e.\ no bus communication has been seen for at least 3ms.
   SUSPENDED
 };
 

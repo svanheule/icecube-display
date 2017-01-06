@@ -32,17 +32,15 @@
 #include "usb/std.h"
 #include "memspace.h"
 
-/// List of recognised USB descriptors. Note that not all descriptors are required
-/// for full-speed-only devices.
+/// List of used USB descriptors.
+/// Note that more descriptor types are defined by the USB 2.0 standard.
+/// Since these are not supported or used anywhere, there is currently no need to define them.
 enum usb_descriptor_type_t {
-    DESC_TYPE_DEVICE = 1
-  , DESC_TYPE_CONFIGURATION = 2
-  , DESC_TYPE_STRING = 3
-  , DESC_TYPE_INTERFACE = 4
-  , DESC_TYPE_ENDPOINT = 5
-  , DESC_TYPE_DEVICE_QUALIFIER = 6 // High-speed USB descriptor, not used
-  , DESC_TYPE_OTHER_SPEED_CONFIGURATION = 7 // High-speed USB, not used
-  , DESC_TYPE_INTERFACE_POWER = 8 // USB power delivery, not used
+    DESC_TYPE_DEVICE = 1 ///< Device descriptor.
+  , DESC_TYPE_CONFIGURATION = 2 ///< Configuration descriptor.
+  , DESC_TYPE_STRING = 3 ///< String descriptor.
+  , DESC_TYPE_INTERFACE = 4 ///< Interface descriptor.
+  , DESC_TYPE_ENDPOINT = 5 ///< Endpoint descriptor.
 };
 
 /// Common header used for all USB descriptors.

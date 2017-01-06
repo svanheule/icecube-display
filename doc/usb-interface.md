@@ -43,17 +43,18 @@ Once the buffer structure and content is determined based on the display propert
 frame buffer can be filled with appropriate data and transmitted to the display. This is achieved
 by sending the buffer data to the \ref usb_remote_renderer "bulk endpoint".
 
-\todo
-* Device state management:
-  * \ref usb/device.h
-  * \ref usb/address.h
-  * \ref usb/configuration.h
-* USB details:
-  * \ref usb_endpoint_status
-  * \ref usb_endpoint_config
-  * \ref usb_platform
+### Device state management
+* \ref usb/device.h "Device state": See §9.1.1 and Figure 9-1 of the USB 2.0 specification
+* Device \ref usb/address.h "addressing" and \ref usb/configuration.h "configuration:
+  See §9.1.2 of the USB 2.0 specification
 
-## Multi-segment display support
+### USB endpoint hardware details:
+* \ref usb_endpoint_status
+* \ref usb_endpoint_config
+* \ref usb_platform
+
+
+## Multi-segment display facilities
 
 It is possible to construct a single large display, e.g. to represent IceCube, consisting of
 multiple segments each driven by its own microcontroller.
@@ -65,6 +66,5 @@ This occurs when one segment is displaying frame data ahead of an adjacent segme
 visible discontinuities.
 To prevent tearing, different segments should display data from the same frame as close together in
 time as possible.
-
-* \subpage led_display_timing
+Some initial synchronisation mechanism has been provided, described in \subpage led_display_timing.
 

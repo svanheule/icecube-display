@@ -19,9 +19,6 @@
   *   };
   *   ~~~
   * \author Sander Vanheule (Universiteit Gent)
-  * \see [ATmega32U4 documentation §21-22](http://www.atmel.com/devices/ATMEGA32U4.aspx)
-  *   Since the ATmega32U4 microcontroller only allows access to one endpoint at a time, an
-  *   \ref usb_endpoint_stack "endpoint selection system" is provided.
   *
   * \defgroup usb_endpoint USB endpoint operation
   */

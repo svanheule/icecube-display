@@ -11,7 +11,6 @@
 /** \brief A 4-tuple of bytes describing the data required by the APA102 LEDs.
   * \details The 24-bit RGB values can be scaled using the brightness field to achieve
   *   a larger dynamic range, e.g. to perform gamma correction.
-  * \ingroup led_display
   */
 struct led_t {
   uint8_t brightness; ///< Global brightness bits; only 5 LSB are valid.
