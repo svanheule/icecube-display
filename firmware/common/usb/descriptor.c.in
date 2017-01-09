@@ -134,48 +134,48 @@ static void descriptor_list_append(
 
 // Descriptor transaction definitions
 static const struct usb_descriptor_body_device_t BODY_DEVICE PROGMEM = {
-    0x0200
-  , 0
-  , 0
-  , 0
-  , 64
-  , 0x1ce3
-  , 0x0001
-  , 0x0010
-  , 1
-  , 2
-  , 4
-  , 1
+    .bcdUSB = 0x0200
+  , .bDeviceClass = 0
+  , .bDeviceSubClass = 0
+  , .bDeviceProtocol = 0
+  , .bMaxPacketSize = 64
+  , .idVendor = 0x1ce3
+  , .idProduct = ${USB_ID_PRODUCT}
+  , .bcdDevice = ${USB_DEVICE_VERSION_BCD}
+  , .iManufacturer = 1
+  , .iProduct = 2
+  , .iSerialNumber = 4
+  , .bNumConfigurations = 1
 };
 
 static const struct usb_descriptor_body_configuration_t BODY_CONFIG PROGMEM = {
-    0 // to be filled in at runtime
-  , 1
-  , 1
-  , 0
-  , USB_CONFIG_ATTRIBUTES(1, 0)
-  , 1
+    .wTotalLength = 0 // to be filled in at runtime
+  , .bNumInterfaces = 1
+  , .bConfigurationValue = 1
+  , .iConfiguration = 0
+  , .bmAttributes = USB_CONFIG_ATTRIBUTES(${USB_SELF_POWERED}, 0)
+  , .bMaxPower = USB_MAX_POWER(${USB_MAX_CURRENT})
 };
 
 static const struct usb_descriptor_body_interface_t BODY_INTERFACE PROGMEM = {
-    0
-  , 0
-  , 1
-  , 0xFF
-  , 0
-  , 0
-  , 3
+    .bInterfaceNumber = 0
+  , .bAlternateSetting = 0
+  , .bNumEndPoints = 1
+  , .bInterfaceClass = 0xFF
+  , .bInterfaceSubClass = 0
+  , .bInterfaceProtocol = 0
+  , .iInterface = 3
 };
 
 static const struct usb_descriptor_body_endpoint_t FRAME_DATA_ENDPOINT PROGMEM = {
-    1
-  , EP_TYPE_BULK
-  , 64
-  , 0
+    .bEndpointAddress = 1
+  , .bmAttributes = EP_TYPE_BULK
+  , .wMaxPacketSize = 64
+  , .bInterval = 0
 };
 
-static const char16_t STR_MANUFACTURER[] PROGMEM = u"Ghent University";
-static const char16_t STR_PRODUCT[] PROGMEM = u"IceTop event display";
+static const char16_t STR_MANUFACTURER[] PROGMEM = u"${USB_MANUFACTURER}";
+static const char16_t STR_PRODUCT[] PROGMEM = u"${USB_STRING_PRODUCT}";
 static const char16_t STR_IFACE_DESCR[] PROGMEM = u"Steamshovel display";
 extern const char16_t STR_SERIAL_NUMBER[];
 

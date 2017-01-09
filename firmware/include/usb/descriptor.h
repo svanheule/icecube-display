@@ -133,6 +133,7 @@ struct usb_descriptor_body_configuration_t {
 
 #define USB_CONFIG_ATTRIBUTES(self_powered, remote_wakeup) \
     ((1<<7)|((self_powered)<<6)|((remote_wakeup)<<5))
+#define USB_MAX_POWER(milli_amps) (milli_amps/2)
 
 /// Interface descriptor body
 struct usb_descriptor_body_interface_t {

@@ -10,8 +10,7 @@
   *   the connection.
   *   For the initial development on the Arduino Uno, a UART communications module was also
   *   provided since raw USB communications is not possible.
-  *   This platform is now deprecated however, to provision may be removed from the firmware in
-  *   the future.
+  *   This platform is now deprecated however, and may be removed from the firmware in the future.
   * \author Sander Vanheule (Universiteit Gent)
   * \see remote_usb.c
   * \see \deprecated remote_serial.c

@@ -74,6 +74,15 @@ set(
   CACHE STRING "Hardware revision"
 )
 
+# USB device settings
+set(USB_ID_PRODUCT "0x0001") # USB product ID
+set(USB_DEVICE_VERSION_BCD "0x0110") # Version 1.1: HW rev. 2 compatible mod of rev. 1 board
+set(USB_SELF_POWERED "1") # Self powered flag
+set(USB_MAX_CURRENT "2") # Bus current draw in mA, must be at least 2mA
+set(USB_MANUFACTURER "Universiteit Gent") # USB manufacturer string descriptor
+set(USB_STRING_PRODUCT "IceTop event display") # USB product string descriptor
+
+
 # Set the GCC flags required
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mmcu=${AVR_TARGET_DEVICE}")
 set(CMAKE_C_OUTPUT_EXTENSION ".o")
@@ -111,14 +120,17 @@ else()
     src/usb/endpoint.c
     src/usb/endpoint_stack.c
     src/usb/endpoint_fifo.c
-    src/usb/descriptor.c
     ../common/usb/device.c
     ../common/usb/endpoint_0.c
     ../common/usb/remote_renderer.c
     ../common/usb/configuration.c
   )
   configure_file(../common/usb/serial.c.in serial.c)
-  list(APPEND SOURCES "${CMAKE_BINARY_DIR}/serial.c")
+  configure_file(../common/usb/descriptor.c.in descriptor.c)
+  list(APPEND SOURCES
+    "${CMAKE_BINARY_DIR}/serial.c"
+    "${CMAKE_BINARY_DIR}/descriptor.c"
+  )
 endif()
 
 set(EVENTS

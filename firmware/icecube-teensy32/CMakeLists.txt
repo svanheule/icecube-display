@@ -50,6 +50,14 @@ set(
 set(TEST_MODE OFF CACHE BOOL "Run display in test mode")
 set(DEVICE_FPS "25" CACHE STRING "Number of frames displayed per second")
 
+# USB device settings
+set(USB_ID_PRODUCT "0x0002") # USB product ID
+set(USB_DEVICE_VERSION_BCD "0x0320") # Use Teensy HW revision
+set(USB_SELF_POWERED "0") # Self powered flag
+set(USB_MAX_CURRENT "50") # Bus current draw in mA, must be at least 2mA
+set(USB_MANUFACTURER "Universiteit Gent") # USB manufacturer string descriptor
+set(USB_STRING_PRODUCT "IceCube event display segment") # USB product string descriptor
+
 # Set the GCC flags required
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=cortex-m4 -mthumb")
 set(CMAKE_C_OUTPUT_EXTENSION ".o")
@@ -79,7 +87,6 @@ set(SOURCES
   src/usb/address.c
   src/usb/endpoint.c
   ../common/usb/endpoint_0.c
-  src/usb/descriptor.c
   ../common/usb/configuration.c
   # Teensy specific
   src/kinetis/pit.c
@@ -88,7 +95,11 @@ set(SOURCES
   src/kinetis/usb_bdt.c
 )
 configure_file(../common/usb/serial.c.in serial.c)
-list(APPEND SOURCES "${CMAKE_BINARY_DIR}/serial.c")
+configure_file(../common/usb/descriptor.c.in descriptor.c)
+list(APPEND SOURCES
+  "${CMAKE_BINARY_DIR}/serial.c"
+  "${CMAKE_BINARY_DIR}/descriptor.c"
+)
 
 # modified source files from PJRC
 list(APPEND SOURCES
