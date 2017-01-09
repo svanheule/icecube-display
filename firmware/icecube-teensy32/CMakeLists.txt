@@ -162,3 +162,11 @@ add_custom_target(
   DEPENDS icecube_display
   COMMENT "Upload new program file"
 )
+
+# Custom make for uploading EEPROM
+add_custom_target(
+  upload_eeprom
+  ${CMAKE_SOURCE_DIR}/scripts/write_eeprom.py ${CMAKE_BINARY_DIR}/icecube_display.eep
+  DEPENDS icecube_display
+  COMMENT "Upload device EEPROM"
+)
