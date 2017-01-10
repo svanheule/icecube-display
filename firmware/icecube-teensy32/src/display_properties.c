@@ -8,8 +8,11 @@ struct dp_information_range_t {
   uint8_t start;
   uint8_t end;
 } __attribute__((packed));
+
 static struct dp_information_range_t dp_info_range_icecube;
 static const struct dp_information_range_t dp_info_range_deepcore = {79, 86};
+
+static bool has_deepcore;
 static uint16_t led_count;
 
 struct dp_led_information_t {
@@ -34,13 +37,12 @@ static const enum display_information_type_t DP_INFO_TYPE = INFORMATION_IC_STRIN
 
 static uint16_t dp_buffer_size;
 
-
-static struct dp_tlv_item_t PROPERTIES_TLV_LIST[] = {
-    TLV_ENTRY(DP_LED_TYPE, MEMSPACE_PROGMEM, &DP_INFO_LED_TYPE)
+static const struct dp_tlv_item_t PROPERTIES_TLV_LIST[] = {
+    TLV_ENTRY(DP_INFORMATION_RANGE, MEMSPACE_PROGMEM, &dp_info_range_deepcore)
+  , TLV_ENTRY(DP_LED_TYPE, MEMSPACE_PROGMEM, &DP_INFO_LED_TYPE)
   , TLV_ENTRY(DP_INFORMATION_TYPE, MEMSPACE_PROGMEM, &DP_INFO_TYPE)
   , TLV_ENTRY(DP_BUFFER_SIZE, MEMSPACE_RAM, &dp_buffer_size)
   , TLV_ENTRY(DP_INFORMATION_RANGE, MEMSPACE_RAM, &dp_info_range_icecube)
-  , TLV_END
   , TLV_END
 };
 
@@ -60,11 +62,10 @@ void init_display_properties() {
     dp_info_range_icecube.start = eeprom_read_byte(&DP_LED_INFORMATION.ic_string_start);
     dp_info_range_icecube.end = eeprom_read_byte(&DP_LED_INFORMATION.ic_string_end);
     led_count = 60*(dp_info_range_icecube.end-dp_info_range_icecube.start+1);
+    has_deepcore = eeprom_read_byte(&DP_LED_INFORMATION.has_deepcore);
 
-    if (eeprom_read_byte(&DP_LED_INFORMATION.has_deepcore)) {
+    if (has_deepcore) {
       led_count += 60*(dp_info_range_deepcore.end-dp_info_range_deepcore.start+1);
-      PROPERTIES_TLV_LIST[4] = (struct dp_tlv_item_t)
-        TLV_ENTRY(DP_INFORMATION_RANGE, MEMSPACE_PROGMEM, &dp_info_range_deepcore);
     }
 
     dp_buffer_size = get_frame_buffer_size();
@@ -89,5 +90,10 @@ enum display_led_color_order_t get_color_order() {
 }
 
 const struct dp_tlv_item_t* get_display_properties_P() {
-  return &(PROPERTIES_TLV_LIST[0]);
+  if (has_deepcore) {
+    return &(PROPERTIES_TLV_LIST[0]);
+  }
+  else {
+    return &(PROPERTIES_TLV_LIST[1]);
+  }
 }
