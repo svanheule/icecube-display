@@ -13,7 +13,8 @@
 #include "util/tlv_list.h"
 
 /** \page display_metadata Display metadata reports
-  * Display metadata can be requested over USB as a type-length-value list.
+  * Display metadata can be requested over USB as a type-length-value list by sending a
+  * ::VENDOR_REQUEST_DISPLAY_PROPERTIES control request to the default control endpoint.
   * This is an easily extensible interface that can provide additional
   * information if future firmwares may require so.
   * An application like Steamshovel can use these metadata reports to automatically configure
@@ -45,7 +46,7 @@
   *
   * This report describes the central part of the display/detector.
   * A frame for this display contains \f$ 3 \times 60 \times (20+8)=5040 \f$ bytes.
-  * This is a lot more data than the IceTop display, but a 12Mb USB port should stil be able
+  * This is a lot more data than the IceTop display, but a 12Mbps USB port should stil be able
   * to deliver 25FPS.
   *
   * ## Communication example
@@ -60,29 +61,30 @@ enum display_property_type_t {
   /// Allowed only once per metadata report.
   DP_INFORMATION_TYPE = 1,
   /// Information range, always length 2: `{start, end}`.
-  /// If multiple ranges are supplies in a single report, the buffer data shoul be concatenated
-  /// for these ranges to form a single display buffer.
+  /// If multiple ranges are supplies in a single report, they should be sorted and the
+  /// buffer data concatenated to form a single display buffer.
   DP_INFORMATION_RANGE = 2,
   /// Type of LED used in the display, always length 1. See ::display_led_type_t.
   /// Allowed only once per metadata report.
   DP_LED_TYPE = 3,
   /// Display frame buffer size.
   /// Depends on the number of LEDs present and the [LED type](\ref ::display_led_type_t).
+  /// This information is optional and should only be used to check the buffer size calculated
+  /// from the LED type, information type, and information ranges.
   DP_BUFFER_SIZE = 4
 };
 
-/** \brief Type of information the display is capable of showing.
-  * \details The display can be capable of showing either IceTop tanks (INFORMATION_IT_STATION)
-  *   or IceCube strings (INFORMATION_IC_STRING).
-  *   If it displays IceTop tanks, then the frame buffer should contain the required LED data
-  *   per station, in increasing order as determined by the DP_INFORMATION_RANGE field of the
-  *   display metadata: e.g. `{[station 1], [station 2],..., [station 78]}`.
-  *   If the display shows IceCube strings, then the frame buffer should contain all DOMs per
-  *   string: e.g. `{[dom 1 of string 1], [dom 2 of string 1],..., [dom 60 of string 86]}`.
-  */
+/// Type of information the display is capable of showing.
 enum display_information_type_t {
-    INFORMATION_IT_STATION = 0 ///< IceTop stations
-  , INFORMATION_IC_STRING = 1 ///< Full IceCube strings
+  /// IceTop stations. Pulses from all 4 DOMs in the two tanks should be merged.
+  /// The frame buffer should contain the required LED data per station, in increasing order
+  /// as determined by the DP_INFORMATION_RANGE field of the display metadata:
+  /// e.g. `{[station 1], [station 2], ...}`.
+  INFORMATION_IT_STATION = 0,
+  /// Full IceCube strings. 1:1 mapping of in-ice DOMs to LEDs.
+  /// The frame buffer should contain all DOMs per string:
+  /// e.g. `{[dom 1 of string 1], [dom 2 of string 1], ... , [dom 1 of string 2], ...}`.
+  INFORMATION_IC_STRING = 1
 };
 
 /// Type of LED IC used in the display.
@@ -112,7 +114,7 @@ void init_display_properties();
 
 /** \brief Return the (cached) number of LEDs present in the display.
   * \details This function will return 0 before the cache is initialised,
-  *   or 0xFFFF if the EEPROM has been left unprogrammed.
+  *   or -1 (0xFFFF) if the EEPROM has been left unprogrammed.
   * \return The number of LEDs present in the display, or 0 if init_display_properties() has not
   *   been called yet.
   */

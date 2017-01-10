@@ -3,13 +3,8 @@
 
 /** \file
   * \brief Microcontroller specific implementation of the display driver.
-  * \details Since the display uses a number of APA102 LEDs connected in series, a hardware SPI
-  *   master port can be used to drive the LED chain. On an ATmega microcontroller, this can be
-  *   either a hardware SPI port, or a USART port configured as SPI master. The latter case allows
-  *   for lower transmission times as it has a hardware buffer that can be kept filled during
-  *   transmission. When using a SPI port, the buffer is only the size of the currently transmitted
-  *   byte, so one has to wait (and check) until the byte is transmitted to load the next byte,
-  *   introducing a small delay between bytes.
+  * \details Provides proper initialisation of the microcontroller hardware to drive the
+  *   LED communications and write frame data.
   * \author Sander Vanheule (Universiteit Gent)
   */
 
@@ -18,7 +13,7 @@
 /// \name Display initialisation
 /// @{
 
-/** \brief Initialise the hardware equired for driving the display.
+/** \brief Initialise the hardware required for driving the display.
   * Must be called before display_frame().
   * \ingroup led_display
   */

@@ -11,7 +11,6 @@
 #include <stdint.h>
 
 /// USB packet IDs
-/// \ingroup usb_endpoint
 enum usb_pid_t {
     PID_OUT = 0x1
   , PID_IN = 0x9

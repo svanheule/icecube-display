@@ -13,10 +13,6 @@ render (low resolution) RGB data at video frame rates, can show this on the disp
 
 ## USB device details
 
-Aside from the \ref ::usb_request_code_t "standard request" support required by
-the USB standard for proper functioning of the device, a number of
-\ref ::vendor_request_t "vendor specific requests" can also be handled.
-
 The interface presented by the device consists of two endpoints:
 * EP0: default control endpoint for status reporting and control
   * \subpage usb_endpoint_control
@@ -25,33 +21,13 @@ The interface presented by the device consists of two endpoints:
   * \subpage usb_remote_renderer
 
 
-Interfacing with the device will typically require querying it for information, and then
-configuring the device and software accordingly.
-Since the device implements a vendor specific class, only the minimally required setup can be
-performed by the host PC.
-The \ref usb/endpoint_0.h "default control endpoint" handles these tasks.
-* Reading the device and interface descriptors,
-* Setting the device address,
-* Selecting a configuration, in this case configuration 1.
-
 After enumeration is completed, the device can be used by the user.
 Unless it is known beforehand which device will be present, the display has to be queried to check
 which LED type it supports, how many LEDs are present, and what kind of data that can be displayed.
-Querying the display is achieved through a \ref ::VENDOR_REQUEST_DISPLAY_PROPERTIES
-"vendor specific control request" to obtain a \ref display_metadata "display metadata report".
+Querying the display is achieved by obtaining a \ref display_metadata "display metadata report".
 Once the buffer structure and content is determined based on the display properties, a display
 frame buffer can be filled with appropriate data and transmitted to the display. This is achieved
 by sending the buffer data to the \ref usb_remote_renderer "bulk endpoint".
-
-### Device state management
-* \ref usb/device.h "Device state": See §9.1.1 and Figure 9-1 of the USB 2.0 specification
-* Device \ref usb/address.h "addressing" and \ref usb/configuration.h "configuration:
-  See §9.1.2 of the USB 2.0 specification
-
-### USB endpoint hardware details:
-* \ref usb_endpoint_status
-* \ref usb_endpoint_config
-* \ref usb_platform
 
 
 ## Multi-segment display facilities

@@ -1,5 +1,4 @@
-IceCube event data LED display {#mainpage}
-==============================
+# Event data LED display {#mainpage}
 
 The IceCube Neutrino Observatory is a high energy neutrino and cosmic ray detector located at the
 Amundsen-Scott South Pole Station.
@@ -10,12 +9,12 @@ To be able to represent the information about the captured light, a number of LE
 been developed over time.
 These displays use an (RGB) LED to represent a single DOM or a cluster of DOMs.
 Detection time is usually mapped to color, and the amount of light detected is mapped to brightness.
-This documentation accompanies the firmware that has been written to drive the displays built
-at Ghent University.
+This documentation accompanies the firmware was originally written to drive the displays built
+at Ghent University, and serves to provide details on how to implement new displays in the same
+framework.
 
 
-## Display electronics ##
-
+## Display electronics and firmware
 To simplify the LED driving, the displays use RGB LED packages that include a driver and serial
 communications such as the WS2812B or APA102.
 These are then driven in turn by a microcontroller that also sports a USB port to provide
@@ -23,13 +22,13 @@ connectivity to a PC.
 By allowing the PC to send frames of raw RGB LED data, these displays are essentially a generic
 video display, albeit one arranged in a rather odd layout that matches the IceCube detector.
 
-Two displays were built at UGent, sharing much of the firmware code:
-* \subpage icetop-display
-* \subpage icecube-display
+To start designing your own display (firmware), the following resources can be usefull:
+* Check the \subpage display_implementations "list of implementations" to see if anything
+  already exists that fits your needs, or can be adapted to do so.
+* Otherwise, read the \subpage new_implementations "guidelines for new implementation".
 
 
-## USB connectivity and steamshovel ##
-
+## USB connectivity and steamshovel
 The device's USB port can be used to transfer display data from a USB host. A detailed overiew
 can be found in the \ref usb_communication "firmware documentation".
 A Steamshovel artist has been implemented using this connectivity to be able to display
@@ -48,4 +47,3 @@ The options of the LedDisplay artist have been modelled after the Bubbles artist
       as positive infinity, but just \f$10^5\f$ns.
 
 \image html screenshot-steamshovel.png "Steamshovel with LedDisplay artist"
-\image latex screenshot-steamshovel.png "Steamshovel with LedDisplay artist" width=0.7\textwidth

@@ -3,9 +3,11 @@
 
 /** \file
   * \brief Configuration of USB endpoint hardware and memory.
-  * \details Endpoint configuration is currently only focussed on control endpoints, so provisions
-  *   for other endpoint types are rather minimal.
-  *   For the default control endpoint (EP 0) the following config could be used:
+  * \author Sander Vanheule (Universiteit Gent)
+  *
+  * \defgroup usb_endpoint USB endpoints
+  * \brief Endpoint configuration and status reporting
+  * \details For the default control endpoint (EP 0) the following config could be used:
   *   ~~~{.c}
   *   static const struct ep_hw_config_t EP_0 = {
   *       // Endpoint number 0
@@ -18,40 +20,34 @@
   *       64
   *   };
   *   ~~~
-  * \author Sander Vanheule (Universiteit Gent)
-  *
-  * \defgroup usb_endpoint USB endpoint operation
+  * @{
   */
 
 #include <stdbool.h>
 #include <stdint.h>
 
-
-/** \defgroup usb_endpoint_config Endpoint configuration
-  * \ingroup usb_endpoint
-  * \brief Configuration and memory allocation of USB endpoints.
-  * \details To configure a USB endpoint, the USB controller needs to know what type it is and
-  *   how much memory it needs.
+/** \name Endpoint configuration
   * @{
   */
 
-/// List of endpoint types
-/// Values of these constants corresponds to the bit values used in the USB endpoint descriptors.
-/// See Table 9-13 of the USB 2.0 standard.
+/// \brief List of endpoint types.
+/// \details Values of these constants corresponds to the bit values used in the USB
+///   endpoint descriptors. See Table 9-13 of the USB 2.0 standard.
 enum ep_type_t {
-    EP_TYPE_CONTROL = 0
-  , EP_TYPE_BULK = 2
-  , EP_TYPE_INTERRUPT = 3
-  , EP_TYPE_ISOCHRONOUS = 1
+    EP_TYPE_CONTROL = 0 ///< Control endpoint
+  , EP_TYPE_BULK = 2 ///< Bulk endpoint
+  , EP_TYPE_INTERRUPT = 3 ///< Interrupt endoint
+  , EP_TYPE_ISOCHRONOUS = 1 ///< Isochronous endpoint
 };
 
 /// Endpoint directions
 enum ep_direction_t {
-    EP_DIRECTION_OUT = (1 << 0)
-  , EP_DIRECTION_IN = (1 << 1)
-  , EP_DIRECTION_BIDIR = EP_DIRECTION_IN | EP_DIRECTION_OUT
+    EP_DIRECTION_OUT = (1 << 0) ///< OUT endpoint, for data from host to device.
+  , EP_DIRECTION_IN = (1 << 1) ///< IN endpoint, for data from device to host.
+  , EP_DIRECTION_BIDIR = EP_DIRECTION_IN | EP_DIRECTION_OUT ///< Bidirectional endpoint.
 };
 
+/// \brief Endpoint configuration struct.
 struct ep_config_t {
   /// Endpoint number
   uint8_t num;
@@ -82,10 +78,7 @@ uint16_t endpoint_get_size(const uint8_t ep_num);
 /// @}
 
 
-/** \defgroup usb_endpoint_status Endpoint status
-  * \ingroup usb_endpoint
-  * \brief Endpoint status reporting and setting.
-  * \details
+/** \name Endpoint status
   * @{
   */
 
@@ -109,6 +102,7 @@ void endpoint_reset_data_toggle(const uint8_t ep_num);
   */
 uint8_t endpoint_get_data_toggle(const uint8_t ep_num);
 
+/// @}
 /// @}
 
 #endif
