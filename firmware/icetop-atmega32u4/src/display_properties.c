@@ -1,20 +1,8 @@
 #include "display_properties.h"
 #include "display_types.h"
+#include "util/tlv_list.h"
 #include <avr/pgmspace.h>
 #include <avr/eeprom.h>
-
-uint16_t get_tlv_list_length_P(const struct dp_tlv_item_t* tlv_list) {
-  uint16_t total = 0;
-  enum display_property_type_t field_type = pgm_read_byte(&tlv_list->type);
-  while (field_type != DP_END) {
-    // Add header and item length to total length
-    total += 2 + pgm_read_byte(&tlv_list->length);
-    // Proceed to next item
-    ++tlv_list;
-    field_type = pgm_read_byte(&tlv_list->type);
-  }
-  return total;
-}
 
 struct dp_information_range_t {
   uint8_t start;
@@ -55,9 +43,6 @@ enum display_led_color_order_t get_color_order() {
 }
 
 static const enum display_information_type_t DP_INFO_TYPE PROGMEM = INFORMATION_IT_STATION;
-
-#define TLV_ENTRY(type, memspace, address) {type, sizeof(*address), memspace, address}
-#define TLV_END {DP_END, 0, MEMSPACE_NONE, 0}
 
 static const struct dp_tlv_item_t PROPERTIES_TLV_LIST[] PROGMEM = {
     TLV_ENTRY(DP_LED_TYPE, MEMSPACE_EEPROM, &DP_LED_INFORMATION.type)

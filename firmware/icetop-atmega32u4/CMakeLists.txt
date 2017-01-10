@@ -102,6 +102,7 @@ set(SOURCES
   src/render/demo.c
   src/switches.c
   ../common/memspace.c
+  ../common/util/tlv_list.c
   ../common/frame_buffer.c
   ../common/frame_queue.c
   ../common/frame_timer.c

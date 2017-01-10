@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 #include "memspace.h"
+#include "util/tlv_list.h"
 
 /** \page display_metadata Display metadata reports
   * Display metadata can be requested over USB as a type-length-value list.
@@ -52,12 +53,9 @@
   * \include usb.py
   */
 
-/** \brief Different TLV types
+/** \brief Different display properties TLV types
   */
 enum display_property_type_t {
-  /// Last field in TLV list with length 0. Same value as unprogrammed flash/EEPROM to lower
-  /// chances of get_tlv_list_length_P() failing when it is provided with a bad pointer.
-  DP_END = 0xFF,
   /// Information type, always length 1. See ::display_information_type_t
   /// Allowed only once per metadata report.
   DP_INFORMATION_TYPE = 1,
@@ -124,26 +122,13 @@ uint16_t get_led_count();
 /// \see ::display_led_type_t
 uint8_t get_led_size();
 
-
-
 /// The order in which the RGB data should be transmitted per LED.
 enum display_led_color_order_t get_color_order();
 
-/// Item in a TLV list.
-struct dp_tlv_item_t {
-  enum display_property_type_t type; ///< Type of display data.
-  uint8_t length; ///< Length of this field's data not including the two type and length bytes.
-  enum memspace_t memspace; ///< Memory region the TLV data resides in.
-  const void* data; ///< Pointer to the memory block contain the TLV data.
-};
-
 /** \brief Get a pointer to the TLV list stored in flash.
-  * \details The list ends with a ::DP_END field to ensure proper functioning of
+  * \details The list ends with a ::TLV_TYPE_END field to ensure proper functioning of
   *   get_tlv_list_length_P().
   */
 const struct dp_tlv_item_t* get_display_properties_P();
-
-/// Calculate the total length of the TLV list, not including a ::DP_END field.
-uint16_t get_tlv_list_length_P(const struct dp_tlv_item_t* tlv_data);
 
 #endif //DISPLAY_PROPERPTIES_H

@@ -320,7 +320,7 @@ static inline void process_vendor_request(struct control_transfer_t* transfer) {
           // Copy properties TLV fields (if there is any remaining space)
           struct dp_tlv_item_t item;
           memcpy_P(&item, props_head, sizeof(struct dp_tlv_item_t));
-          while (remaining && item.type != DP_END) {
+          while (remaining && item.type != TLV_TYPE_END) {
             if (remaining--) {
               *buffer++ = item.type;
               if (remaining--) {

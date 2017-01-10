@@ -4,19 +4,6 @@
 #include <avr/eeprom.h>
 #include <stdbool.h>
 
-uint16_t get_tlv_list_length_P(const struct dp_tlv_item_t* tlv_list) {
-  uint16_t total = 0;
-  enum display_property_type_t field_type = tlv_list->type;
-  while (field_type != DP_END) {
-    // Add header and item length to total length
-    total += 2 + tlv_list->length;
-    // Proceed to next item
-    ++tlv_list;
-    field_type = tlv_list->type;
-  }
-  return total;
-}
-
 struct dp_information_range_t {
   uint8_t start;
   uint8_t end;
@@ -47,8 +34,6 @@ static const enum display_information_type_t DP_INFO_TYPE = INFORMATION_IC_STRIN
 
 static uint16_t dp_buffer_size;
 
-#define TLV_ENTRY(type, memspace, address) {type, sizeof(*address), memspace, address}
-#define TLV_END {DP_END, 0, MEMSPACE_NONE, 0}
 
 static struct dp_tlv_item_t PROPERTIES_TLV_LIST[] = {
     TLV_ENTRY(DP_LED_TYPE, MEMSPACE_PROGMEM, &DP_INFO_LED_TYPE)
@@ -58,7 +43,6 @@ static struct dp_tlv_item_t PROPERTIES_TLV_LIST[] = {
   , TLV_END
   , TLV_END
 };
-
 
 union eeprom_start_t {
   char bytes[4];
