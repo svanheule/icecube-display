@@ -4,7 +4,6 @@
 #include <stdint.h>
 
 #include "display_driver.h"
-#include "display_properties.h"
 #include "render/demo.h"
 #include "render/test_scan.h"
 #include "render/test_ring.h"

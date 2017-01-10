@@ -37,7 +37,6 @@ static void disable_pll() {
   PLLCSR &= ~_BV(PLLE);
 }
 
-
 void init_remote() {
   /* Reset all configurations to their intended state while the device is detatched.
    * Then, when everything is set up, enable the end-of-reset interrupt en attach the device.
