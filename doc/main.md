@@ -9,7 +9,7 @@ To be able to represent the information about the captured light, a number of LE
 been developed over time.
 These displays use an (RGB) LED to represent a single DOM or a cluster of DOMs.
 Detection time is usually mapped to color, and the amount of light detected is mapped to brightness.
-This documentation accompanies the firmware was originally written to drive the displays built
+This documentation accompanies the firmware that was originally written to drive the displays built
 at Ghent University, and serves to provide details on how to implement new displays in the same
 framework.
 

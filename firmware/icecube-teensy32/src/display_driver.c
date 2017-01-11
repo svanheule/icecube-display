@@ -38,7 +38,7 @@ struct port_map_t {
   uint8_t ports[MAX_PORT_COUNT];
 };
 
-// TODO Revise LED layout: see with other groups on used layouts
+// LED layout stored in EEPROM
 #define PORTMAP __attribute__((section(".portmap"),used))
 static const struct port_map_t LED_MAP[SEGMENT_COUNT] PORTMAP;
 

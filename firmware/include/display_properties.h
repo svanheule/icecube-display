@@ -14,7 +14,8 @@
 
 /** \page display_metadata Display metadata reports
   * Display metadata can be requested over USB as a type-length-value list by sending a
-  * ::VENDOR_REQUEST_DISPLAY_PROPERTIES control request to the default control endpoint.
+  * \ref VENDOR_REQUEST_DISPLAY_PROPERTIES "DISPLAY_PROPERTIES" request
+  * to the default control endpoint.
   * This is an easily extensible interface that can provide additional
   * information if future firmwares may require so.
   * An application like Steamshovel can use these metadata reports to automatically configure
@@ -37,8 +38,8 @@
   * of \f$4 \times 78=312\f$ bytes.
   *
   * ### IceCube display
-  * The design of the 2m×2m×2m IceCube display consists of three modules to facilitate transport.
-  * An example report of looks as follows:
+  * The \f$(2m)^3\f$ IceCube display consists of three modules.
+  * A report of the center module may look as follows:
   * * ::DP_LED_TYPE (length 1): ::LED_TYPE_WS2811
   * * ::DP_INFORMATION_TYPE (length 1): ::INFORMATION_IC_STRING
   * * ::DP_INFORMATION_RANGE (length 2): {31, 50}

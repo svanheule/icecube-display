@@ -72,8 +72,8 @@ struct ep_config_t {
 };
 
 /** \brief Initialise the USB endpoint described by \a config.
-  *   This will allocate the hardware and memory as described by the manual and enable
-  *   the required interrupts.
+  * \details This will allocate the hardware and memory as described by the
+  *   microcontroller's manual and enable the required interrupts.
   * \note Not all platforms support random endpoint allocation, so endpoints should be allocated
   *   starting from endpoint 0 up to the last endpoint.
   *   Failing to do so may result in endpoint memory corruption.
@@ -81,7 +81,7 @@ struct ep_config_t {
   */
 bool endpoint_configure(const struct ep_config_t* config);
 
-/// Deallocates the endpoint memory.
+/// Releases hardware and memory associated with the endpoint memory.
 void endpoint_deconfigure(const uint8_t ep_num);
 
 /// Return the maximum endpoint packet size.

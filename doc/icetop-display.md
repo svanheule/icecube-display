@@ -1,8 +1,8 @@
 # Table-top IceTop display {#display_atmega32u4_icetop}
 
-The table-top IceTop event display develop at UGent was the origin of this firmware project.
+The table-top IceTop event display developed at UGent was the origin of this firmware project.
 It is a portable display that uses strips with 30 or 60 LED modules per meter, resulting in
-acceptable dimensions the facilitate it being caried around and used e.g.\ for classes on
+acceptable dimensions that facilitate it being caried around and used e.g. for classes on
 astroparticle physics.
 It is driven by a self-designed display controller, built around the ATmega32U4 microcontroller.
 
@@ -51,7 +51,7 @@ The firmware also uses `avr-libc` to provide a C implementation of low-level mic
 features.
 
 ### EEPROM details
-3 bytes the LED information EEPROM are used to store display specific information:
+Three bytes of the LED information EEPROM are used to store display specific information:
 
 Address offset | Description
 --------------:|-------------
@@ -74,7 +74,7 @@ To do this, press and hold the *Forward* button while pressing the *reset* butto
 After releasing *reset*, the *Forward* button can also be released and the display should now be in
 firmware upgrade mode. The green LED will still be on, but the orange LED will now be off.
 
-When performing the `lsusb` command on Linux, you will now see the Atmel or Teensy bootloader
+When performing the `lsusb` command on Linux, you will now see the Atmel bootloader
 showing up in the listing:
 
     $ lsusb | grep -e "Atmel"
@@ -90,6 +90,7 @@ upload the firmware using the `avrdude` command:
 
     # When only one device is connected
     avrdude -p ATMEGA32U4 -c flip1 -U flash:w:icetop_display.hex
+
     # When multiple devices are connected (and ready to be programmed),
     # you should also specify which port number to use (use lsusb to find out)
     avrdude -p ATMEGA32U4 -c flip1 -P usb:001:039 -U flash:w:icetop_display.hex
@@ -104,10 +105,8 @@ The VCC line of the ICSP header can be used to power the device, so make sure th
 programmer's VCC line is either disconnected, or that the external power suppy is not used!
 
 With an ICSP programmer, the flash and EEPROM will be erased prior to the device upgrade.
-It is recommended to configure the cmake system to generate the right EEPROM data and program
+It is recommended to configure the CMake system to generate the right EEPROM data and program
 the fuses and lock bits, the EEPROM, the program flash, and the bootloader flash.
 When performing the initial flash of the device after assembly, a complete chip erase should be
 performed beforehand to ensure the lock bits are reset and a new firmware can be flashed to the
 device.
-
-    $ make upload_all

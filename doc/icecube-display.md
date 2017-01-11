@@ -1,8 +1,8 @@
 # Modular IceCube event display {#display_teensy_icecube}
 
-The LED display built at UGent was based on the mechanical designs of the UW River Falls displays,
-but uses the icecube-display firmware instead of the Teensy's Arduino interface used in the
-original design.
+The IceCube LED display built at UGent was based on the mechanical designs of the
+UW River Falls displays, but uses the icecube-display firmware instead of
+the Teensy's Arduino interface used in the original design.
 It is a scale 1:500 display, so is approximately \f$(2m)^3\f$ in size,
 and is driven by three Teensy 3.2 ARM microcontroller development boards.
 
@@ -10,7 +10,7 @@ and is driven by three Teensy 3.2 ARM microcontroller development boards.
 The full IceCube detector was broken up into three display modules to facilitate transport,
 each containing a Teensy board.
 Provided there is a way to mechanically support the upper part of the module, each of the modules
-can be controlled independently.
+can be controlled as an independent display that supports part of the IceCube detector.
 
 * Front module: strings 1-30
 * Center module: strings 31-50, optionally also contains the DeepCore strings (79-86)
@@ -43,13 +43,13 @@ The top part only contains a small amount of cabling to connect data lines of th
 \image html icecube-segment-layout/segment-connections.png "Display segment connections"
 
 ### LED strip layout configuration \anchor icecube_display_eeprom
-The Teensy controllers use an 8-bit port to send serial data to 8 LED strips simultaneously.
-To make these output pins available, the Teensys are seated in a
+The Teensy controllers uses an 8-bit port to send serial data to 8 LED strips simultaneously.
+To make these output pins easily accessible, the Teensys are seated in a
 [OctoWS2811 adaptor](https://www.pjrc.com/store/octo28_adaptor.html).
 The two RJ45 connectors are then each fed to a splitter board using CAT5e cables to provide 8 strip
 ports.
 
-Since 8 ports is smaller than the corresponding number IceCube strings per display segment,
+Since 8 ports is smaller than the corresponding number of IceCube strings per display segment,
 the data lines of up to four LED strips are connected in series, resulting in a strip with 60
 to 240 LEDs.
 The data lines for the first and third strip run from bottom to top, while the data lines for the
@@ -71,10 +71,10 @@ The full JSON file may look as the example provided below. Note that not all dis
 all 8 output ports, and not all ports have 4 strips connected in series.
 If ports with less than 4 strips are present, the available ports should be populated starting with
 the longest strips.
-In the example below, the 'front' module's first 7 ports have four strips, and the last port only
-has two.
-The 'center' and 'back' modules respectively have 4 and 7 ports used for four strips, and none
-on the last port(s).
+In the example below, the 'front' module's first seven ports have four strips,
+and the last port only has two.
+The 'center' and 'back' modules respectively have four and seven ports used for four strips,
+and none on the last port(s).
 
 \include display_config.json
 
@@ -89,7 +89,7 @@ To build the firmware, `arm-none-eabi-gcc` is required.
 It also uses the newlib C library implementation and a few headers provided by the
 upstream Teensy repositories for compatibility with some `avr-libc` functionality.
 
-### EEPROM layout
+### EEPROM usage
 5 bytes of EEPROM are used to store the display specific properties.
 The first and last supported string number denote a continous, inclusive range of IceCube strings
 that can be displayed by the device.
@@ -111,7 +111,7 @@ In case the firmware would want to read out these offsets anyway, it would re-us
 from other strings and be prevented from reading possibly invalid data.
 
 The EEPROM segment below corresponds to the above center display segment.
-The first LED strip on the first port maps to IceCube string 34=31+0x03.
+The first LED strip on the second port maps to IceCube string \f$44=31+\text{D}_{16}\f$.
 Note that the EEPROM segment is essentially a transpose of the table provided in the configuration
 file segment.
 The three last bytes (unused) of the segment mappings are shown here as '`00`', as per the
@@ -148,7 +148,7 @@ To update the firmware on the Teensy, just press the program button.
     $ lsusb | grep -e "Teensy"
     Bus 003 Device 102: ID 16c0:0478 Van Ooijen Technische Informatica Teensy Halfkay Bootloader
 
-The new firmware can now be uploaded via `cmake upload` when building from source, or using the
+The new firmware can now be uploaded via `make upload` when building from source, or using the
 `teensy_loader_cli` utility when programming a compatible .hex file:
 
     # Only one device can be programmed at a time

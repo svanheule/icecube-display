@@ -16,11 +16,11 @@
   * be called every (few) SOF token(s). The number of clock ticks between these calls will
   * be monitored and averaged out to slave the 25FPS timer to the USB SOF timer.
   *
-  * ## Display synchronisation
+  * ## Timing correction
   * Using the correct_display_frame_counter() and correct_display_frame_phase() functions,
   * all display segments can be made to update within 1ms from each other.
-  * These phase corrections can be performed remotely by sending a ::VENDOR_REQUEST_FRAME_DRAW_SYNC
-  * request to the control endpoint.
+  * These phase corrections can be performed remotely by sending a
+  * \ref VENDOR_REQUEST_FRAME_DRAW_SYNC "FRAME_DRAW_SYNC" request to the control endpoint.
   * Note that tearing can still occur if no mechanism is present to tell the segments when
   * the remotely rendered data should be displayed.
   *
@@ -51,7 +51,7 @@
 /// Function to be called upon receival of a USB SOF token with the new USB frame counter value.
 void new_sof_received(const uint16_t usb_frame_counter);
 
-/** \brief Display frame counter and usb frame counter values at frame draw time.
+/** \brief Display frame counter and USB frame counter values at frame draw time.
   * \details Upon frame timer roll-over, the USB frame counter value is latched such that
   *   a comparison can be made between multiple devices as to when they are drawing frames
   *   relative to each other. If different devices are in phase, then the diffence between the
@@ -94,7 +94,7 @@ void correct_display_frame_phase(const int8_t ms_shift);
 /// Initialise the frame timer.
 void init_frame_timer();
 
-/// Whether a new frame should be displayed or the device is allowed to idle.
+/// Whether a new frame should be displayed or if the device is allowed to idle.
 bool should_draw_frame();
 
 /// Acknowledge that a frame has been drawn.

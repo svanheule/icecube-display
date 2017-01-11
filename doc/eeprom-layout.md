@@ -23,7 +23,7 @@ Please refer to the different implementation pages from the \ref display_impleme
 The serial number is stored as a null-terminated UTF16-LE string, as required by the USB
 specification.
 The 32 bytes of reserved EEPROM can therefore be used to store 15 characters.
-See \ref display_implementations on which format to use for the serial number string.
+See \ref display_serialno on which format to use for the serial number string.
 ```{.c}
 // Assuming the platform is little-endian
 const char16_t USB_STRING_SERIALNO[] __attribute__((section(".serialno")) = u"ICD-IC-000-0000";

@@ -27,8 +27,11 @@
   *
   * If the display frame buffer size is an exact multiple of the endpoint size, the transfer is
   * considered complete when enough data has been received to fill the frame buffer.
-  * Note that is is not required to transmit an extra zero-length USB frame to complete the
+  * Note that it is not required to transmit an extra zero-length USB frame to complete the
   * transfer.
+  *
+  * If the endpoint was stalled due to a transmission error, the stall should be clear using a
+  * \ref CLEAR_FEATURE control request.
   *
   * \dot
   *   digraph remote_renderer_fsm {

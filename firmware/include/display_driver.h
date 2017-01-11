@@ -15,7 +15,7 @@
   * \brief LED communication interface.
   * \details Provides proper initialisation of the hardware required to drive the display LEDs.
   *   After initialisation, frame buffers can be displayed.
-  *   As display clearing is supported separately by display_blank() as it may be possible to
+  *   Display clearing is supported separately by display_blank() as it may be possible to
   *   provide a more efficient implementation compared to just writing a empty frame buffer.
   * @{
   */
@@ -36,7 +36,7 @@ void init_display_driver();
 
 /** \brief Write a frame out to the display from the given frame buffer.
   * \details During the write-out, the ::FRAME_DRAW_IN_PROGRESS flag will be set on the frame.
-  * This function should not be called with a null-pointer for \a buffer!
+  * \param buffer Valid point to a frame buffer. Must not be a null-pointer!
   */
 void display_frame(struct frame_buffer_t* buffer);
 

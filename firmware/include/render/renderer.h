@@ -13,7 +13,7 @@
   *   pushed into the frame queue.
   *   Every time a frame is consumed, the current renderer's renderer_t::render_frame() function
   *   is called to generate the next frame.
-  * \see Remote rendering: usb/remote_renderer.h
+  * \see \ref led_display_remote
   */
 
 

@@ -40,30 +40,26 @@ typedef int16_t timer_diff_t;
 /// \name Frame timer backend
 /// @{
 
-/// Initialise the frame timer and set the function to be called when the timer trips.
-/// \ingroup led_display_timing
+/// \brief Initialise the frame timer.
+/// \param timer_callback The function to be called when the timer trips.
 void init_frame_timer_backend(void (*timer_callback)());
 
 /** \brief Counter direction.
-  * \ingroup led_display_timing
   * \details Differences between counter values have the same sign as the value returned by
   *   this function, except when the timer has rolled over.
   * \return 1 for up-counter, -1 for down-counter.
   */
 int8_t get_counter_direction();
 
-/// The maximum (roll-over/reset) value of the timer.
-/// \ingroup led_display_timing
+/// \brief The maximum (roll-over/reset) value of the timer.
 timer_count_t get_counts_max();
 
-/// Get the current counter value of the timer.
-/// \ingroup led_display_timing
+/// \brief Get the current counter value of the timer.
 timer_count_t get_counts_current();
 
 /** \brief Add \a diff to the current maximum value of the counter.
-  * \ingroup led_display_timing
   * \details The new value will be applied after the counter has rolled over.
-  *   Therefor, although possible, it doesn't really make sense to call this function more
+  *   Therefore, although possible, it doesn't really make sense to call this function more
   *   often than once per frame draw cycle.
   */
 void correct_counts_max(timer_diff_t diff);

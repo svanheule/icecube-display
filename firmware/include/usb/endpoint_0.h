@@ -34,7 +34,7 @@
   *   init_control_transfer().
   * * After the control_transfer_t object is properly initialised, it should be passed to
   *   process_setup(). The control_transfer_t object will now be in the ::CTRL_SETUP state.
-  * * Pass the initialised control transfer object to process_setup(). If the state did follow
+  * * Pass the initialised control transfer object to process_setup(). If the state did not follow
   *   one of the allowed transitions from ::CTRL_SETUP, then this is a bad request and the endpoint
   *   should be stalled to notify the host.
   *   The stall is automatically cleared once the next setup request is received.

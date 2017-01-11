@@ -7,11 +7,19 @@ platforms.
 For the firmware modules that are too closely tied to the hardware itself, only a header file
 is provided to provide the common interface that other modules build on.
 
+## CMake
+The current firmware implementations are all designed as CMake projects.
+This provides convenient out-of-source builds and provides a single interface to build and upload
+firmware images:
+
+* `make`: Compiles the firmware image.
+* `make upload`: Uploads the firmware image to the device, when the device is in programming mode.
+
 ## Firmware structure
 ### Device initialisation
 Since the firmware uses bare-metal C, microcontroller hardware initalisation has to be performed
 by the user, and a memory pool for display frames should be allocated before
-starting to write and generate display data.
+starting to generate and write display data.
 Display firmwares should call the following initialisation routines in the listed order to prevent
 firmware malfunction.
 
@@ -29,9 +37,9 @@ firmware malfunction.
   Strictly spoken not required if you don't want remote connectivity.
   Implementing \ref remote.h for the USB communications requires a good understanding of the
   underlying hardware. If possible, try to stick to an existing platform to avoid having to write
-  the code to \ref usb_endpoint_control "drive the EP0 state machine" and properly handle the
-  \ref usb/device.h "device state".
-5. \ref init_frame_timer()\n
+  the code to \ref usb_endpoint_control "drive the EP0 state machine" and properly manage the
+  \ref usb_device "USB device".
+5. \ref init_frame_timer() \n
   Starts the frame timer to enable periodic clearing of the frame FIFO.
   Requires a \ref frame_timer_backend.h "frame timer backend" implementation.
 
@@ -46,14 +54,10 @@ An implementation should be provided by every new firmware:
 * \ref usb/address.h
 * \ref usb/endpoint.h
 
+A common implementation for \ref usb/descriptor.h is available, but may use different
+constants per platform. This is provided as a CMake configurable file:
+* usb/descriptor.c.in
+
 Of course other firmware modules can be provided to extend this base functionality.
 See \ref display_atmega32u4_icetop "firmware/icetop_atmega32u4" for an example with
 stand-alone operation as an additional feature.
-
-## CMake
-The current firmware implementations are all designed as CMake projects.
-This provides convenient out-of-source builds and provides a single interface to build and upload
-firmware images:
-
-* `make`: Compiles the firmware image.
-* `make upload`: Uploads the firmware image to the device, when the device is in programming mode.

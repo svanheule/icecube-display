@@ -37,7 +37,7 @@
   *   A display with for example 78 APA102 LEDs will have a buffer size of \f$312=78\times4\f$.
   *   The contents of the buffer are stored in OM-key order. This means that LED data is
   *   first sorted by string number, and then by DOM number.
-  *   The buffer data however will not be written to the display in-order, as following the
+  *   The buffer data however will not be written to the display in that order, as following the
   *   buffer layout for the physical layout of LEDs is usually subobtimal.
   *   See the display documentation for more information on how the LEDs are physically connected.
   *
@@ -88,7 +88,7 @@ struct frame_buffer_t {
 /// Initialise data storage for display frames.
 void init_frame_buffers();
 
-/// Total frame byte count
+/// Size in bytes of array pointed to by frame_buffer_t::buffer.
 size_t get_frame_buffer_size();
 
 /// Allocate a new frame buffer if possible. Returns NULL on failure.
@@ -97,7 +97,7 @@ struct frame_buffer_t* create_frame();
 /// Deallocate a frame irrespective of whether the flag ::FRAME_FREE_AFTER_DRAW is set.
 void destroy_frame(struct frame_buffer_t* frame);
 
-/// Clear the frame contents, i.e. set `frame->buffer` to all zeros.
+/// Clear the frame contents, i.e. set frame_buffer_t::buffer to all zeros.
 void clear_frame(struct frame_buffer_t* frame);
 
 /** \brief Convenience method to create a new frame of which frame_buffer_t::buffer is set to

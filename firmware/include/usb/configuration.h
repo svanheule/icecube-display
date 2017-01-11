@@ -26,7 +26,7 @@
 /// Index 0 will always return `true` as this is required by all USB devices.
 bool valid_configuration_index(int8_t index);
 
-/** \brief Select device configuration with index \a index.
+/** Select device configuration with index \a index.
   * \returns `true` if the new configuration was selected, `false` otherwise.
   */
 bool set_configuration_index(int8_t index);
