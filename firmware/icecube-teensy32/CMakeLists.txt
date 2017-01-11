@@ -95,10 +95,8 @@ set(SOURCES
   src/kinetis/dma.c
   src/kinetis/usb_bdt.c
 )
-configure_file(../common/usb/serial.c.in serial.c)
 configure_file(../common/usb/descriptor.c.in descriptor.c)
 list(APPEND SOURCES
-  "${CMAKE_BINARY_DIR}/serial.c"
   "${CMAKE_BINARY_DIR}/descriptor.c"
 )
 
