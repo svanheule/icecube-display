@@ -5,34 +5,30 @@
   * \brief USB endpoint FIFO access.
   * \details A `memcpy`-like interface is provided to read from, and write to, the USB endpoint
   *   FIFOs.
+  *
+  *   USB communication happens asynchronously to microcontroller operation. Any data
+  *   transferred to one of the device's USB endpoints is stored in the memory buffer
+  *   associated with this endpoint.
+  *   Since this endpoint memory is separated from the rest of the microcontroller's RAM,
+  *   this memory has to be read out via a special register acting as a FIFO buffer.
+  *   Before reading from or writing to an endpoint's FIFO, the endpoint needs to be
+  *   selected. See \ref usb_endpoint_stack for more information.
+  *
+  *   ~~~{.c}
+  *   // Read all bytes currently stored in the FIFO
+  *   uint8_t buffer[64];
+  *   fifo_read(&buffer[0], fifo_byte_count());
+  *
+  *   // Write a buffer to the endpoint FIFO
+  *   uint8_t buffer[] = {...};
+  *   fifo_write(&buffer[0], sizeof(buffer));
+  *   ~~~
   * \author Sander Vanheule (Universiteit Gent)
   * \see [ATmega32U4 documentation §21-22](http://www.atmel.com/devices/ATMEGA32U4.aspx)
   */
 
 #include <stddef.h>
 #include <stdint.h>
-
-/** \page usb_endpoint_fifo Endpoint FIFO operations
-  * USB communication happens asynchronously to microcontroller operation. Any data
-  * transferred to one of the device's USB endpoints is stored in the memory buffer
-  * associated with this endpoint.
-  * Since this endpoint memory is separated from the rest of the microcontroller's RAM,
-  * this memory has to be read out via a special register acting as a FIFO buffer.
-  * Before reading from or writing to an endpoint's FIFO, the endpoint needs to be
-  * selected. See \ref usb_endpoint_stack for more information.
-  *
-  * ~~~{.c}
-  * // Read all bytes currently stored in the FIFO
-  * uint8_t buffer[64];
-  * fifo_read(&buffer[0], fifo_byte_count());
-  *
-  * // Write a buffer to the endpoint FIFO
-  * uint8_t buffer[] = {...};
-  * fifo_write(&buffer[0], sizeof(buffer));
-  * ~~~
-  *
-  * \see usb/endpoint_fifo.h
-  */
 
 /// \name FIFO information
 /// @{
