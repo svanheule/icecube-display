@@ -15,7 +15,15 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+/** \defgroup usb_device_configuration Configuration management
+  * \ingroup usb_device
+  * \brief Manage USB device endpoint configurations
+  * \details
+  * @{
+  */
+
 /// Check whether the given configuration index \a index is valid.
+/// Index 0 will always return `true` as this is required by all USB devices.
 bool valid_configuration_index(int8_t index);
 
 /** \brief Select device configuration with index \a index.
@@ -24,6 +32,9 @@ bool valid_configuration_index(int8_t index);
 bool set_configuration_index(int8_t index);
 
 /// Get the current configuration index.
+/// \returns -1 if no configuration was previously selected, 0 or a positive value otherwise.
 int8_t get_configuration_index();
+
+/// @}
 
 #endif

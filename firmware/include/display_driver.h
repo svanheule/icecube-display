@@ -10,12 +10,21 @@
 
 #include "frame_buffer.h"
 
+/** \defgroup led_display_driver Display driver
+  * \ingroup led_display
+  * \brief LED communication interface.
+  * \details Provides proper initialisation of the hardware required to drive the display LEDs.
+  *   After initialisation, frame buffers can be displayed.
+  *   As display clearing is supported separately by display_blank() as it may be possible to
+  *   provide a more efficient implementation compared to just writing a empty frame buffer.
+  * @{
+  */
+
 /// \name Display initialisation
 /// @{
 
 /** \brief Initialise the hardware required for driving the display.
   * Must be called before display_frame().
-  * \ingroup led_display
   */
 void init_display_driver();
 
@@ -28,17 +37,16 @@ void init_display_driver();
 /** \brief Write a frame out to the display from the given frame buffer.
   * \details During the write-out, the ::FRAME_DRAW_IN_PROGRESS flag will be set on the frame.
   * This function should not be called with a null-pointer for \a buffer!
-  * \ingroup led_display
   */
 void display_frame(struct frame_buffer_t* buffer);
 
 /** \brief Turn all the LEDs off.
   * \details This achieves the same effect as calling display_frame() with an all-zero frame buffer
   *   but is more efficient since it requires less memory and time to run.
-  * \ingroup led_display
   */
 void display_blank();
 
+/// @}
 /// @}
 
 #endif

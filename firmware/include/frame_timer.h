@@ -8,7 +8,7 @@
   * \author Sander Vanheule (Universiteit Gent)
   */
 
-/** \page led_display_timing Display frame timing
+/** \page led_display_sync Display synchronisation
   * Nominally, the display consumes frame from its internal queue at 25 frames per second.
   *
   * When the device is connected to a USB host, it can also track the timer
@@ -19,6 +19,8 @@
   * ## Display synchronisation
   * Using the correct_display_frame_counter() and correct_display_frame_phase() functions,
   * all display segments can be made to update within 1ms from each other.
+  * These phase corrections can be performed remotely by sending a ::VENDOR_REQUEST_FRAME_DRAW_SYNC
+  * request to the control endpoint.
   * Note that tearing can still occur if no mechanism is present to tell the segments when
   * the remotely rendered data should be displayed.
   *
@@ -28,6 +30,17 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+
+/** \defgroup led_display_timer Frame timing
+  * \ingroup led_display
+  * \brief Periodic interrupt timer to initiate frame drawing.
+  * \details Frame timing is split up in a platform independent interface (\ref frame_timer.h)
+  *   that should be used  by other firmware modules, and the timer backend
+  *   (\ref frame_timer_backend.h) that is only used by the frame timer interface.
+  *   All hardware specific details of the timer are implemented in this backend, so this is the
+  *   only part that actually changes between implementation.
+  * @{
+  */
 
 /// Time interval between frame displays expressed in milliseconds.
 #define MS_PER_FRAME (1000/DEVICE_FPS)
@@ -87,6 +100,7 @@ bool should_draw_frame();
 /// Acknowledge that a frame has been drawn.
 void clear_draw_frame();
 
+/// @}
 /// @}
 
 #endif //FRAME_TIMER_H

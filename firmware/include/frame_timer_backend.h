@@ -35,6 +35,8 @@ typedef uint16_t timer_count_t;
 typedef int16_t timer_diff_t;
 #endif
 
+/// \addtogroup led_display_timer
+/// @{
 /// \name Frame timer backend
 /// @{
 
@@ -66,6 +68,7 @@ timer_count_t get_counts_current();
   */
 void correct_counts_max(timer_diff_t diff);
 
+/// @}
 /// @}
 
 #endif //FRAME_TIMER_BACKEND_H

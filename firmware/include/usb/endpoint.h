@@ -5,28 +5,26 @@
   * \brief Configuration of USB endpoint hardware and memory.
   * \author Sander Vanheule (Universiteit Gent)
   *
-  * \defgroup usb_endpoint USB endpoints
-  * \brief Endpoint configuration and status reporting
-  * \details For the default control endpoint (EP 0) the following config could be used:
-  *   ~~~{.c}
-  *   static const struct ep_hw_config_t EP_0 = {
-  *       // Endpoint number 0
-  *       0,
-  *       // ... is a control endpoint
-  *       EP_TYPE_CONTROL,
-  *       // ... which is always bidirectional
-  *       EP_DIRECTION_BIDIR,
-  *       // ... with a 64B buffer, the maximum allowed by USB 2.0 for a full-speed device.
-  *       64
-  *   };
-  *   ~~~
-  * @{
+  * \defgroup usb_device USB device management
+  * \brief This module groups firmware functionality related to managing the USB device state.
+  * \details Any firmware implementing a new remote USB communications module will most likely
+  *   require these functions.
+  *   Note that currently only functionality is provided to manage different USB device
+  *   configurations, but not multiple interfaces.
+  *
+  * \see [USB in a NutShell](http://www.beyondlogic.org/usbnutshell/usb1.shtml) for an introduction
+  *   to the USB standard.
+  * \see The complete [USB 2.0 specification](http://www.usb.org/developers/docs/usb20_docs/).
   */
 
 #include <stdbool.h>
 #include <stdint.h>
 
-/** \name Endpoint configuration
+/** \defgroup usb_device_endpoint Endpoint management
+  * \brief USB endpoint configuration and status reporting
+  * \ingroup usb_device
+  * @{
+  * \name Endpoint configuration
   * @{
   */
 
@@ -47,7 +45,21 @@ enum ep_direction_t {
   , EP_DIRECTION_BIDIR = EP_DIRECTION_IN | EP_DIRECTION_OUT ///< Bidirectional endpoint.
 };
 
-/// \brief Endpoint configuration struct.
+/** \brief Endpoint configuration struct.
+  * \details For the default control endpoint (EP 0) the following config could be used:
+  * ~~~{.c}
+  * static const struct ep_hw_config_t EP_0 = {
+  *     // Endpoint number 0
+  *     0,
+  *     // ... is a control endpoint
+  *     EP_TYPE_CONTROL,
+  *     // ... which is always bidirectional
+  *     EP_DIRECTION_BIDIR,
+  *     // ... with a 64B buffer, the maximum allowed by USB 2.0 for a full-speed device.
+  *     64
+  * };
+  * ~~~
+  */
 struct ep_config_t {
   /// Endpoint number
   uint8_t num;
@@ -78,7 +90,7 @@ uint16_t endpoint_get_size(const uint8_t ep_num);
 /// @}
 
 
-/** \name Endpoint status
+/** \name Endpoint stall
   * @{
   */
 
@@ -90,6 +102,10 @@ bool endpoint_clear_stall(const uint8_t ep_num);
 
 /// Get endpoint stall status
 bool endpoint_is_stalled(const uint8_t ep_num);
+
+/// @}
+/// \name Endpoint DATAx toggle
+/// @{
 
 /// Reset the DATAx toggle to DATA0
 void endpoint_reset_data_toggle(const uint8_t ep_num);

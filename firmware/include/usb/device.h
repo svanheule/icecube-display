@@ -6,8 +6,18 @@
   * \author Sander Vanheule (Universiteit Gent)
   */
 
-/// USB device states as defined by §9.1 of the
-/// [USB 2.0 specification](http://www.usb.org/developers/docs/usb20_docs/).
+/** \defgroup usb_device_state Device state
+  * \brief USB device state management
+  * \details As defined by §9.1 of the
+  *   [USB 2.0 specification](http://www.usb.org/developers/docs/usb20_docs/), the device
+  *   can be in a number of pre-defined states.
+  *   This state is not usually managed by the microcontroller hardware, so needs to be managed
+  *   in software.
+  * \ingroup usb_device
+  * @{
+  */
+
+/// USB device states
 enum usb_device_state_t {
   /// USB hardware is initialised
   ATTACHED,
@@ -36,5 +46,7 @@ void set_device_state(enum usb_device_state_t state);
 
 /// Get the current USB device state.
 enum usb_device_state_t get_device_state();
+
+/// @}
 
 #endif // USB_DEVICE_H
