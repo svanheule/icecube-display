@@ -185,6 +185,7 @@ set_target_properties(icetop_display PROPERTIES
 target_compile_definitions(icetop_display
   PUBLIC F_CPU=${AVR_TARGET_F_CPU}UL DEVICE_LED_COUNT=${DEVICE_LED_COUNT}
   PUBLIC DEVICE_FPS=25
+  PUBLIC FRAME_TIMER_RESOLUTION=16
 )
 if(ARDUINO)
   target_compile_definitions(

@@ -13,7 +13,21 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#if defined(__MK20DX256__)
+#ifdef __DOXYGEN__
+/** \brief Frame timer counter resolution in bits.
+  * \details Preferably supplied as a compiler flag.
+  *   If not defined, a warning will be issued and the timer resolution will be assumed to be equal
+  *   to the width of `int` on the platform.
+  */
+#define FRAME_TIMER_RESOLUTION
+#elif !defined(FRAME_TIMER_RESOLUTION)
+#warning FRAME_TIMER_RESOLUTION not defined
+typedef unsigned int timer_count_t;
+typedef signed int timer_diff_t;
+#elif FRAME_TIMER_RESOLUTION < 32
+typedef uint64_t timer_count_t;
+typedef int64_t timer_diff_t;
+#elif FRAME_TIMER_RESOLUTION < 16
 typedef uint32_t timer_count_t;
 typedef int32_t timer_diff_t;
 #else
