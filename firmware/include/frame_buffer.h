@@ -2,7 +2,7 @@
 #define FRAME_BUFFER_H
 
 /** \file
-  * \brief Description of the frame object.
+  * \brief Frame buffer manipulation
   * \author Sander Vanheule (Universiteit Gent)
   *
   * \defgroup led_display LED display usage

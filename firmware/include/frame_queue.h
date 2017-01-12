@@ -3,23 +3,26 @@
 
 /** \file
   * \brief Display frame queue.
-  * \details A flexible display system is created by using a first-in, first-out queue which hold
-  *   pointers to frame buffer objects.
-  *   Multiple instances can push frames in the queue to be displayed.
-  *   They can do this independently from each other, without running the risk of (partially)
-  *   overwriting an existing frame, or a frame that is currently being drawn.
-  *   Queue manipulation is done atomically to ensure no pointers are dropped, or invalid pointers
-  *   are returned.
   * \author Sander Vanheule (Universiteit Gent)
   */
 
 #include <stdbool.h>
 #include "frame_buffer.h"
 
-/// \addtogroup led_display_buffer
-/// @{
-/// \name Frame queue manipulation
-/// @{
+/** \defgroup led_display_queue Display frame queue
+  * \ingroup led_display
+  * \brief FIFO interface for frame displaying.
+  * \details A flexible display system is created by using a first-in, first-out queue which holds
+  *   pointers to frame buffer objects.
+  *   Multiple instances can push frames in the queue to be displayed.
+  *   They can do this independently from each other, without running the risk of (partially)
+  *   overwriting an existing frame, or a frame that is currently being drawn.
+  *   Queue manipulation is done atomically to ensure no pointers are dropped, or invalid pointers
+  *   are returned.
+  * @{
+  * \name Frame queue manipulation
+  * @{
+  */
 
 /// \brief Check if the frame queue is full.
 bool frame_queue_full();
