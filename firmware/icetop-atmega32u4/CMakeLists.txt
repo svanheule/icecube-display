@@ -24,33 +24,20 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 
-option(ARDUINO "Build image for Arduino development hardware" OFF)
 option(FUSES "Enable setting of fuses and lock bits (advanced feature, may brick your device)" OFF)
 
 # Set the target AVR device
-if(ARDUINO)
-  set(AVR_TARGET_DEVICE atmega328p)
-  # Fuse values, default Arduino values
-  set(FUSE_LOW 0xff)
-  set(FUSE_HIGH 0xde)
-  set(FUSE_EXTENDED 0x05)
-  set(LOCK 0xcf)
-  # Programmer: Arduino on port /dev/ttyACM0, baudrate 115200
-  set(DEFAULT_PROGRAMMER_ID arduino)
-  set(DEFAULT_PROGRAMMER_PORT_FLAGS -P /dev/ttyACM0 -b 115200)
-else()
-  set(AVR_TARGET_DEVICE atmega32u4)
-  # Fuse values
-  # >8MHz crystal, low rise VCC, no clock-out, no clock divide by 8
-  set(FUSE_LOW 0xff)
-  # no on-chip debug, no JTAG, enable SPI, no WDT, EEPROM save, bootsize 2k, boot to application
-  set(FUSE_HIGH 0xd1)
-  # BOD level 4.3V, HWB/DFU enable
-  set(FUSE_EXTENDED 0xc0)
-  # Lock bits: prevent firmware from writing to the bootloader section
-  set(LOCK 0x2f)
-  set(DEFAULT_PROGRAMMER_ID flip1)
-endif()
+set(AVR_TARGET_DEVICE atmega32u4)
+# Fuse values
+# >8MHz crystal, low rise VCC, no clock-out, no clock divide by 8
+set(FUSE_LOW 0xff)
+# no on-chip debug, no JTAG, enable SPI, no WDT, EEPROM save, bootsize 2k, boot to application
+set(FUSE_HIGH 0xd1)
+# BOD level 4.3V, HWB/DFU enable
+set(FUSE_EXTENDED 0xc0)
+# Lock bits: prevent firmware from writing to the bootloader section
+set(LOCK 0x2f)
+set(DEFAULT_PROGRAMMER_ID flip1)
 
 set(AVR_TARGET_F_CPU 16000000)
 set(
@@ -109,28 +96,22 @@ set(SOURCES
   ../common/render/hex_geometry.c
 )
 
-if(ARDUINO)
-  list(APPEND SOURCES
-    src/remote_serial.c
-  )
-else()
-  list(APPEND SOURCES
-    src/remote_usb.c
-    src/usb/led.c
-    src/usb/address.c
-    src/usb/endpoint.c
-    src/usb/endpoint_stack.c
-    src/usb/endpoint_fifo.c
-    ../common/usb/device.c
-    ../common/usb/endpoint_0.c
-    ../common/usb/remote_renderer.c
-    ../common/usb/configuration.c
-  )
-  configure_file(../common/usb/descriptor.c.in descriptor.c)
-  list(APPEND SOURCES
-    "${CMAKE_BINARY_DIR}/descriptor.c"
-  )
-endif()
+list(APPEND SOURCES
+  src/remote_usb.c
+  src/usb/led.c
+  src/usb/address.c
+  src/usb/endpoint.c
+  src/usb/endpoint_stack.c
+  src/usb/endpoint_fifo.c
+  ../common/usb/device.c
+  ../common/usb/endpoint_0.c
+  ../common/usb/remote_renderer.c
+  ../common/usb/configuration.c
+)
+configure_file(../common/usb/descriptor.c.in descriptor.c)
+list(APPEND SOURCES
+  "${CMAKE_BINARY_DIR}/descriptor.c"
+)
 
 set(EVENTS
   event_s125_0_0.5_zen_0_0.1.txt
@@ -183,21 +164,12 @@ set_target_properties(icetop_display PROPERTIES
   SUFFIX ".elf"
 )
 target_compile_definitions(icetop_display
-  PUBLIC F_CPU=${AVR_TARGET_F_CPU}UL DEVICE_LED_COUNT=${DEVICE_LED_COUNT}
+  PUBLIC F_CPU=${AVR_TARGET_F_CPU}UL
+  PUBLIC DEVICE_LED_COUNT=${DEVICE_LED_COUNT}
   PUBLIC DEVICE_FPS=25
   PUBLIC FRAME_TIMER_RESOLUTION=16
+  PUBLIC HW_REV=${HW_REV}
 )
-if(ARDUINO)
-  target_compile_definitions(
-    icetop_display
-    PUBLIC CONTROLLER_ARDUINO HW_REV=0
-  )
-else()
-  target_compile_definitions(
-    icetop_display
-    PUBLIC CONTROLLER_UGENT HW_REV=${HW_REV}
-  )
-endif()
 
 target_compile_options(icetop_display
   PUBLIC -Wall -Wpedantic -Wshadow # Error messages
@@ -255,60 +227,58 @@ if(NOT ("${PROGRAMMER_ID}" STREQUAL ""))
   endif()
 
   # Custom target to flash, and download if needed, the Atmel DFU bootloader
-  if(NOT ARDUINO)
-    set(bootloader_dir "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/images")
-    set(bootloader_zip_filename "megaUSB_DFU_Bootloaders.zip")
-    set(bootloader_hex_filename "ATMega32U4-usbdevice_dfu-1_0_0.hex")
-    set(bootloader_url "http://www.atmel.com/Images/${bootloader_zip_filename}")
-    set(bootloader_zip "${bootloader_dir}/${bootloader_zip_filename}")
-    set(bootloader_hex "${bootloader_hex_filename}")
+  set(bootloader_dir "${CMAKE_CURRENT_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/images")
+  set(bootloader_zip_filename "megaUSB_DFU_Bootloaders.zip")
+  set(bootloader_hex_filename "ATMega32U4-usbdevice_dfu-1_0_0.hex")
+  set(bootloader_url "http://www.atmel.com/Images/${bootloader_zip_filename}")
+  set(bootloader_zip "${bootloader_dir}/${bootloader_zip_filename}")
+  set(bootloader_hex "${bootloader_hex_filename}")
 
-    if(NOT EXISTS ${bootloader_dir})
-      file(MAKE_DIRECTORY ${bootloader_dir})
-    endif()
+  if(NOT EXISTS ${bootloader_dir})
+    file(MAKE_DIRECTORY ${bootloader_dir})
+  endif()
 
-    if(NOT EXISTS ${bootloader_zip})
-      file(
-        DOWNLOAD ${bootloader_url} ${bootloader_zip}
-        EXPECTED_HASH SHA256=252947050b9f6623001cc3d0c8d4b2a14398ed22bebc249cb9c1abc8d0db1608
-      )
-    endif()
-
-    add_custom_target(
-      bootloader_image
-      ${CMAKE_COMMAND} -E tar xf ${bootloader_zip} -- ${bootloader_hex_filename}
-      DEPENDS ${bootloader_zip}
-    )
-
-    add_custom_target(
-      bootloader
-      ${PROGRAM_COMMAND} -U flash:w:${bootloader_hex}
-      DEPENDS bootloader_image
-      COMMENT "Upload DFU bootloader"
-    )
-
-    add_custom_target(
-      erase_device
-      ${PROGRAM_COMMAND} -e
-      COMMENT "Erase device memory"
-    )
-
-    add_custom_target(
-      upload_eeprom
-      ${PROGRAM_COMMAND} -D -U eeprom:w:icetop_display.eep
-      DEPENDS icetop_display
-      COMMENT "Upload device EEPROM"
-    )
-
-    add_custom_target(
-      upload_all
-      ${PROGRAM_COMMAND}
-        -U flash:w:icetop_display.hex:i
-        -U flash:w:${bootloader_hex}:i
-        -U eeprom:w:icetop_display.eep:i
-      DEPENDS icetop_display bootloader_image
-      COMMENT "Upload device program file, DFU bootloader, and device EEPROM"
+  if(NOT EXISTS ${bootloader_zip})
+    file(
+      DOWNLOAD ${bootloader_url} ${bootloader_zip}
+      EXPECTED_HASH SHA256=252947050b9f6623001cc3d0c8d4b2a14398ed22bebc249cb9c1abc8d0db1608
     )
   endif()
+
+  add_custom_target(
+    bootloader_image
+    ${CMAKE_COMMAND} -E tar xf ${bootloader_zip} -- ${bootloader_hex_filename}
+    DEPENDS ${bootloader_zip}
+  )
+
+  add_custom_target(
+    bootloader
+    ${PROGRAM_COMMAND} -U flash:w:${bootloader_hex}
+    DEPENDS bootloader_image
+    COMMENT "Upload DFU bootloader"
+  )
+
+  add_custom_target(
+    erase_device
+    ${PROGRAM_COMMAND} -e
+    COMMENT "Erase device memory"
+  )
+
+  add_custom_target(
+    upload_eeprom
+    ${PROGRAM_COMMAND} -D -U eeprom:w:icetop_display.eep
+    DEPENDS icetop_display
+    COMMENT "Upload device EEPROM"
+  )
+
+  add_custom_target(
+    upload_all
+    ${PROGRAM_COMMAND}
+      -U flash:w:icetop_display.hex:i
+      -U flash:w:${bootloader_hex}:i
+      -U eeprom:w:icetop_display.eep:i
+    DEPENDS icetop_display bootloader_image
+    COMMENT "Upload device program file, DFU bootloader, and device EEPROM"
+  )
 
 endif()
