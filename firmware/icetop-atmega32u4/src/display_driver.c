@@ -62,21 +62,6 @@ static int8_t jump_c3;
  * introducing a small delay between bytes.
  */
 void init_display_driver() {
-#if defined(CONTROLLER_ARDUINO)
-  /* On the Arduino's ATmega328p the hardware SPI port is used, located on port B.
-   * DDRB must be set before SPCR, so the internal pull-up doens't cause SPI to go into slave mode
-   * Configure port B as SPI master:
-   * * B5: SCK (out)
-   * * B4: MISO (in, unused)
-   * * B3: MOSI (out)
-   * * B2: /SS (out, unused)
-   */
-  DDRB = _BV(DDB5)|_BV(DDB3)|_BV(DDB2);
-  // Enable SPI, set as master
-  // Transmit MSB first, idle low, transmit on first (rising) edge, SCK=fOSC/4 = 4MHz
-  SPCR = _BV(SPE)|_BV(MSTR);
-  SPSR = _BV(SPI2X);
-#elif defined(CONTROLLER_UGENT)
   /* ATmega32U4 design uses the USART port in master SPI mode to drive the LED string.
    * The USART pins are located on port D:
    * * D2: RXD1 (MISO, in, unused)
@@ -93,7 +78,6 @@ void init_display_driver() {
   UBRR1H = (uint8_t) ((baud_rate_register >> 8) & 0x0F);
   UBRR1L = (uint8_t) baud_rate_register;
 #undef SPI_BAUD_RATE
-#endif
 
   // Load LED layout settings
   led_count = get_led_count();
@@ -148,20 +132,12 @@ void init_display_driver() {
 static inline void wait_write_finish() __attribute__((always_inline));
 static inline void wait_write_finish() {
   // Check transmission finished bit
-#if defined(CONTROLLER_ARDUINO)
-  while ( !(SPSR & _BV(SPIF)) ) {}
-#elif defined(CONTROLLER_UGENT)
   while ( !(UCSR1A & _BV(UDRE1)) ) {}
-#endif
 }
 
 static inline void write_byte_no_block(const uint8_t byte) __attribute__((always_inline));
 static inline void write_byte_no_block(const uint8_t byte) {
-#if defined(CONTROLLER_ARDUINO)
-  SPDR = byte;
-#elif defined(CONTROLLER_UGENT)
   UDR1 = byte;
-#endif
 }
 
 static inline void write_byte(const uint8_t byte) __attribute__((always_inline));
