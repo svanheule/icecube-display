@@ -128,16 +128,16 @@ recommendation not to use non-existent buffer offsets.
     <TH>Buffer mapping</TH>
   </TR>
   <TR>
-    <TD>0x30 +  0</TD><TD><kbd>05</kbd></TD><TD><TT>03 0D 04 06 10 00 00 00</TT></TD>
+    <TD>0x30 +  0</TD><TD><TT>05</TT></TD><TD><TT>03 0D 04 06 10 00 00 00</TT></TD>
   </TR>
   <TR>
-    <TD>0x30 +  9</TD><TD><kbd>05</kbd></TD><TD><TT>02 0C 0E 07 11 00 00 00</TT></TD>
+    <TD>0x30 +  9</TD><TD><TT>05</TT></TD><TD><TT>02 0C 0E 07 11 00 00 00</TT></TD>
   </TR>
   <TR>
-    <TD>0x30 + 18</TD><TD><kbd>05</kbd></TD><TD><TT>01 0B 0F 08 12 00 00 00</TT></TD>
+    <TD>0x30 + 18</TD><TD><TT>05</TT></TD><TD><TT>01 0B 0F 08 12 00 00 00</TT></TD>
   </TR>
   <TR>
-    <TD>0x30 + 27</TD><TD><kbd>05</kbd></TD><TD><TT>00 0A 05 09 13 00 00 00</TT></TD>
+    <TD>0x30 + 27</TD><TD><TT>05</TT></TD><TD><TT>00 0A 05 09 13 00 00 00</TT></TD>
   </TR>
 </TABLE>
 
