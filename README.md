@@ -17,3 +17,8 @@ existing displays can be compiled using Doxygen:
 ```{.sh}
 $ doxygen Doxyfile
 ```
+
+## Hardware
+The `hardware` directory contains design documents for the displays.
+This includes both mechanical documents for the display construction, as well as possible
+PCB design documents.
