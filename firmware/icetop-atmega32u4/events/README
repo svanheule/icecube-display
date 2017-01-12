@@ -1,0 +1,2 @@
+The tabular data present in the .txt files in this directory contains the following columns:
+    IceTop station number | Total charge | Mean pulse time (ns)
