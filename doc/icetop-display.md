@@ -11,6 +11,12 @@ small verison of the display.
 They can be included if the display uses a 30 LED/m pitch, and the firmware is able to
 deal with these different configurations.
 
+The LED strips contain APA-102C devices which were
+selected due to their adjustable brightness setting and clocked data input
+lines. This results in less stringent timing contraints for the controlling
+electronics, as the controller can decide how fast the data is clocked, and
+clock jitter is less of an issue.
+
 ## Display usage
 The display has a number of input buttons and LEDs to interact with and relay status information to
 the user.
@@ -110,3 +116,11 @@ the fuses and lock bits, the EEPROM, the program flash, and the bootloader flash
 When performing the initial flash of the device after assembly, a complete chip erase should be
 performed beforehand to ensure the lock bits are reset and a new firmware can be flashed to the
 device.
+
+## Cost estimate
+*Total:* €110 (excl. VAT)
+  * 78 APA-102C LEDs (60 LEDs/m strips): €27 (€21/m)
+  * 5V, 5A power supply (HNP40EU-050/HNP36-050): €15
+  * Custom PCB: €15 (ordered 5pc. at [eurocircuits](http://eurocircuits.com))
+  * Electronic components: €20
+  * Laser cut PMMA (3 plates): €30
