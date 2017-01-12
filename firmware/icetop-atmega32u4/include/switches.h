@@ -20,10 +20,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#if defined(CONTROLLER_ARDUINO)
-#error Switch inputs currently not supported on the Arduino platform
-#endif
-
 /// Easy to remember name for the *Play/Pause* switch, instead of its button index 0.
 #define SWITCH_PLAY_PAUSE 0
 
