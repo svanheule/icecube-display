@@ -169,6 +169,7 @@ target_compile_definitions(icetop_display
   PUBLIC DEVICE_FPS=25
   PUBLIC FRAME_TIMER_RESOLUTION=16
   PUBLIC HW_REV=${HW_REV}
+  PUBLIC DEVICE_SELF_POWERED=${USB_SELF_POWERED}
 )
 
 target_compile_options(icetop_display

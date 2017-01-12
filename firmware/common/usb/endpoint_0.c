@@ -90,7 +90,7 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
       if (init_data_in(transfer, 2)) {
         switch (transfer->req->bmRequestType) {
           case (REQ_DIR_IN | REQ_TYPE_STANDARD | REQ_REC_DEVICE):
-#ifdef CONTROLLER_UGENT
+#if defined(DEVICE_SELF_POWERED) && DEVICE_SELF_POWERED
             *((uint16_t*) transfer->data) = DEVICE_STATUS_SELF_POWERED;
 #else
             *((uint16_t*) transfer->data) = 0;
