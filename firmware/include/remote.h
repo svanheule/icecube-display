@@ -8,12 +8,8 @@
   *   is_remote_connected() can then be used to determine whether there is an active connection.
   *   The firmware can use this to switch off any local renderer, and wait for incoming data on
   *   the connection.
-  *   For the initial development on the Arduino Uno, a UART communications module was also
-  *   provided since raw USB communications is not possible.
-  *   This platform is now deprecated however, and may be removed from the firmware in the future.
   * \author Sander Vanheule (Universiteit Gent)
   * \see remote_usb.c
-  * \see \deprecated remote_serial.c
   */
 
 #include <stdbool.h>
