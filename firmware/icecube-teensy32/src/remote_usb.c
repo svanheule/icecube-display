@@ -92,15 +92,18 @@ static uint16_t queue_in(const void* data, uint16_t max_length) {
   }
 }
 
-static void return_ep0_rx(
-      struct buffer_descriptor_t* bd
-    , void* buffer
-    , uint16_t length
-    , uint8_t data01
-) {
-  bd->buffer = buffer;
-  bd->desc = generate_bdt_descriptor(length, data01);
-  set_data_toggle(0, 0, data01);
+static uint16_t queue_out() {
+  uint8_t data01 = get_data_toggle(0, BDT_DIR_RX);
+  uint8_t bank = pop_buffer_toggle(0, BDT_DIR_RX);
+
+  uint16_t size = get_endpoint_size(0);
+
+  struct buffer_descriptor_t* bd = get_buffer_descriptor(0, BDT_DIR_RX, bank);
+  bd->buffer = get_ep_rx_buffer(0, bank);
+  bd->desc = generate_bdt_descriptor(size, data01);
+
+  set_data_toggle(0, BDT_DIR_RX, data01 ^ 1);
+  return size;
 }
 
 static inline bool needs_extra_zlp(struct control_transfer_t* transfer) {
@@ -222,11 +225,6 @@ void usb_isr() {
         // This should be done as early as possible
         USB0_CTL &= ~USB_CTL_TXSUSPENDTOKENBUSY;
 
-        // Wait for DATA1 OUT transfer.
-        // This will be either first OUT data packet or the IN status stage (handshake)
-        void* rx_buffer = get_ep_rx_buffer(0, 0);
-        uint16_t rx_len = endpoint_get_size(0);
-
         init_control_transfer(&control_transfer, &setup_packet);
         process_setup(&control_transfer);
 
@@ -245,29 +243,30 @@ void usb_isr() {
           while (bank--) {
             control_data += queue_in(control_data, control_transfer.data_length);
           }
+          // Queue OUT buffer for ZLP/SETUP
         }
         else if (stage == CTRL_DATA_OUT) {
           control_data = (uint8_t*) control_transfer.data;
           control_data_end = control_data + control_transfer.data_length;
 
-          rx_len = min(rx_len, control_transfer.data_length);
-          if (rx_len >= endpoint_get_size(0)) {
-            rx_buffer = control_data;
-          }
-          control_data += rx_len;
+          // Queue one buffer
+          // TODO queue more buffers if possible;
+          control_data += min(get_endpoint_size(0), control_transfer.data_length);
         }
         else if (stage == CTRL_HANDSHAKE_OUT) {
           control_data = 0;
           control_data_end = 0;
           // Queue ZLP handshake
           queue_in(0, 0);
+          // Queue OUT buffer for next SETUP
         }
         else { // All other states are invalid at this point
           endpoint_stall(0);
           cancel_control_transfer(&control_transfer);
+          // Queue OUT buffer for next SETUP
         }
 
-        return_ep0_rx(bdt_entry, rx_buffer, rx_len, 1);
+        queue_out();
       }
 
       else if (token_pid == PID_IN) {
@@ -295,10 +294,6 @@ void usb_isr() {
       }
 
       else if (token_pid == PID_OUT) {
-        void* buffer = get_ep_rx_buffer(0, 0);
-        uint8_t buffer_size = endpoint_get_size(0);
-        uint8_t data_toggle = 1;
-
         if (control_transfer.stage == CTRL_DATA_OUT) {
           // Copy data to data buffer
           uint16_t left = control_transfer.data_length - control_transfer.data_done;
@@ -316,23 +311,19 @@ void usb_isr() {
           control_mark_data_done(&control_transfer, size);
 
           if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
-            set_data_toggle(0, 1, 1);
+            // Queue IN ZLP
+            set_data_toggle(0, BDT_DIR_TX, 1);
             queue_in(0, 0);
-            data_toggle = 0;
+            // OUT buffer for SETUP
+            set_data_toggle(0, BDT_DIR_RX, 0);
           }
           else if (control_data != control_data_end) {
             // Queue more RX buffers
-            uint16_t queue_left = control_data_end - control_data;
-            uint16_t queued = min(queue_left, buffer_size);
-            // If the expected transfer size is equal to the endpoint size, use a direct write
-            // for better efficiency.
-            if (queued == buffer_size) {
-              buffer = control_data;
-            }
+            uint16_t size_left = control_data_end - control_data;
+            control_data += min(size_left, get_endpoint_size(0));
 
-            data_toggle = get_data_toggle(0, 0) ^ 1;
-            buffer_size = queued;
-            control_data += queued;
+            // TODO If the expected transfer size is equal to the endpoint size,
+            // use a direct write for better efficiency.
           }
         }
         else if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
@@ -342,11 +333,11 @@ void usb_isr() {
               control_transfer.callback_handshake(&control_transfer);
             }
             control_transfer.stage = CTRL_IDLE;
-            data_toggle = 0;
+            set_data_toggle(0, BDT_DIR_RX, 0);
           }
         }
 
-        return_ep0_rx(bdt_entry, buffer, buffer_size, data_toggle);
+        queue_out();
       }
     }
 
