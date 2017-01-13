@@ -74,7 +74,8 @@ static inline uint8_t pop_token_status() {
 // TODO When receiving a display frame, use the BDT entries to write the RXOUT data
 //      directly to the frame buffer
 
-static uint16_t queue_in(const void* data, uint16_t max_length, uint8_t data01) {
+static uint16_t queue_in(const void* data, uint16_t max_length) {
+  uint8_t data01 = get_data_toggle(0, 1);
   struct buffer_descriptor_t* bd = get_buffer_descriptor(0, BDT_DIR_TX, 0);
   bool buffer_available = !(bd->desc & _BV(BDT_DESC_OWN));
 
@@ -222,6 +223,10 @@ void usb_isr() {
 
         // Clear TXSUSPEND/TOKENBUSY bit to resume operation
         USB0_CTL &= ~USB_CTL_TXSUSPENDTOKENBUSY;
+        // Set TX and RX toggles to 1 in any case
+        // Even with data toggle sync enabled, SETUP packages will always be accepted
+        set_data_toggle(0, BDT_DIR_TX, 1);
+        set_data_toggle(0, BDT_DIR_RX, 1);
 
         const enum control_stage_t stage = control_transfer.stage;
         if (stage == CTRL_DATA_IN) {
@@ -229,7 +234,10 @@ void usb_isr() {
           control_data_end = control_data + control_transfer.data_length;
 
           queue_extra_zlp = needs_extra_zlp(&control_transfer);
-          control_data += queue_in(control_data, control_transfer.data_length, 1);
+          uint8_t bank = get_buffer_bank_count();
+          while (bank--) {
+            control_data += queue_in(control_data, control_transfer.data_length);
+          }
         }
         else if (stage == CTRL_DATA_OUT) {
           control_data = (uint8_t*) control_transfer.data;
@@ -245,7 +253,7 @@ void usb_isr() {
           control_data = 0;
           control_data_end = 0;
           // Queue ZLP handshake
-          queue_in(0, 0, 1);
+          queue_in(0, 0);
         }
         else { // All other states are invalid at this point
           endpoint_stall(0);
@@ -254,6 +262,7 @@ void usb_isr() {
 
         return_ep0_rx(bdt_entry, rx_buffer, rx_len, 1);
       }
+
       else if (token_pid == PID_IN) {
         if (control_transfer.stage == CTRL_DATA_IN) {
           // IN data has been transmitted. Read BD to see how much was transmitted
@@ -261,11 +270,11 @@ void usb_isr() {
 
           if (control_data != control_data_end) {
             uint16_t remaining = control_data_end - control_data;
-            control_data += queue_in(control_data, remaining, get_data_toggle(0, 1));
+            control_data += queue_in(control_data, remaining);
           }
           else if (queue_extra_zlp) {
               // Queue extra ZLP to signal request length underrun
-              queue_in(0, 0, get_data_toggle(0, 1));
+              queue_in(0, 0);
               queue_extra_zlp = false;
           }
         }
@@ -277,6 +286,7 @@ void usb_isr() {
           control_transfer.stage = CTRL_IDLE;
         }
       }
+
       else if (token_pid == PID_OUT) {
         void* buffer = get_ep_rx_buffer(0, 0);
         uint8_t buffer_size = endpoint_get_size(0);
@@ -299,7 +309,8 @@ void usb_isr() {
           control_mark_data_done(&control_transfer, size);
 
           if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
-            queue_in(0, 0, 1);
+            set_data_toggle(0, 1, 1);
+            queue_in(0, 0);
             data_toggle = 0;
           }
           else if (control_data != control_data_end) {
