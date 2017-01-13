@@ -55,9 +55,9 @@ bool endpoint_configure(const struct ep_config_t* config) {
 }
 
 void endpoint_deconfigure(const uint8_t ep_num) {
-  transfer_mem_free(ep_num);
-  set_endpoint_size(ep_num, 0);
   *ENDPOINT_REGISTER_ADDRESS(ep_num) = 0;
+  set_endpoint_size(ep_num, 0);
+  transfer_mem_free(ep_num);
 }
 
 uint16_t endpoint_get_size(const uint8_t ep_num) {
