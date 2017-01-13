@@ -6,7 +6,7 @@
 
 #define MAX_ENDPOINTS 3
 
-#define BANK_COUNT 1
+#define BANK_COUNT 2
 
 struct bdt_endpoint_direction_t {
   struct buffer_descriptor_t even;
@@ -142,9 +142,7 @@ bool transfer_mem_alloc(const uint8_t ep_num) {
     buffer = malloc(ep_size*BANK_COUNT);
     ep_buffers[ep_num][0] = buffer;
 #if BANK_COUNT > 1
-    if (buffer && use_double_buffer) {
-      ep_buffers[ep_num][1] = buffer + ep_size;
-    }
+    ep_buffers[ep_num][1] = buffer + ep_size;
 #endif
   }
   return buffer != NULL;
