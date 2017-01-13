@@ -33,15 +33,19 @@ bool endpoint_configure(const struct ep_config_t* config) {
   bool config_ok = reg != 0 && set_endpoint_size(config->num, config->size);
   if (config_ok) {
     if (config->dir & EP_DIRECTION_IN) {
-      get_buffer_descriptor(config->num, BDT_DIR_TX, 0)->desc = 0;
+      uint8_t bank = get_buffer_bank_count();
+      while (bank--) {
+        get_buffer_descriptor(config->num, BDT_DIR_TX, bank)->desc = 0;
+      }
     }
 
     if (config->dir & EP_DIRECTION_OUT) {
       // Memory allocation
       config_ok &= transfer_mem_alloc(config->num);
       if (config_ok) {
-        struct buffer_descriptor_t* bd = get_buffer_descriptor(config->num, BDT_DIR_RX, 0);
-        bd->buffer = get_ep_rx_buffer(config->num, 0);
+        uint8_t bank = pop_buffer_toggle(config->num, BDT_DIR_RX);
+        struct buffer_descriptor_t* bd = get_buffer_descriptor(config->num, BDT_DIR_RX, bank);
+        bd->buffer = get_ep_rx_buffer(config->num, bank);
         // generate_bdt_descriptor() enables data toggle synchronisation by default,
         // which might be undesired behaviour for isochronous endpoints
         bd->desc = generate_bdt_descriptor(config->size, 0);
