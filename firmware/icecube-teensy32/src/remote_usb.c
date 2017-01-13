@@ -96,7 +96,7 @@ static uint16_t queue_in(const void* data, uint16_t max_length) {
 
 static uint16_t queue_out() {
   uint8_t data01 = get_data_toggle(0, BDT_DIR_RX);
-  uint8_t bank = pop_buffer_toggle(0, BDT_DIR_RX);
+  uint8_t bank = get_buffer_toggle(0, BDT_DIR_RX);
 
   uint16_t size = get_endpoint_size(0);
 
@@ -241,9 +241,13 @@ void usb_isr() {
           control_data_end = control_data + control_transfer.data_length;
 
           queue_extra_zlp = needs_extra_zlp(&control_transfer);
-          uint8_t bank = get_buffer_bank_count();
-          while (bank--) {
-            control_data += queue_in(control_data, control_transfer.data_length);
+          // Queue as IN many packets as we have banks available
+          uint8_t tx_buffers = get_buffer_bank_count();
+          uint16_t remaining = control_transfer.data_length;
+          while (tx_buffers-- && remaining) {
+            uint16_t queued = queue_in(control_data, remaining);
+            control_data += queued;
+            remaining -= queued;
           }
           // Queue OUT buffer for ZLP/SETUP
         }
@@ -268,6 +272,7 @@ void usb_isr() {
           // Queue OUT buffer for next SETUP
         }
 
+        pop_buffer_toggle(0, BDT_DIR_RX);
         queue_out();
       }
 
@@ -339,6 +344,7 @@ void usb_isr() {
           }
         }
 
+        pop_buffer_toggle(0, BDT_DIR_RX);
         queue_out();
       }
     }
