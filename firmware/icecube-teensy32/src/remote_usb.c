@@ -224,20 +224,22 @@ void usb_isr() {
         USB0_CTL &= ~USB_CTL_TXSUSPENDTOKENBUSY;
 
         const enum control_stage_t stage = control_transfer.stage;
-        if (stage == CTRL_DATA_IN || stage == CTRL_DATA_OUT) {
+        if (stage == CTRL_DATA_IN) {
           control_data = (uint8_t*) control_transfer.data;
           control_data_end = control_data + control_transfer.data_length;
-          if (stage == CTRL_DATA_IN) {
-            queue_extra_zlp = needs_extra_zlp(&control_transfer);
-            control_data += queue_in(control_data, control_transfer.data_length, 1);
+
+          queue_extra_zlp = needs_extra_zlp(&control_transfer);
+          control_data += queue_in(control_data, control_transfer.data_length, 1);
+        }
+        else if (stage == CTRL_DATA_OUT) {
+          control_data = (uint8_t*) control_transfer.data;
+          control_data_end = control_data + control_transfer.data_length;
+
+          rx_len = min(rx_len, control_transfer.data_length);
+          if (rx_len >= endpoint_get_size(0)) {
+            rx_buffer = control_data;
           }
-          else {
-            rx_len = min(rx_len, control_transfer.data_length);
-            if (rx_len >= endpoint_get_size(0)) {
-              rx_buffer = control_data;
-            }
-            control_data += rx_len;
-          }
+          control_data += rx_len;
         }
         else if (stage == CTRL_HANDSHAKE_OUT) {
           control_data = 0;
