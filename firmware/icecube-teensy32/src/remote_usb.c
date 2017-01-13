@@ -218,6 +218,10 @@ void usb_isr() {
           get_buffer_descriptor(0, BDT_DIR_TX, bank)->desc = 0;
         }
 
+        // Clear TXSUSPEND/TOKENBUSY bit to resume operation
+        // This should be done as early as possible
+        USB0_CTL &= ~USB_CTL_TXSUSPENDTOKENBUSY;
+
         // Wait for DATA1 OUT transfer.
         // This will be either first OUT data packet or the IN status stage (handshake)
         void* rx_buffer = get_ep_rx_buffer(0, 0);
@@ -226,8 +230,6 @@ void usb_isr() {
         init_control_transfer(&control_transfer, &setup_packet);
         process_setup(&control_transfer);
 
-        // Clear TXSUSPEND/TOKENBUSY bit to resume operation
-        USB0_CTL &= ~USB_CTL_TXSUSPENDTOKENBUSY;
         // Set TX and RX toggles to 1 in any case
         // Even with data toggle sync enabled, SETUP packages will always be accepted
         set_data_toggle(0, BDT_DIR_TX, 1);
