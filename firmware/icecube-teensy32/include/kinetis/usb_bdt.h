@@ -34,6 +34,8 @@ uint16_t get_byte_count(const struct buffer_descriptor_t* descriptor);
 
 uint32_t generate_bdt_descriptor(uint16_t length, uint8_t data_toggle);
 
+uint8_t get_buffer_bank_count();
+
 // Ping-pong buffer usage tracking
 void reset_buffer_toggles();
 uint8_t get_buffer_toggle(const uint8_t ep_num, const uint8_t tx);

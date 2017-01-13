@@ -60,6 +60,11 @@ uint32_t generate_bdt_descriptor(uint16_t length, uint8_t data_toggle) {
 // Toggles: bit array of (rx, tx) pairs: {EP0_RX, EP0_TX, EP1_RX, ...}
 #define TOGGLE_OFFSET(ep, tx) (((ep) << 1) | (tx))
 
+// Buffer bank
+uint8_t get_buffer_bank_count() {
+  return BANK_COUNT;
+}
+
 // Endpoint buffer toggles
 static uint32_t buffer_toggles;
 
