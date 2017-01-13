@@ -8,6 +8,7 @@
   * \brief Remote rendering via USB
   * \details The remote renderer does not conform to the ::renderer_t interface since it immediately
   *   pushes the received frames to the frame queue to reduce display latency.
+  * \author Sander Vanheule (Universiteit Gent)
   */
 
 /** \page usb_remote_renderer Frame data transfer over USB
