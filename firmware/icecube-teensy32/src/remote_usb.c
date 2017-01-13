@@ -211,7 +211,12 @@ void usb_isr() {
         if (control_transfer.stage != CTRL_IDLE && control_transfer.stage != CTRL_STALL) {
           cancel_control_transfer(&control_transfer);
         }
-        get_buffer_descriptor(0, BDT_DIR_TX, 0)->desc = 0;
+
+        // Cancel all pending TX buffers
+        uint8_t bank = get_buffer_bank_count();
+        while (bank--) {
+          get_buffer_descriptor(0, BDT_DIR_TX, bank)->desc = 0;
+        }
 
         // Wait for DATA1 OUT transfer.
         // This will be either first OUT data packet or the IN status stage (handshake)
