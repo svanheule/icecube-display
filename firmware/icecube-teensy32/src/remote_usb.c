@@ -75,7 +75,7 @@ static inline uint8_t pop_token_status() {
 //      directly to the frame buffer
 
 static uint16_t queue_in(const void* data, uint16_t max_length, uint8_t data01) {
-  struct buffer_descriptor_t* bd = get_buffer_descriptor(0, BDT_DIR_TX);
+  struct buffer_descriptor_t* bd = get_buffer_descriptor(0, BDT_DIR_TX, 0);
   bool buffer_available = !(bd->desc & _BV(BDT_DESC_OWN));
 
   if (buffer_available) {
@@ -210,11 +210,11 @@ void usb_isr() {
         if (control_transfer.stage != CTRL_IDLE && control_transfer.stage != CTRL_STALL) {
           cancel_control_transfer(&control_transfer);
         }
-        get_buffer_descriptor(0, BDT_DIR_TX)->desc = 0;
+        get_buffer_descriptor(0, BDT_DIR_TX, 0)->desc = 0;
 
         // Wait for DATA1 OUT transfer.
         // This will be either first OUT data packet or the IN status stage (handshake)
-        void* rx_buffer = get_ep_buffer(0);
+        void* rx_buffer = get_ep_rx_buffer(0, 0);
         uint16_t rx_len = endpoint_get_size(0);
 
         init_control_transfer(&control_transfer, &setup_packet);
@@ -276,7 +276,7 @@ void usb_isr() {
         }
       }
       else if (token_pid == PID_OUT) {
-        void* buffer = get_ep_buffer(0);
+        void* buffer = get_ep_rx_buffer(0, 0);
         uint8_t buffer_size = endpoint_get_size(0);
         uint8_t data_toggle = 1;
 

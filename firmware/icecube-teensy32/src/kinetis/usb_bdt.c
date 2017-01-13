@@ -29,8 +29,8 @@ struct buffer_descriptor_t* get_bdt() {
 }
 
 // BDT entries are 8 bytes in size, so shift back address bits by 3 positions
-struct buffer_descriptor_t* get_buffer_descriptor(uint8_t epnum, uint8_t tx) {
-  ptrdiff_t index = (epnum << 2) | (tx << 1) | 0;
+struct buffer_descriptor_t* get_buffer_descriptor(uint8_t epnum, uint8_t tx, uint8_t bank) {
+  ptrdiff_t index = (epnum << 2) | (tx << 1) | bank;
   return buffer_descriptor_table + index;
 }
 
@@ -155,8 +155,7 @@ void transfer_mem_free(const uint8_t ep_num) {
   }
 }
 
-void* get_ep_buffer(const uint8_t ep_num) {
-  const uint8_t bank = 0;
+void* get_ep_rx_buffer(const uint8_t ep_num, const uint8_t bank) {
   if (ep_num < MAX_ENDPOINTS && bank < BANK_COUNT) {
     return ep_buffers[ep_num][bank];
   }

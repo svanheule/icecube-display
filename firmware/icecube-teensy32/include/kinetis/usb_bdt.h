@@ -26,7 +26,7 @@ struct buffer_descriptor_t* get_bdt();
 
 void clear_bdt();
 
-struct buffer_descriptor_t* get_buffer_descriptor(uint8_t epnum, uint8_t tx);
+struct buffer_descriptor_t* get_buffer_descriptor(uint8_t epnum, uint8_t tx, uint8_t bank);
 
 
 uint8_t get_token_pid(const struct buffer_descriptor_t* descriptor);
@@ -51,6 +51,6 @@ uint8_t get_endpoint_size(const uint8_t ep_num);
 // Transfer memory management
 bool transfer_mem_alloc(const uint8_t ep_num);
 void transfer_mem_free(const uint8_t ep_num);
-void* get_ep_buffer(const uint8_t ep_num);
+void* get_ep_rx_buffer(const uint8_t ep_num, const uint8_t bank);
 
 #endif // KINETIS_USB_BDT_H
