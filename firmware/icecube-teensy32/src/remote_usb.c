@@ -348,6 +348,8 @@ void usb_isr() {
     }
 
     else if (endpoint == 1 && token_pid == PID_OUT) {
+      ep_rx_buffer_pop(1);
+
       struct remote_transfer_t* transfer = remote_renderer_get_current();
       if (transfer) {
         const size_t transferred = get_byte_count(bdt_entry);
@@ -358,12 +360,7 @@ void usb_isr() {
         transfer->buffer_pos += copy_len;
         transfer->buffer_remaining -= copy_len;
 
-        uint8_t data_toggle = *BITBAND_SRAM_ADDRESS(&bdt_entry->desc, BDT_DESC_DATA01) ^ 1;
-        bdt_entry->desc = generate_bdt_descriptor(
-              endpoint_get_size(1)
-            , data_toggle
-        );
-        set_data_toggle(1, 0, data_toggle);
+        ep_rx_buffer_push(1);
 
         if (transfer->buffer_remaining == 0 || transferred < endpoint_get_size(1)) {
           if (copy_len != transferred || !remote_renderer_finish()) {
