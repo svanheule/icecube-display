@@ -139,6 +139,7 @@ uint8_t get_endpoint_size(const uint8_t ep_num) {
   }
 }
 
+
 // Quasi-static endpoint RX buffers
 void* ep_buffers[MAX_ENDPOINTS][BANK_COUNT];
 
@@ -171,5 +172,56 @@ void* get_ep_rx_buffer(const uint8_t ep_num, const uint8_t bank) {
   }
   else {
     return NULL;
+  }
+}
+
+
+// RX buffer queue
+static uint8_t ep_rx_queue_count[MAX_ENDPOINTS];
+
+bool ep_rx_buffer_push(const uint8_t ep_num) {
+  bool can_push = (ep_num < MAX_ENDPOINTS) && (ep_rx_queue_count[ep_num] < BANK_COUNT);
+  if (can_push) {
+    // Bank we should push is the active bank + the number of queued banks
+    uint8_t offset = ep_rx_queue_count[ep_num];
+    uint8_t bank = (get_buffer_toggle(ep_num, BDT_DIR_RX) + offset) % BANK_COUNT;
+    ++ep_rx_queue_count[ep_num];
+    struct buffer_descriptor_t* bd = get_buffer_descriptor(ep_num, BDT_DIR_RX, bank);
+    bd->buffer = ep_buffers[ep_num][bank];
+    bd->desc = generate_bdt_descriptor(ep_sizes[ep_num], pop_data_toggle(ep_num, BDT_DIR_RX));
+  }
+  return can_push;
+}
+
+bool ep_rx_buffer_pop(const uint8_t ep_num) {
+  bool can_pop = (ep_num < MAX_ENDPOINTS) && (ep_rx_queue_count[ep_num] > 0);
+  if (can_pop) {
+    pop_buffer_toggle(ep_num, BDT_DIR_RX);
+    --ep_rx_queue_count[ep_num];
+  }
+  return can_pop;
+}
+
+static inline void dequeue_buffer(const uint8_t ep_num) {
+  // Decrease queue count and invalidate that descriptor
+  --ep_rx_queue_count[ep_num];
+  uint8_t offset = ep_rx_queue_count[ep_num];
+  uint8_t bank = (get_buffer_toggle(ep_num, BDT_DIR_RX) + offset) % BANK_COUNT;
+  get_buffer_descriptor(ep_num, BDT_DIR_RX, bank)->desc = 0;
+}
+
+bool ep_rx_buffer_dequeue(const uint8_t ep_num) {
+  bool can_dequeue = (ep_num < MAX_ENDPOINTS) && (ep_rx_queue_count[ep_num] > 0);
+  if (can_dequeue) {
+    dequeue_buffer(ep_num);
+  }
+  return can_dequeue;
+}
+
+void ep_rx_buffer_dequeue_all(const uint8_t ep_num) {
+  if (ep_num < MAX_ENDPOINTS) {
+    while (ep_rx_queue_count[ep_num]) {
+      dequeue_buffer(ep_num);
+    }
   }
 }

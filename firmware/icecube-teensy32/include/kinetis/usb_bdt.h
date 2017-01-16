@@ -41,6 +41,24 @@ void reset_buffer_toggles();
 uint8_t get_buffer_toggle(const uint8_t ep_num, const uint8_t tx);
 uint8_t pop_buffer_toggle(const uint8_t ep_num, const uint8_t tx);
 
+
+// Ping-pong buffer RX queue
+// (push, dequeue) <-> [IN] [queue] [OUT] -> (pop)
+// *FUNCTIONS ARE NOT THREAD SAFE*;
+/// Increase the queue counter.
+/// \todo Enable queueing of any buffer
+/// \returns `false` if the queue was full
+bool ep_rx_buffer_push(const uint8_t ep_num);
+/// Decrease the queue counter and pop a buffer toggle to keep in sync with hardware.
+/// \returns `false` if the buffer was empty.
+/// \returns The buffer at the front of the queue or NULL if the queue was empty.
+bool ep_rx_buffer_pop(const uint8_t ep_num);
+/// Decrease the queue counter without popping a buffer toggle.
+/// This modifies BDT entries whose OWN bit is set. Use only when the endpoint is halted!
+/// \returns `false` if queue was empty.
+bool ep_rx_buffer_dequeue(const uint8_t ep_num);
+void ep_rx_buffer_dequeue_all(const uint8_t ep_num);
+
 // Data toggle tracking
 void reset_data_toggles();
 uint8_t get_data_toggle(const uint8_t ep_num, const uint8_t tx);

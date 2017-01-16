@@ -94,20 +94,6 @@ static uint16_t queue_in(const void* data, uint16_t max_length) {
   }
 }
 
-static uint16_t queue_out() {
-  uint8_t data01 = get_data_toggle(0, BDT_DIR_RX);
-  uint8_t bank = get_buffer_toggle(0, BDT_DIR_RX);
-
-  uint16_t size = get_endpoint_size(0);
-
-  struct buffer_descriptor_t* bd = get_buffer_descriptor(0, BDT_DIR_RX, bank);
-  bd->buffer = get_ep_rx_buffer(0, bank);
-  bd->desc = generate_bdt_descriptor(size, data01);
-
-  set_data_toggle(0, BDT_DIR_RX, data01 ^ 1);
-  return size;
-}
-
 static inline bool needs_extra_zlp(struct control_transfer_t* transfer) {
   // When the amount of transmitted data is less then the amount of requested data,
   // a packet smaller than wMaxPacketSize has to be sent. In case the data size is an
@@ -208,6 +194,8 @@ void usb_isr() {
       static bool queue_extra_zlp;
 
       if (token_pid == PID_SETUP) {
+        ep_rx_buffer_pop(0);
+
         // Since we may be using a dynamically allocated buffer that can get discarded when
         // cancelling an ongoing transfer, copy the data _before_ doing anything else
         setup_packet = *(const struct usb_setup_packet_t*) bdt_entry->buffer;
@@ -222,6 +210,8 @@ void usb_isr() {
         while (bank--) {
           get_buffer_descriptor(0, BDT_DIR_TX, bank)->desc = 0;
         }
+        // Dequeue all pending RX buffers
+        ep_rx_buffer_dequeue_all(0);
 
         // Clear TXSUSPEND/TOKENBUSY bit to resume operation
         // This should be done as early as possible
@@ -250,14 +240,20 @@ void usb_isr() {
             remaining -= queued;
           }
           // Queue OUT buffer for ZLP/SETUP
+          ep_rx_buffer_push(0);
         }
         else if (stage == CTRL_DATA_OUT) {
           control_data = (uint8_t*) control_transfer.data;
           control_data_end = control_data + control_transfer.data_length;
 
-          // Queue one buffer
-          // TODO queue more buffers if possible;
-          control_data += min(get_endpoint_size(0), control_transfer.data_length);
+          // Queue more buffers if possible
+          const uint8_t ep_size = get_endpoint_size(0);
+          uint8_t remaining = control_transfer.data_length;
+          while (remaining && ep_rx_buffer_push(0)) {
+            uint8_t pushed = min(ep_size, remaining);
+            remaining -= pushed;
+            control_data += pushed;
+          };
         }
         else if (stage == CTRL_HANDSHAKE_OUT) {
           control_data = 0;
@@ -265,15 +261,14 @@ void usb_isr() {
           // Queue ZLP handshake
           queue_in(0, 0);
           // Queue OUT buffer for next SETUP
+          ep_rx_buffer_push(0);
         }
         else { // All other states are invalid at this point
           endpoint_stall(0);
           cancel_control_transfer(&control_transfer);
           // Queue OUT buffer for next SETUP
+          ep_rx_buffer_push(0);
         }
-
-        pop_buffer_toggle(0, BDT_DIR_RX);
-        queue_out();
       }
 
       else if (token_pid == PID_IN) {
@@ -301,6 +296,8 @@ void usb_isr() {
       }
 
       else if (token_pid == PID_OUT) {
+        ep_rx_buffer_pop(0);
+
         if (control_transfer.stage == CTRL_DATA_OUT) {
           // Copy data to data buffer
           uint16_t left = control_transfer.data_length - control_transfer.data_done;
@@ -326,6 +323,8 @@ void usb_isr() {
           }
           else if (control_data != control_data_end) {
             // Queue more RX buffers
+            // Since the queue was entirely filled up when initialising the data stage,
+            // we need only supply one new RX buffer.
             uint16_t size_left = control_data_end - control_data;
             control_data += min(size_left, get_endpoint_size(0));
 
@@ -344,8 +343,7 @@ void usb_isr() {
           }
         }
 
-        pop_buffer_toggle(0, BDT_DIR_RX);
-        queue_out();
+        ep_rx_buffer_push(0);
       }
     }
 

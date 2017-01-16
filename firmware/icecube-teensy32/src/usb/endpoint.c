@@ -51,12 +51,10 @@ bool endpoint_configure(const struct ep_config_t* config) {
   // Queue RX buffer after allocation and configuration are finished to be able to
   // synchronise the data toggles.
   if ((config->dir & EP_DIRECTION_OUT) && config_ok) {
-    uint8_t bank = get_buffer_toggle(config->num, BDT_DIR_RX);
-    struct buffer_descriptor_t* bd = get_buffer_descriptor(config->num, BDT_DIR_RX, bank);
-    bd->buffer = get_ep_rx_buffer(config->num, bank);
-    // generate_bdt_descriptor() enables data toggle synchronisation by default,
+    ep_rx_buffer_dequeue_all(config->num);
+    // Enables data toggle synchronisation by default,
     // which might be undesired behaviour for isochronous endpoints
-    bd->desc = generate_bdt_descriptor(config->size, pop_data_toggle(config->num, BDT_DIR_TX));
+    ep_rx_buffer_push(config->num);
   }
 
   return config_ok;
