@@ -112,6 +112,13 @@ void set_data_toggle(const uint8_t ep_num, const uint8_t tx, const uint8_t value
   *BITBAND_SRAM_ADDRESS(&data_toggles, TOGGLE_OFFSET(ep_num, tx)) = value;
 }
 
+uint8_t pop_data_toggle(const uint8_t ep_num, const uint8_t tx) {
+  volatile uint32_t* toggle = BITBAND_SRAM_ADDRESS(&data_toggles, TOGGLE_OFFSET(ep_num, tx));
+  uint8_t value = *toggle;
+  *toggle = value ^ 1;
+  return value;
+}
+
 // Endpoint sizes
 static uint8_t ep_sizes[MAX_ENDPOINTS];
 

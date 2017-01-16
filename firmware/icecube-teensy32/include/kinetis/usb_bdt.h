@@ -45,6 +45,7 @@ uint8_t pop_buffer_toggle(const uint8_t ep_num, const uint8_t tx);
 void reset_data_toggles();
 uint8_t get_data_toggle(const uint8_t ep_num, const uint8_t tx);
 void set_data_toggle(const uint8_t ep_num, const uint8_t tx, const uint8_t value);
+uint8_t pop_data_toggle(const uint8_t ep_num, const uint8_t tx);
 
 // Endpoint size tracking
 bool set_endpoint_size(const uint8_t ep_num, const uint8_t ep_size);
