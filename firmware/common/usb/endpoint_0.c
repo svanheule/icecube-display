@@ -183,7 +183,7 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
       if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_STANDARD | REQ_REC_ENDPOINT)) {
         if (transfer->req->wValue == ENDPOINT_HALT) {
           uint8_t ep_num = transfer->req->wIndex & 0xf;
-          if (ep_num > 0 && endpoint_stall(ep_num)) {
+          if (endpoint_stall(ep_num)) {
             transfer->stage = CTRL_HANDSHAKE_OUT;
           }
         }
@@ -193,9 +193,9 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
       if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_STANDARD | REQ_REC_ENDPOINT)) {
         if (transfer->req->wValue == ENDPOINT_HALT) {
           uint8_t ep_num = transfer->req->wIndex & 0xf;
-          if (ep_num > 0 && endpoint_clear_stall(ep_num)) {
-            endpoint_reset_data_toggle(ep_num);
-            // TODO Reset endpoint internal (non USB standard) state
+          // TODO Reset endpoint internal (non USB standard) state
+          endpoint_reset_data_toggle(ep_num);
+          if (endpoint_clear_stall(ep_num)) {
             transfer->stage = CTRL_HANDSHAKE_OUT;
           }
         }
