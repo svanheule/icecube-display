@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_ENDPOINTS 3
+#define MAX_ENDPOINTS 2
 
 #define BANK_COUNT 2
 
