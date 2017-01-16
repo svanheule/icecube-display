@@ -306,7 +306,7 @@ void usb_isr() {
           // avoid buffer overflows in case they aren't.
           uint16_t size = min(bytes_received, left);
 
-          // Only copy back if we used the local buffer
+          // Only copy back if we used the endpoint's buffer
           uint8_t* dest = control_data_end - left;
           if (dest != bdt_entry->buffer) {
             memcpy(dest, bdt_entry->buffer, size);
