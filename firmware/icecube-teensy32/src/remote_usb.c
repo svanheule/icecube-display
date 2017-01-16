@@ -75,7 +75,6 @@ static inline uint8_t pop_token_status() {
 //      directly to the frame buffer
 
 static uint16_t queue_in(const void* data, uint16_t max_length) {
-  uint8_t data01 = get_data_toggle(0, 1);
   uint8_t bank = get_buffer_toggle(0, BDT_DIR_TX);
   struct buffer_descriptor_t* bd = get_buffer_descriptor(0, BDT_DIR_TX, bank);
   bool buffer_available = !(bd->desc & _BV(BDT_DESC_OWN));
@@ -83,9 +82,8 @@ static uint16_t queue_in(const void* data, uint16_t max_length) {
   if (buffer_available) {
     uint16_t packet_size = min(max_length, endpoint_get_size(0));
     // Send remaining transaction data
-    bd->desc = generate_bdt_descriptor(packet_size, data01);
+    bd->desc = generate_bdt_descriptor(packet_size, pop_data_toggle(0, BDT_DIR_TX));
     bd->buffer = (void*) data;
-    set_data_toggle(0, 1, data01^1);
     pop_buffer_toggle(0, BDT_DIR_TX);
     return packet_size;
   }
