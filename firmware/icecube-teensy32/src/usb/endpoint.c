@@ -46,15 +46,15 @@ bool endpoint_configure(const struct ep_config_t* config) {
   }
 
   *ENDPOINT_REGISTER_ADDRESS(config->num) = reg;
-  endpoint_reset_data_toggle(config->num);
 
-  // Queue RX buffer after allocation and configuration are finished to be able to
-  // synchronise the data toggles.
-  if ((config->dir & EP_DIRECTION_OUT) && config_ok) {
-    ep_rx_buffer_dequeue_all(config->num);
-    // Enables data toggle synchronisation by default,
-    // which might be undesired behaviour for isochronous endpoints
-    ep_rx_buffer_push(config->num);
+  if (config_ok) {
+    // Queue RX buffer after allocation and configuration are finished to be able to
+    // synchronise the data toggles.
+    // By default, queue as many RX buffers as possible, using data toggle synchronisation (DTS).
+    // If the endpoint protocol requires different behaviour,
+    // this should be implemented in the remote communications module.
+    // Note that DTS might be undesired behaviour for isochronous endpoints.
+    endpoint_reset_data_toggle(config->num);
   }
 
   return config_ok;
@@ -98,7 +98,14 @@ bool endpoint_is_stalled(const uint8_t ep_num) {
 void endpoint_reset_data_toggle(const uint8_t ep_num) {
   volatile uint8_t* ep = ENDPOINT_REGISTER_ADDRESS(ep_num);
   // Check RX first so data toggle reset applies to RX for control endpoints
-  set_data_toggle(ep_num, (*ep & USB_ENDPT_EPRXEN) ? 0 : 1, 0);
+  if (!(*ep & USB_ENDPT_EPRXEN)) {
+    set_data_toggle(ep_num, BDT_DIR_TX, 0);
+  }
+  else {
+    ep_rx_buffer_dequeue_all(ep_num);
+    set_data_toggle(ep_num, BDT_DIR_RX, 0);
+    while (ep_rx_buffer_push(ep_num)) {}
+  }
 }
 
 uint8_t endpoint_get_data_toggle(const uint8_t ep_num) {
