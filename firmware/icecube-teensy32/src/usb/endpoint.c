@@ -104,7 +104,7 @@ void endpoint_reset_data_toggle(const uint8_t ep_num) {
   else {
     ep_rx_buffer_dequeue_all(ep_num);
     set_data_toggle(ep_num, BDT_DIR_RX, 0);
-    while (ep_rx_buffer_push(ep_num)) {}
+    while(ep_rx_buffer_push(ep_num, NULL, 0)) {}
   }
 }
 

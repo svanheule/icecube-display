@@ -46,16 +46,19 @@ uint8_t pop_buffer_toggle(const uint8_t ep_num, const uint8_t tx);
 // (push, dequeue) <-> [IN] [queue] [OUT] -> (pop)
 // *FUNCTIONS ARE NOT THREAD SAFE*;
 /// Increase the queue counter.
-/// \todo Enable queueing of any buffer
+/// \param buffer Pointer to buffer where the received data should be stored.
+///   If this buffer is smaller than the endpoint size, the user should also check for buffer
+///   overflows in case unexpected data is transmitted.
+///   If a NULL pointer is provided, the endpoint's default buffers are used to receive data.
+/// \see \ref endpoint_get_size()
 /// \returns `false` if the queue was full
-bool ep_rx_buffer_push(const uint8_t ep_num);
+bool ep_rx_buffer_push(const uint8_t ep_num, void* buffer, uint16_t buffer_size);
 /// Decrease the queue counter and pop a buffer toggle to keep in sync with hardware.
-/// \returns `false` if the buffer was empty.
-/// \returns The buffer at the front of the queue or NULL if the queue was empty.
+/// \returns `false` if the queue was empty.
 bool ep_rx_buffer_pop(const uint8_t ep_num);
 /// Decrease the queue counter without popping a buffer toggle.
 /// This modifies BDT entries whose OWN bit is set. Use only when the endpoint is halted!
-/// \returns `false` if queue was empty.
+/// \returns `false` if the queue was empty.
 bool ep_rx_buffer_dequeue(const uint8_t ep_num);
 void ep_rx_buffer_dequeue_all(const uint8_t ep_num);
 

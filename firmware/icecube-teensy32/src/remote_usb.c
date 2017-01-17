@@ -238,19 +238,21 @@ void usb_isr() {
             remaining -= queued;
           }
           // Queue OUT buffer for ZLP/SETUP
-          ep_rx_buffer_push(0);
+          ep_rx_buffer_push(0, NULL, 0);
         }
         else if (stage == CTRL_DATA_OUT) {
           control_data = (uint8_t*) control_transfer.data;
           control_data_end = control_data + control_transfer.data_length;
 
-          // Queue more buffers if possible
+          // Queue as many buffers as possible
           const uint8_t ep_size = get_endpoint_size(0);
-          uint8_t remaining = control_transfer.data_length;
-          while (remaining && ep_rx_buffer_push(0)) {
-            uint8_t pushed = min(ep_size, remaining);
-            remaining -= pushed;
-            control_data += pushed;
+          uint8_t buffer_size = min(ep_size, control_transfer.data_length);
+          bool queued = ep_rx_buffer_push(0, control_data, buffer_size);
+          while (control_data != control_data_end && queued) {
+            control_data += buffer_size;
+            // Next buffer_size
+            buffer_size = min(ep_size, control_data_end - control_data);
+            queued = ep_rx_buffer_push(0, control_data, buffer_size);
           };
         }
         else if (stage == CTRL_HANDSHAKE_OUT) {
@@ -259,13 +261,13 @@ void usb_isr() {
           // Queue ZLP handshake
           queue_in(0, 0);
           // Queue OUT buffer for next SETUP
-          ep_rx_buffer_push(0);
+          ep_rx_buffer_push(0, NULL, 0);
         }
         else { // All other states are invalid at this point
           endpoint_stall(0);
           cancel_control_transfer(&control_transfer);
           // Queue OUT buffer for next SETUP
-          ep_rx_buffer_push(0);
+          ep_rx_buffer_push(0, NULL, 0);
         }
       }
 
@@ -296,6 +298,9 @@ void usb_isr() {
       else if (token_pid == PID_OUT) {
         ep_rx_buffer_pop(0);
 
+        void* rx_buffer = NULL;
+        uint16_t rx_buffer_size = 0;
+
         if (control_transfer.stage == CTRL_DATA_OUT) {
           // Copy data to data buffer
           uint16_t left = control_transfer.data_length - control_transfer.data_done;
@@ -324,10 +329,12 @@ void usb_isr() {
             // Since the queue was entirely filled up when initialising the data stage,
             // we need only supply one new RX buffer.
             uint16_t size_left = control_data_end - control_data;
-            control_data += min(size_left, get_endpoint_size(0));
+            rx_buffer_size = min(size_left, get_endpoint_size(0));
 
-            // TODO If the expected transfer size is equal to the endpoint size,
+            // If the expected transfer size is equal to the endpoint size,
             // use a direct write for better efficiency.
+            rx_buffer = control_data;
+            control_data += rx_buffer_size;
           }
         }
         else if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
@@ -341,7 +348,7 @@ void usb_isr() {
           }
         }
 
-        ep_rx_buffer_push(0);
+        ep_rx_buffer_push(0, rx_buffer, rx_buffer_size);
       }
     }
 
@@ -358,7 +365,12 @@ void usb_isr() {
         transfer->buffer_pos += copy_len;
         transfer->buffer_remaining -= copy_len;
 
-        ep_rx_buffer_push(1);
+        // TODO Write directly to frame buffer
+        // Writing directly to frame buffer is hard:
+        //   * When finalising a new transfer, a new frame buffer is not yet available
+        //   * Short buffers (< EP_SIZE) are dangerous as they might overflow
+        //   * When queueing buffers, care should be taken to queue the correct offset
+        ep_rx_buffer_push(1, NULL, 0);
 
         if (transfer->buffer_remaining == 0 || transferred < endpoint_get_size(1)) {
           if (copy_len != transferred || !remote_renderer_finish()) {

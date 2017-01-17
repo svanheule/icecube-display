@@ -179,7 +179,7 @@ void* get_ep_rx_buffer(const uint8_t ep_num, const uint8_t bank) {
 // RX buffer queue
 static uint8_t ep_rx_queue_count[MAX_ENDPOINTS];
 
-bool ep_rx_buffer_push(const uint8_t ep_num) {
+bool ep_rx_buffer_push(const uint8_t ep_num, void* buffer, uint16_t buffer_size) {
   bool can_push = (ep_num < MAX_ENDPOINTS) && (ep_rx_queue_count[ep_num] < BANK_COUNT);
   if (can_push) {
     // Bank we should push is the active bank + the number of queued banks
@@ -187,8 +187,14 @@ bool ep_rx_buffer_push(const uint8_t ep_num) {
     uint8_t bank = (get_buffer_toggle(ep_num, BDT_DIR_RX) + offset) % BANK_COUNT;
     ++ep_rx_queue_count[ep_num];
     struct buffer_descriptor_t* bd = get_buffer_descriptor(ep_num, BDT_DIR_RX, bank);
-    bd->buffer = ep_buffers[ep_num][bank];
-    bd->desc = generate_bdt_descriptor(ep_sizes[ep_num], pop_data_toggle(ep_num, BDT_DIR_RX));
+    if (buffer) {
+      bd->buffer = buffer;
+    }
+    else {
+      bd->buffer = ep_buffers[ep_num][bank];
+      buffer_size = ep_sizes[ep_num];
+    }
+    bd->desc = generate_bdt_descriptor(buffer_size, pop_data_toggle(ep_num, BDT_DIR_RX));
   }
   return can_push;
 }
