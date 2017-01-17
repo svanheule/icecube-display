@@ -35,7 +35,7 @@ class I3LoggingHandler(logging.Handler):
             , record.filename
             , record.lineno
             , record.funcName
-            , message
+            , str(message)
         )
 
 logger = logging.getLogger("icecube.LedDisplay")
