@@ -36,7 +36,11 @@ if not os.path.isfile(eeprom_path):
 device = usb.core.find(idVendor=0x1CE3, idProduct=2)
 if device:
   device.set_configuration()
-  print("Programming device: {}".format(device.serial_number))
+  serial = device.serial_number
+  if len(serial) > 0:
+    print("Programming device: {}".format(device.serial_number))
+  else:
+    print("Programming device: {}-{}".format(device.bus, device.address))
 
   eeprom_data = IntelHex()
   eeprom_data.fromfile(eeprom_path, format="hex")
