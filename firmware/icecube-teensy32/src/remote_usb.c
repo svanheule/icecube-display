@@ -250,9 +250,11 @@ void usb_isr() {
           bool queued = ep_rx_buffer_push(0, control_data, buffer_size);
           while (control_data != control_data_end && queued) {
             control_data += buffer_size;
-            // Next buffer_size
-            buffer_size = min(ep_size, control_data_end - control_data);
-            queued = ep_rx_buffer_push(0, control_data, buffer_size);
+            // Check if more data should be queued
+            if (control_data != control_data_end) {
+              buffer_size = min(ep_size, control_data_end - control_data);
+              queued = ep_rx_buffer_push(0, control_data, buffer_size);
+            }
           };
         }
         else if (stage == CTRL_HANDSHAKE_OUT) {
@@ -331,8 +333,7 @@ void usb_isr() {
             uint16_t size_left = control_data_end - control_data;
             rx_buffer_size = min(size_left, get_endpoint_size(0));
 
-            // If the expected transfer size is equal to the endpoint size,
-            // use a direct write for better efficiency.
+            // Use a direct write for better efficiency.
             rx_buffer = control_data;
             control_data += rx_buffer_size;
           }

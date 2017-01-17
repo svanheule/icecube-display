@@ -69,7 +69,7 @@ if device:
       if bytes(device_data) != bytes(segment_data):
         print("Unable to write data segment")
       else:
-        print("Segment succesfully writen")
+        print("Segment (+{}, {} bytes) succesfully writen".format(segment_start, segment_len))
 
     except Exception as e:
       print("Could not open device: {}".format(e))
