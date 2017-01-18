@@ -5,6 +5,10 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+/// Maximum number of valid endpoints
+/// Functions requiring an endpoint number should only use values smaller than ::MAX_ENDPOINTS.
+#define MAX_ENDPOINTS 2
+
 #define BDT_DESC_BC0 16
 #define BDT_DESC_OWN 7
 #define BDT_DESC_DATA01 6

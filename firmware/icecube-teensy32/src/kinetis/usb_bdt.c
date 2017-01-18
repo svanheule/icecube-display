@@ -4,8 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define MAX_ENDPOINTS 2
-
 static inline uint16_t min(uint16_t a, uint16_t b) {
   return a < b ? a : b;
 }
@@ -171,7 +169,7 @@ void transfer_mem_free(const uint8_t ep_num) {
 }
 
 void* get_ep_rx_buffer(const uint8_t ep_num, const uint8_t bank) {
-  if (ep_num < MAX_ENDPOINTS && bank < BANK_COUNT) {
+  if (bank < BANK_COUNT) {
     return ep_buffers[ep_num][bank];
   }
   else {
@@ -185,7 +183,7 @@ static uint8_t ep_rx_queue_count[MAX_ENDPOINTS];
 
 uint16_t ep_rx_buffer_push(const uint8_t ep_num, void* buffer, const uint16_t buffer_size) {
   uint16_t packet_size = 0;
-  if ((ep_num < MAX_ENDPOINTS) && (ep_rx_queue_count[ep_num] < BANK_COUNT)) {
+  if (ep_rx_queue_count[ep_num] < BANK_COUNT) {
     // Bank we should push is the active bank + the number of queued banks
     uint8_t offset = ep_rx_queue_count[ep_num];
     uint8_t bank = (get_buffer_toggle(ep_num, BDT_DIR_RX) + offset) % BANK_COUNT;
@@ -205,7 +203,7 @@ uint16_t ep_rx_buffer_push(const uint8_t ep_num, void* buffer, const uint16_t bu
 }
 
 bool ep_rx_buffer_pop(const uint8_t ep_num) {
-  bool can_pop = (ep_num < MAX_ENDPOINTS) && (ep_rx_queue_count[ep_num] > 0);
+  bool can_pop = ep_rx_queue_count[ep_num] > 0;
   if (can_pop) {
     pop_buffer_toggle(ep_num, BDT_DIR_RX);
     --ep_rx_queue_count[ep_num];
@@ -222,7 +220,7 @@ static inline void dequeue_buffer(const uint8_t ep_num) {
 }
 
 bool ep_rx_buffer_dequeue(const uint8_t ep_num) {
-  bool can_dequeue = (ep_num < MAX_ENDPOINTS) && (ep_rx_queue_count[ep_num] > 0);
+  bool can_dequeue = ep_rx_queue_count[ep_num] > 0;
   if (can_dequeue) {
     dequeue_buffer(ep_num);
   }
@@ -230,10 +228,8 @@ bool ep_rx_buffer_dequeue(const uint8_t ep_num) {
 }
 
 void ep_rx_buffer_dequeue_all(const uint8_t ep_num) {
-  if (ep_num < MAX_ENDPOINTS) {
-    while (ep_rx_queue_count[ep_num]) {
-      dequeue_buffer(ep_num);
-    }
+  while (ep_rx_queue_count[ep_num]) {
+    dequeue_buffer(ep_num);
   }
 }
 
