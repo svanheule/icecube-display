@@ -6,6 +6,10 @@
 
 #define MAX_ENDPOINTS 2
 
+static inline uint16_t min(uint16_t a, uint16_t b) {
+  return a < b ? a : b;
+}
+
 #define BANK_COUNT 2
 
 struct bdt_endpoint_direction_t {
@@ -179,9 +183,9 @@ void* get_ep_rx_buffer(const uint8_t ep_num, const uint8_t bank) {
 // RX buffer queue
 static uint8_t ep_rx_queue_count[MAX_ENDPOINTS];
 
-bool ep_rx_buffer_push(const uint8_t ep_num, void* buffer, uint16_t buffer_size) {
-  bool can_push = (ep_num < MAX_ENDPOINTS) && (ep_rx_queue_count[ep_num] < BANK_COUNT);
-  if (can_push) {
+uint16_t ep_rx_buffer_push(const uint8_t ep_num, void* buffer, const uint16_t buffer_size) {
+  uint16_t packet_size = 0;
+  if ((ep_num < MAX_ENDPOINTS) && (ep_rx_queue_count[ep_num] < BANK_COUNT)) {
     // Bank we should push is the active bank + the number of queued banks
     uint8_t offset = ep_rx_queue_count[ep_num];
     uint8_t bank = (get_buffer_toggle(ep_num, BDT_DIR_RX) + offset) % BANK_COUNT;
@@ -189,14 +193,15 @@ bool ep_rx_buffer_push(const uint8_t ep_num, void* buffer, uint16_t buffer_size)
     struct buffer_descriptor_t* bd = get_buffer_descriptor(ep_num, BDT_DIR_RX, bank);
     if (buffer) {
       bd->buffer = buffer;
+      packet_size = min(buffer_size, ep_sizes[ep_num]);
     }
     else {
       bd->buffer = ep_buffers[ep_num][bank];
-      buffer_size = ep_sizes[ep_num];
+      packet_size = ep_sizes[ep_num];
     }
-    bd->desc = generate_bdt_descriptor(buffer_size, pop_data_toggle(ep_num, BDT_DIR_RX));
+    bd->desc = generate_bdt_descriptor(packet_size, pop_data_toggle(ep_num, BDT_DIR_RX));
   }
-  return can_push;
+  return packet_size;
 }
 
 bool ep_rx_buffer_pop(const uint8_t ep_num) {

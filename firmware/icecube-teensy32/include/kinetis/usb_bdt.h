@@ -45,14 +45,16 @@ uint8_t pop_buffer_toggle(const uint8_t ep_num, const uint8_t tx);
 // Ping-pong buffer RX queue
 // (push, dequeue) <-> [IN] [queue] [OUT] -> (pop)
 // *FUNCTIONS ARE NOT THREAD SAFE*;
-/// Increase the queue counter.
+/// Increase the queue counter and use the supplied buffer to receive data.
 /// \param buffer Pointer to buffer where the received data should be stored.
 ///   If this buffer is smaller than the endpoint size, the user should also check for buffer
 ///   overflows in case unexpected data is transmitted.
 ///   If a NULL pointer is provided, the endpoint's default buffers are used to receive data.
+/// \param buffer_size Size of \a buffer. If larger than the endpoint size, the data lenght will
+///   be truncated.
 /// \see \ref endpoint_get_size()
-/// \returns `false` if the queue was full
-bool ep_rx_buffer_push(const uint8_t ep_num, void* buffer, uint16_t buffer_size);
+/// \returns The size of the queued buffer. Can be smaller than \a buffer_size.
+uint16_t ep_rx_buffer_push(const uint8_t ep_num, void* buffer, const uint16_t buffer_size);
 /// Decrease the queue counter and pop a buffer toggle to keep in sync with hardware.
 /// \returns `false` if the queue was empty.
 bool ep_rx_buffer_pop(const uint8_t ep_num);

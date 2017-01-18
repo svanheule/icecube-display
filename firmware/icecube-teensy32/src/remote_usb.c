@@ -245,15 +245,12 @@ void usb_isr() {
           control_data_end = control_data + control_transfer.data_length;
 
           // Queue as many buffers as possible
-          const uint8_t ep_size = get_endpoint_size(0);
-          uint8_t buffer_size = min(ep_size, control_transfer.data_length);
-          bool queued = ep_rx_buffer_push(0, control_data, buffer_size);
+          uint16_t queued = ep_rx_buffer_push(0, control_data, control_transfer.data_length);
           while (control_data != control_data_end && queued) {
-            control_data += buffer_size;
+            control_data += queued;
             // Check if more data should be queued
             if (control_data != control_data_end) {
-              buffer_size = min(ep_size, control_data_end - control_data);
-              queued = ep_rx_buffer_push(0, control_data, buffer_size);
+              queued = ep_rx_buffer_push(0, control_data, control_data_end-control_data);
             }
           };
         }
@@ -300,9 +297,6 @@ void usb_isr() {
       else if (token_pid == PID_OUT) {
         ep_rx_buffer_pop(0);
 
-        void* rx_buffer = NULL;
-        uint16_t rx_buffer_size = 0;
-
         if (control_transfer.stage == CTRL_DATA_OUT) {
           // Copy data to data buffer
           uint16_t left = control_transfer.data_length - control_transfer.data_done;
@@ -325,17 +319,14 @@ void usb_isr() {
             queue_in(0, 0);
             // OUT buffer for SETUP
             set_data_toggle(0, BDT_DIR_RX, 0);
+            ep_rx_buffer_push(0, NULL, 0);
           }
           else if (control_data != control_data_end) {
             // Queue more RX buffers
             // Since the queue was entirely filled up when initialising the data stage,
             // we need only supply one new RX buffer.
-            uint16_t size_left = control_data_end - control_data;
-            rx_buffer_size = min(size_left, get_endpoint_size(0));
-
             // Use a direct write for better efficiency.
-            rx_buffer = control_data;
-            control_data += rx_buffer_size;
+            control_data += ep_rx_buffer_push(0, control_data, control_data_end-control_data);
           }
         }
         else if (control_transfer.stage == CTRL_HANDSHAKE_IN) {
@@ -346,10 +337,14 @@ void usb_isr() {
             }
             control_transfer.stage = CTRL_IDLE;
             set_data_toggle(0, BDT_DIR_RX, 0);
+            ep_rx_buffer_push(0, NULL, 0);
           }
         }
-
-        ep_rx_buffer_push(0, rx_buffer, rx_buffer_size);
+        else {
+          // Received unexepcted OUT frame. Discard and requeue buffer (for SETUP).
+          // We could also stall, but perhaps this is just a ZLP at the end of a data stage.
+          ep_rx_buffer_push(0, NULL, 0);
+        }
       }
     }
 
