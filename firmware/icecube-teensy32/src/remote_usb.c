@@ -71,27 +71,6 @@ static inline uint8_t pop_token_status() {
   return status;
 }
 
-// TODO When receiving a display frame, use the BDT entries to write the RXOUT data
-//      directly to the frame buffer
-
-static uint16_t queue_in(const void* data, uint16_t max_length) {
-  uint8_t bank = get_buffer_toggle(0, BDT_DIR_TX);
-  struct buffer_descriptor_t* bd = get_buffer_descriptor(0, BDT_DIR_TX, bank);
-  bool buffer_available = !(bd->desc & _BV(BDT_DESC_OWN));
-
-  if (buffer_available) {
-    uint16_t packet_size = min(max_length, endpoint_get_size(0));
-    // Send remaining transaction data
-    bd->desc = generate_bdt_descriptor(packet_size, pop_data_toggle(0, BDT_DIR_TX));
-    bd->buffer = (void*) data;
-    pop_buffer_toggle(0, BDT_DIR_TX);
-    return packet_size;
-  }
-  else {
-    return 0;
-  }
-}
-
 static inline bool needs_extra_zlp(struct control_transfer_t* transfer) {
   // When the amount of transmitted data is less then the amount of requested data,
   // a packet smaller than wMaxPacketSize has to be sent. In case the data size is an
@@ -233,7 +212,7 @@ void usb_isr() {
           uint8_t tx_buffers = get_buffer_bank_count();
           uint16_t remaining = control_transfer.data_length;
           while (tx_buffers-- && remaining) {
-            uint16_t queued = queue_in(control_data, remaining);
+            uint16_t queued = ep_tx_buffer_push(0, control_data, remaining);
             control_data += queued;
             remaining -= queued;
           }
@@ -258,7 +237,7 @@ void usb_isr() {
           control_data = 0;
           control_data_end = 0;
           // Queue ZLP handshake
-          queue_in(0, 0);
+          ep_tx_buffer_push(0, NULL, 0);
           // Queue OUT buffer for next SETUP
           ep_rx_buffer_push(0, NULL, 0);
         }
@@ -277,11 +256,11 @@ void usb_isr() {
 
           if (control_data != control_data_end) {
             uint16_t remaining = control_data_end - control_data;
-            control_data += queue_in(control_data, remaining);
+            control_data += ep_tx_buffer_push(0, control_data, remaining);
           }
           else if (queue_extra_zlp) {
               // Queue extra ZLP to signal request length underrun
-              queue_in(0, 0);
+              ep_tx_buffer_push(0, NULL, 0);
               queue_extra_zlp = false;
           }
         }
@@ -316,7 +295,7 @@ void usb_isr() {
           if (control_transfer.stage == CTRL_HANDSHAKE_OUT) {
             // Queue IN ZLP
             set_data_toggle(0, BDT_DIR_TX, 1);
-            queue_in(0, 0);
+            ep_tx_buffer_push(0, NULL, 0);
             // OUT buffer for SETUP
             set_data_toggle(0, BDT_DIR_RX, 0);
             ep_rx_buffer_push(0, NULL, 0);

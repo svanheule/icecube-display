@@ -64,6 +64,17 @@ bool ep_rx_buffer_pop(const uint8_t ep_num);
 bool ep_rx_buffer_dequeue(const uint8_t ep_num);
 void ep_rx_buffer_dequeue_all(const uint8_t ep_num);
 
+// Ping-pong buffer TX queue
+// (push) -> [IN] [queue] [OUT]
+/// Push buffer into TX queue. If the number of actually queued bytes is smaller than the buffer
+/// size, ep_tx_buffer_push() should be called again, with `buffer+amount_queued`, until all
+/// data has been queued for transmission.
+/// \param ep_num Endpoint number. Should be smaller than ::MAX_ENDPOINTS.
+/// \param buffer Pointer to data to be transmitted.
+/// \param buffer_size Size of \a buffer in bytes.
+/// \returns The number of bytes that were actually queued.
+uint16_t ep_tx_buffer_push(const uint8_t ep_num, void* buffer, const uint16_t buffer_size);
+
 // Data toggle tracking
 void reset_data_toggles();
 uint8_t get_data_toggle(const uint8_t ep_num, const uint8_t tx);

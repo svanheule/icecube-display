@@ -236,3 +236,22 @@ void ep_rx_buffer_dequeue_all(const uint8_t ep_num) {
     }
   }
 }
+
+// TX buffer queue
+uint16_t ep_tx_buffer_push(const uint8_t ep_num, void* buffer, const uint16_t buffer_size) {
+  uint8_t bank = get_buffer_toggle(ep_num, BDT_DIR_TX);
+  struct buffer_descriptor_t* bd = get_buffer_descriptor(ep_num, BDT_DIR_TX, bank);
+  bool buffer_available = !(bd->desc & _BV(BDT_DESC_OWN));
+
+  if (buffer_available) {
+    uint16_t packet_size = min(buffer_size, ep_sizes[ep_num]);
+    // Send remaining transaction data
+    bd->desc = generate_bdt_descriptor(packet_size, pop_data_toggle(ep_num, BDT_DIR_TX));
+    bd->buffer = (void*) buffer;
+    pop_buffer_toggle(ep_num, BDT_DIR_TX);
+    return packet_size;
+  }
+  else {
+    return 0;
+  }
+}
