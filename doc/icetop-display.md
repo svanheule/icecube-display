@@ -6,7 +6,7 @@ acceptable dimensions that facilitate it being caried around and used e.g. for c
 astroparticle physics.
 It is driven by a self-designed display controller, built around the ATmega32U4 microcontroller.
 
-Due to fine pitch of the 60 LED/m strips, the in-fill stations have not been included in the
+Due to the fine pitch of the 60 LED/m strips, the in-fill stations have not been included in the
 small verison of the display.
 They can be included if the display uses a 30 LED/m pitch, and the firmware is able to
 deal with these different configurations.

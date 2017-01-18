@@ -172,10 +172,10 @@ enum vendor_request_t {
   /** Correct the frame counter ms value by the provided amount.
     * The ms correction \f$\delta\f$ is provided as a _signed_ (little endian) 16 bit integer
     * contained in the wValue field of the setup request.
-    * Corrections larger than \f$\pm(2^{15}-1)\f$ms should be performed using multiple request.
+    * Corrections larger than \f$\pm(2^{15}-1)\f$ms should be performed using multiple requests.
     * In this case the first request should perform the largest possible correction including
     * the full USB frame counter phase slip, i.e.
-    * \f$(\delta \% 40) + N \times 40 = \Delta_0\f$ with \f$|\Delta_0| \le 2^{15}-1\f$.
+    * \f$(\delta \bmod 40) + N \times 40 = \Delta_0\f$ with \f$|\Delta_0| \le 2^{15}-1\f$.
     * This synchronises the fraw draws down to the millisecond, but leaves the frame counters out
     * of phase.
     * Subsequent requests can then correct the remaining offset as multiples of 40ms.
