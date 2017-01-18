@@ -109,9 +109,27 @@ void init_display_driver() {
 
   ATOMIC_REGISTER_BIT_SET(SIM_SCGC3, 24); // SIM_SCGC3(24) for FTM2
 
-  const uint16_t counter_total = (F_BUS / F_LED);
+  /* Datasheet for the WS2812B ICs specifies a pulse interval of 1.25µs.
+   * high durations for 0s should be 0.4µs (32%)
+   * high durations for 1s should be 0.8µs (64%)
+   *
+   * The OctoWS2811 library uses the following high durations:
+   * 0:  60/256 (23%); smaller than spec to allow for jitter on reading the RAM values
+   * 1: 176/256 (69%); slightly longer than spec
+   * Another recommendation seen on the interwebs is to use a slightly longer pulse period, e.g.
+   * 110%. This is to reduce flicker when, due to bus latency, the low-time between two subsequent
+   * bits becomes too short for the ICs to recognise it. The IC's then read 1s, resulting in the
+   * display flashing.
+   */
+#ifdef USE_STANDARD_TIMING
+  const uint16_t counter_total = (F_BUS/F_LED);
   const uint16_t count_0_high = 0.4/1.25*(F_BUS/F_LED);
   const uint16_t count_1_high = 0.8/1.25*(F_BUS/F_LED);
+#else
+  const uint16_t counter_total = 1.1*((F_BUS+F_LED/2)/F_LED);
+  const uint16_t count_0_high = 0.30/1.25*((F_BUS+F_LED/2)/F_LED);
+  const uint16_t count_1_high = 0.86/1.25*((F_BUS+F_LED/2)/F_LED);
+#endif
 
   ftm2_config->SC = 0;
   ftm2_config->MOD = counter_total-1;
