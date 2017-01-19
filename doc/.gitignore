@@ -1,0 +1,3 @@
+# Whitelist auxilary files for this directory
+!*.png
+!*.svg
