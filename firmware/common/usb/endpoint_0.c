@@ -193,8 +193,20 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
       if (transfer->req->bmRequestType == (REQ_DIR_OUT | REQ_TYPE_STANDARD | REQ_REC_ENDPOINT)) {
         if (transfer->req->wValue == ENDPOINT_HALT) {
           uint8_t ep_num = transfer->req->wIndex & 0xf;
-          // TODO Reset endpoint internal (non USB standard) state
           endpoint_reset_data_toggle(ep_num);
+          // Reset endpoint internal (non USB standard) state
+          const struct configuration_t* config = get_configuration_P(get_configuration_index());
+          if (config && ep_num < pgm_read_byte(&config->endpoint_count)) {
+            void (*ep_init)() = NULL;
+            memcpy_P(&ep_init, &config->ep_config_list[ep_num].init, sizeof(ep_init));
+            if (ep_init) {
+              ep_init();
+            }
+            else {
+              endpoint_init_default(ep_num);
+            }
+          }
+          // Clear stall
           if (endpoint_clear_stall(ep_num)) {
             transfer->stage = CTRL_HANDSHAKE_OUT;
           }

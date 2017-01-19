@@ -3,10 +3,6 @@
 #include <string.h>
 #include <avr/pgmspace.h>
 
-struct configuration_t {
-  uint8_t endpoint_count;
-  const struct ep_config_t* ep_config_list;
-};
 
 static const struct ep_config_t CONFIG0_EP_LIST[] PROGMEM = {
   {0, EP_TYPE_CONTROL, EP_DIRECTION_BIDIR, 64}
@@ -60,4 +56,12 @@ bool set_configuration_index(int8_t index) {
     selected_configuration = index;
   }
   return cfg_ok;
+}
+
+const struct configuration_t* get_configuration_P(int8_t index) {
+  const struct configuration_t* config = NULL;
+  if (valid_configuration_index(index)) {
+    config = &CONFIG_LIST[index];
+  }
+  return config;
 }

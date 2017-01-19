@@ -35,6 +35,14 @@ bool set_configuration_index(int8_t index);
 /// \returns -1 if no configuration was previously selected, 0 or a positive value otherwise.
 int8_t get_configuration_index();
 
+
+struct configuration_t {
+  uint8_t endpoint_count;
+  const struct ep_config_t* ep_config_list;
+};
+
+const struct configuration_t* get_configuration_P(int8_t index);
+
 /// @}
 
 #endif
