@@ -51,7 +51,7 @@ int8_t get_configuration_index() {
 }
 
 bool valid_configuration_index(int8_t index) {
-  return (index >= 0) && (index <= CONFIG_LIST_LENGTH);
+  return (index >= 0) && (index < CONFIG_LIST_LENGTH);
 }
 
 bool set_configuration_index(int8_t index) {
