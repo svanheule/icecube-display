@@ -11,6 +11,14 @@ __pycache__/
 # Build directories
 build*/
 
+# Output files for construction of PCB, laser cutting PMMA, ...
+construction/
+
+# Auxilary files
+*.pdf
+*.svg
+*.png
+
 # IDE files
 # QtCreator
 CMakeLists.txt.user
