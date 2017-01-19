@@ -69,6 +69,8 @@ struct ep_config_t {
   enum ep_direction_t dir;
   /// Endpoint buffer size
   uint16_t size;
+  /// Endpoint reset callback
+  void (*init)();
 };
 
 /** \brief Initialise the USB endpoint described by \a config.
@@ -80,6 +82,9 @@ struct ep_config_t {
   * \returns `true` if the endpoint configuration was succesful, `false` otherwise.
   */
 bool endpoint_configure(const struct ep_config_t* config);
+
+/// Default endpoint initialisation function
+void endpoint_init_default(const uint8_t ep_num);
 
 /// Releases hardware and memory associated with the endpoint memory.
 void endpoint_deconfigure(const uint8_t ep_num);

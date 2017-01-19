@@ -100,6 +100,10 @@ bool endpoint_configure(const struct ep_config_t* config) {
   return config_ok;
 }
 
+void endpoint_init_default(const uint8_t ep_num __attribute__((unused))) {
+  // Nothing to do since interrupts are enabled by endpoint_configure() and the endpoints
+  // can only use the USB specific RAM
+}
 
 void endpoint_deconfigure(const uint8_t ep_num) {
   endpoint_push(ep_num);

@@ -55,10 +55,22 @@ bool endpoint_configure(const struct ep_config_t* config) {
     // this should be implemented in the remote communications module.
     // Note that DTS might be undesired behaviour for isochronous endpoints.
     endpoint_reset_data_toggle(config->num);
+    if (config->init) {
+      config->init();
+    }
+    else {
+      endpoint_init_default(config->num);
+    }
   }
 
   return config_ok;
 }
+
+
+void endpoint_init_default(const uint8_t ep_num) {
+  while(ep_rx_buffer_push(ep_num, NULL, 0)) {}
+}
+
 
 void endpoint_deconfigure(const uint8_t ep_num) {
   *ENDPOINT_REGISTER_ADDRESS(ep_num) = 0;
@@ -104,7 +116,6 @@ void endpoint_reset_data_toggle(const uint8_t ep_num) {
   else {
     ep_rx_buffer_dequeue_all(ep_num);
     set_data_toggle(ep_num, BDT_DIR_RX, 0);
-    while(ep_rx_buffer_push(ep_num, NULL, 0)) {}
   }
 }
 
