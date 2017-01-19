@@ -330,7 +330,6 @@ ISR(USB_COM_vect) {
 
   if (FLAG_IS_SET(UEINT, 1) && endpoint_push(1)) {
     if (ENDPOINT_IRQ_ENABLED_AND_SET(RXOUT) && FLAG_IS_SET(UEINTX, RWAL)) {
-      // TODO Test if the following code works!
       // TODO Scrap current EP0 code?
       CLI(RXOUTI);
 
