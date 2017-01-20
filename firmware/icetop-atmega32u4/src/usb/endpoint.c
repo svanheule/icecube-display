@@ -93,6 +93,11 @@ bool endpoint_configure(const struct ep_config_t* config) {
     }
 
     config_ok = UESTA0X & _BV(CFGOK);
+
+    if (config->init) {
+      config->init();
+    }
+    // else: call endpoint_init_default() (currently no-op)
   }
   // Make room in stack
   endpoint_pop();
@@ -103,6 +108,7 @@ bool endpoint_configure(const struct ep_config_t* config) {
 void endpoint_init_default(const uint8_t ep_num __attribute__((unused))) {
   // Nothing to do since interrupts are enabled by endpoint_configure() and the endpoints
   // can only use the USB specific RAM
+  // Update endpoint_configure() if this function were to do something in the future.
 }
 
 void endpoint_deconfigure(const uint8_t ep_num) {
