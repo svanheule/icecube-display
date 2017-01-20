@@ -118,9 +118,3 @@ void endpoint_reset_data_toggle(const uint8_t ep_num) {
     set_data_toggle(ep_num, BDT_DIR_RX, 0);
   }
 }
-
-uint8_t endpoint_get_data_toggle(const uint8_t ep_num) {
-  volatile uint8_t* ep = ENDPOINT_REGISTER_ADDRESS(ep_num);
-  // Check RX first so data toggle get applies to RX for control endpoints
-  return get_data_toggle(ep_num, (*ep & USB_ENDPT_EPRXEN) ? 0 : 1);
-}

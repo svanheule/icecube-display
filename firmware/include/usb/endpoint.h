@@ -115,14 +115,6 @@ bool endpoint_is_stalled(const uint8_t ep_num);
 /// Reset the DATAx toggle to DATA0
 void endpoint_reset_data_toggle(const uint8_t ep_num);
 
-/** \brief Get the DATAx toggle value.
-  * \details For IN endpoints, this returns the next value that should be used for a data transfer.
-  *     For OUT endpoints, this returns the last received value.
-  *     Note that for control endpoints the returned value may be unrelated to the relevant current
-  *     data toggle since these endpoints are bidirectional.
-  */
-uint8_t endpoint_get_data_toggle(const uint8_t ep_num);
-
 /// @}
 /// @}
 
