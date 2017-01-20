@@ -25,4 +25,7 @@ void init_remote();
   */
 bool is_remote_connected();
 
+/// Custom initialisation function for endpoint 1: the bulk endpoint for frame data transfers.
+void ep1_init();
+
 #endif

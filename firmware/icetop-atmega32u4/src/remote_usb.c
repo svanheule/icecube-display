@@ -179,6 +179,10 @@ ISR(USB_GEN_vect) {
   }
 }
 
+void ep1_init() {
+  remote_renderer_init();
+}
+
 static inline uint16_t min(uint16_t a, uint16_t b) {
   return a < b ? a : b;
 }
@@ -333,27 +337,37 @@ ISR(USB_COM_vect) {
       // TODO Scrap current EP0 code?
       CLI(RXOUTI);
 
+      // ~~~
+      // Endpoint stack manipulations seem to be not allowed before the FIFOCON flag is cleared.
+      // Only use fifo_*() functions to access the required information directly.
+      // ~~~
+
       // If a transfer is possible, copy the received data. Otherwise, halt the endpoint.
-      struct remote_transfer_t* transfer = remote_renderer_get_current();
-      if (transfer) {
+      struct frame_transfer_state_t* transfer = remote_renderer_get_transfer_state();
+      if (transfer->write_pos) {
         // Make sure we don't overrun the buffer
-        const size_t max_transfer = min(fifo_byte_count(), transfer->buffer_remaining);
-        const size_t transferred = fifo_read(transfer->buffer_pos, max_transfer);
-        transfer->buffer_pos += transferred;
-        transfer->buffer_remaining -= transferred;
-        // Finish frame transfer when all data was received
-        // or when receiving a short transaction
-        if (transfer->buffer_remaining == 0 || transferred < fifo_size()) {
-          if (fifo_byte_count() > 0 || !remote_renderer_finish()) {
-            endpoint_stall(1);
-          }
+        const uint16_t max_len = min(transfer->buffer_end-transfer->write_pos, fifo_byte_count());
+        const uint16_t transferred = fifo_read(transfer->write_pos, max_len);
+        transfer->write_pos += transferred;
+
+        const uint16_t fifo_remaining = fifo_byte_count();
+        const uint16_t transfer_remaining = transfer->buffer_end - transfer->write_pos;
+
+        // Clear immediately after copying the buffer contents
+        // Doing this at the end of the RXOUT block doesn't seem to work...
+        CLEAR_FLAG(UEINTX, FIFOCON);
+
+        // Halt endpoint on buffer overflow or buffer underflow
+        if (fifo_remaining || (transferred < fifo_size() && transfer_remaining)) {
+          remote_renderer_halt();
+        }
+        else if (transfer_remaining == 0) {
+          remote_renderer_transfer_done();
         }
       }
       else {
-        endpoint_stall(1);
+        remote_renderer_halt();
       }
-
-      CLEAR_FLAG(UEINTX, FIFOCON);
     }
 
     endpoint_pop();

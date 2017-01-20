@@ -61,24 +61,30 @@
   */
 
 /// State of the current remote frame transfer.
-struct remote_transfer_t {
-  uint8_t* buffer_pos; ///< Current write position in the buffer.
-  uint16_t buffer_remaining; ///< Remaining number of bytes to be transfered.
+struct frame_transfer_state_t {
+  uint8_t* write_pos;
+  uint8_t* buffer_end;
 };
 
-/// Free resources associated with the remote frame transfers.
+/// Initialise the remote renderer internal state by acquiring a frame buffer.
+void remote_renderer_init();
+
+/// Stall the remote renderer's endpoint and free frame buffer resources.
+void remote_renderer_halt();
+
+/// Free resources associated with the remote frame transfers. Does not stall the endpoint.
 void remote_renderer_stop();
 
 /** Get the current remote frame transfer state.
-  * If the returned pointer is `NULL`, this indicates that no display frame buffer could
+  * If the state pointers are `NULL`, this indicates that no display frame buffer could
   * be allocated and the remote communications should be halted.
   */
-struct remote_transfer_t* remote_renderer_get_current();
+struct frame_transfer_state_t* remote_renderer_get_transfer_state();
 
 /** Submit the current frame to the frame queue.
-  * Returns false if the transfer was incomplete or the frame can't be submitted to the queue.
+  * Will halt the endpoint if no room was available in the frame queue.
   */
-bool remote_renderer_finish();
+void remote_renderer_transfer_done();
 
 /// @}
 

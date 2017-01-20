@@ -41,6 +41,7 @@ void init_remote() {
 
   // Clear pending interrupts we care about
   USB0_ISTAT = 0xFF;
+  USB0_ERRSTAT = 0xFF;
 
   init_led();
 
@@ -63,6 +64,36 @@ bool is_remote_connected() {
   return get_device_state() == CONFIGURED;
 }
 
+// EP1 logic
+static uint8_t* frame_transfer_queue_pos;
+
+static inline void ep1_queue_remaining(struct frame_transfer_state_t* transfer) {
+  // Queue more buffers if we haven't queued all data yet.
+  // If we are at the end of the transfer, and the whole frame was queued, don't queue
+  // more data until we complete the frame.
+  // After the transfer was completed, a new frame buffer will be allocated and we will
+  // need to refill the (drained) queue.
+  // In all other cases during the transfer, we only need to supply one buffer to refill
+  // the queue.
+  uint16_t queue_remaining = transfer->buffer_end - frame_transfer_queue_pos;
+  if (queue_remaining) {
+    uint16_t queued;
+    do {
+      queued = ep_rx_buffer_push(1, frame_transfer_queue_pos, queue_remaining);
+      frame_transfer_queue_pos += queued;
+      queue_remaining -= queued;
+    } while (queued && queue_remaining);
+  }
+}
+
+void ep1_init() {
+  remote_renderer_init();
+  struct frame_transfer_state_t* transfer = remote_renderer_get_transfer_state();
+  frame_transfer_queue_pos = transfer->write_pos;
+  ep1_queue_remaining(transfer);
+}
+
+// USB event logic
 static inline uint8_t pop_token_status() {
   // Read token status
   const uint8_t status = USB0_STAT;
@@ -330,33 +361,39 @@ void usb_isr() {
     else if (endpoint == 1 && token_pid == PID_OUT) {
       ep_rx_buffer_pop(1);
 
-      struct remote_transfer_t* transfer = remote_renderer_get_current();
-      if (transfer) {
-        const size_t transferred = get_byte_count(bdt_entry);
-        const size_t copy_len = min(transfer->buffer_remaining, transferred);
-        if (transfer->buffer_pos != bdt_entry->buffer) {
-          memcpy(transfer->buffer_pos, bdt_entry->buffer, copy_len);
+      struct frame_transfer_state_t* transfer = remote_renderer_get_transfer_state();
+      if (transfer->write_pos) {
+        const uint16_t transferred = get_byte_count(bdt_entry);
+        const uint16_t transfer_remaining = transfer->buffer_end - transfer->write_pos;
+        const uint16_t copy_len = min(transfer_remaining, transferred);
+        if (transfer->write_pos != bdt_entry->buffer) {
+          memcpy(transfer->write_pos, bdt_entry->buffer, copy_len);
         }
-        transfer->buffer_pos += copy_len;
-        transfer->buffer_remaining -= copy_len;
+        transfer->write_pos += copy_len;
 
-        // TODO Write directly to frame buffer
-        // Writing directly to frame buffer is hard:
-        //   * When finalising a new transfer, a new frame buffer is not yet available
-        //   * Short buffers (< EP_SIZE) are dangerous as they might overflow
-        //   * When queueing buffers, care should be taken to queue the correct offset
-        ep_rx_buffer_push(1, NULL, 0);
-
-        if (transfer->buffer_remaining == 0 || transferred < endpoint_get_size(1)) {
-          if (copy_len != transferred || !remote_renderer_finish()) {
-            remote_renderer_stop();
-            endpoint_stall(1);
+        bool short_transfer = transferred < get_endpoint_size(1);
+        // Check for overflows if we queued a small packet (max_transfer < ep_size)
+        bool overflow = USB0_ERRSTAT & USB_ERRSTAT_DMAERR;
+        // Check for underflows if we received a short packet
+        bool not_finished = transfer->buffer_end != transfer->write_pos;
+        if (short_transfer && (overflow || not_finished)) {
+          // all error flags are cleared at the end of the ISR
+          remote_renderer_halt();
+        }
+        else {
+          if (transfer->buffer_end == transfer->write_pos) {
+            remote_renderer_transfer_done();
+            frame_transfer_queue_pos = transfer->write_pos;
           }
+          ep1_queue_remaining(transfer);
         }
       }
       else {
-        endpoint_stall(1);
+        remote_renderer_halt();
       }
     }
   }
+
+  // Clear all errors
+  USB0_ERRSTAT = 0xFF;
 }

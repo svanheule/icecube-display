@@ -7,50 +7,60 @@
 #include <stddef.h>
 
 static struct frame_buffer_t* frame = NULL;
-static struct remote_transfer_t remote_transfer;
+static struct frame_transfer_state_t state;
 
-static void inline init_state() {
+static void inline clear_frame_state() {
+  state.write_pos = NULL;
+  state.buffer_end = NULL;
+}
+
+static void init_frame_state() {
   if (frame) {
     frame->flags = FRAME_FREE_AFTER_DRAW;
-    remote_transfer.buffer_remaining = get_frame_buffer_size();
-    remote_transfer.buffer_pos = frame->buffer;
+    state.write_pos = frame->buffer;
+    state.buffer_end = frame->buffer + get_frame_buffer_size();
   }
   else {
-    remote_transfer.buffer_remaining = 0;
-    remote_transfer.buffer_pos = NULL;
+    clear_frame_state();
   }
 }
 
-void remote_renderer_stop() {
-  destroy_frame(frame);
-  frame = NULL;
-  remote_transfer.buffer_remaining = 0;
-  remote_transfer.buffer_pos = NULL;
-}
-
-struct remote_transfer_t* remote_renderer_get_current() {
-  if (!remote_transfer.buffer_pos) {
-    if (!frame) {
-      frame = create_frame();
-    }
-    init_state();
-  }
-
-  if (remote_transfer.buffer_pos) {
-    return &remote_transfer;
-  }
-  else {
-    return NULL;
-  }
-}
-
-bool remote_renderer_finish() {
-  bool finished = remote_transfer.buffer_remaining == 0;
-
-  if (finished && push_frame(frame)) {
+void remote_renderer_init() {
+  // If a frame is already allocated, just reset the internal state
+  if (!frame) {
     frame = create_frame();
   }
 
-  init_state();
-  return finished;
+  init_frame_state();
+}
+
+void remote_renderer_halt() {
+  endpoint_stall(1);
+  if (frame) {
+    destroy_frame(frame);
+    frame = NULL;
+  }
+  clear_frame_state();
+}
+
+void remote_renderer_stop() {
+  if (frame) {
+    destroy_frame(frame);
+    frame = NULL;
+  }
+  clear_frame_state();
+}
+
+struct frame_transfer_state_t* remote_renderer_get_transfer_state() {
+  return &state;
+}
+
+void remote_renderer_transfer_done() {
+  if (push_frame(frame)) {
+    frame = create_frame();
+    init_frame_state();
+  }
+  else {
+    remote_renderer_halt();
+  }
 }

@@ -1,16 +1,16 @@
 #include "usb/configuration.h"
 #include "usb/endpoint.h"
+#include "remote.h"
 #include <string.h>
 #include <avr/pgmspace.h>
 
-
 static const struct ep_config_t CONFIG0_EP_LIST[] PROGMEM = {
-  {0, EP_TYPE_CONTROL, EP_DIRECTION_BIDIR, 64}
+  {0, EP_TYPE_CONTROL, EP_DIRECTION_BIDIR, 64, NULL}
 };
 
 static const struct ep_config_t CONFIG1_EP_LIST[] PROGMEM = {
-    {0, EP_TYPE_CONTROL, EP_DIRECTION_BIDIR, 64}
-  , {1, EP_TYPE_BULK, EP_DIRECTION_OUT, 64}
+    {0, EP_TYPE_CONTROL, EP_DIRECTION_BIDIR, 64, NULL}
+  , {1, EP_TYPE_BULK, EP_DIRECTION_OUT, 64, ep1_init}
 };
 
 #define CONFIG(config_list) {sizeof(config_list)/sizeof(config_list[0]), &config_list[0]}
