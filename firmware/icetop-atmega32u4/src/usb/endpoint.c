@@ -31,7 +31,10 @@ bool endpoint_configure(const struct ep_config_t* config) {
   }
 
   // Select endpoint number
-  endpoint_push(config->num);
+  if (!endpoint_push(config->num)) {
+    return false;
+  }
+
   uint8_t log2_bank_size = 0;
   uint16_t bank_size = (config->size-1) / 8;
   while (bank_size) {
