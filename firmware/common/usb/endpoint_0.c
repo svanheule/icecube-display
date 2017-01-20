@@ -197,8 +197,13 @@ static inline void process_standard_request(struct control_transfer_t* transfer)
           // Reset endpoint internal (non USB standard) state
           const struct configuration_t* config = get_configuration_P(get_configuration_index());
           if (config && ep_num < pgm_read_byte(&config->endpoint_count)) {
-            void (*ep_init)() = NULL;
-            memcpy_P(&ep_init, &config->ep_config_list[ep_num].init, sizeof(ep_init));
+            // Copy ep_config_t pointer
+            struct ep_config_t* ep_config_ptr;
+            memcpy_P(&ep_config_ptr, &config->ep_config_list, sizeof(ep_config_ptr));
+            ep_config_ptr += ep_num;
+            // Copy init function pointer
+            void (*ep_init)();
+            memcpy_P(&ep_init, &(ep_config_ptr->init), sizeof(ep_init));
             if (ep_init) {
               ep_init();
             }
