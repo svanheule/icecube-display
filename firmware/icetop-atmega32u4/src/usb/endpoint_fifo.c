@@ -2,8 +2,10 @@
 #include <avr/io.h>
 #include <avr/pgmspace.h>
 
+#define BYTE_COUNT() ((((uint16_t) UEBCHX) << 8) | (UEBCLX))
+
 uint16_t fifo_byte_count() {
-  return (((uint16_t) UEBCHX) << 8) | (UEBCLX);
+  return BYTE_COUNT();
 }
 
 uint16_t fifo_size() {
@@ -33,7 +35,7 @@ size_t fifo_read(void* restrict buffer, size_t length) {
   size_t read = 0;
   uint8_t* write_ptr = (uint8_t*) buffer;
 
-  while (UEBCLX && read < length) {
+  while (BYTE_COUNT() && read < length) {
     *(write_ptr++) = UEDATX;
     read++;
   }
