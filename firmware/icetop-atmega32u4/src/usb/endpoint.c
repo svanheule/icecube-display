@@ -115,11 +115,12 @@ void endpoint_init_default(const uint8_t ep_num __attribute__((unused))) {
 }
 
 void endpoint_deconfigure(const uint8_t ep_num) {
-  endpoint_push(ep_num);
-  // Disable EP and deallocate its memory
-  UECONX &= ~_BV(EPEN);
-  UECFG1X &= ~_BV(ALLOC);
-  endpoint_pop();
+  if (endpoint_push(ep_num)) {
+    // Disable EP and deallocate its memory
+    UECONX &= ~_BV(EPEN);
+    UECFG1X &= ~_BV(ALLOC);
+    endpoint_pop();
+  }
 }
 
 uint16_t endpoint_get_size(const uint8_t ep_num) {
