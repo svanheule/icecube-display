@@ -334,7 +334,6 @@ ISR(USB_COM_vect) {
 
   if (FLAG_IS_SET(UEINT, 1) && endpoint_push(1)) {
     if (ENDPOINT_IRQ_ENABLED_AND_SET(RXOUT) && FLAG_IS_SET(UEINTX, RWAL)) {
-      // TODO Scrap current EP0 code?
       CLI(RXOUTI);
 
       // ~~~
@@ -353,10 +352,6 @@ ISR(USB_COM_vect) {
         const uint16_t fifo_remaining = fifo_byte_count();
         const uint16_t transfer_remaining = transfer->buffer_end - transfer->write_pos;
 
-        // Clear immediately after copying the buffer contents
-        // Doing this at the end of the RXOUT block doesn't seem to work...
-        CLEAR_FLAG(UEINTX, FIFOCON);
-
         // Halt endpoint on buffer overflow or buffer underflow
         if (fifo_remaining || (transferred < fifo_size() && transfer_remaining)) {
           remote_renderer_halt();
@@ -368,6 +363,8 @@ ISR(USB_COM_vect) {
       else {
         remote_renderer_halt();
       }
+
+      CLEAR_FLAG(UEINTX, FIFOCON);
     }
 
     endpoint_pop();
