@@ -25,8 +25,6 @@ At 60 DOMs per string, this equates to up to 1800 RGB LEDs that can draw 60mA at
 when set to full brightness.
 Therefore two [5V-60A power supplies (HRP-300-5)](http://www.meanwell.com/productPdf.aspx?i=450)
 are used in each module to power the LEDs.
-Each strip of 60 LEDs is powered through the bottom case and is equipped with a circuit breaker,
-rated to 4A, to prevent one short circuit from taking down half the display segment.
 
 To reduce the number of cables running to the fully assembled display, the front and back modules
 can get their USB connection to the PC via the center module.
@@ -48,7 +46,6 @@ To make these output pins easily accessible, the Teensys are seated in a
 [OctoWS2811 adaptor](https://www.pjrc.com/store/octo28_adaptor.html).
 The two RJ45 connectors are then each fed to a splitter board using CAT5e cables to provide 8 strip
 ports.
-
 Since 8 ports is smaller than the corresponding number of IceCube strings per display segment,
 the data lines of up to four LED strips are connected in series, resulting in a strip with 60
 to 240 LEDs.
@@ -56,6 +53,10 @@ The data lines for the first and third strip run from bottom to top, while the d
 second and fourth strip run from top to bottom.
 Connections between the strips are made inside the display segment boxes and do not change between
 different assemblies of the display.
+Each strip of 60 LEDs is powered through the bottom case and is equipped with a circuit breaker,
+rated to 4A, to prevent one short circuit from taking down half the display segment.
+
+\image html icecube-segment-layout/segment-cabling.png "Display segment strip cabling"
 
 The way the LED strips are grouped is not predetermined and depends on the length of the available
 connecting cables, location of the microcontroller inside the module's bottom box, and of course
