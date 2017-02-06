@@ -40,7 +40,6 @@ The top part only contains a small amount of cabling to connect data lines of th
 
 \image html icecube-segment-layout/segment-connections.png "Display segment connections"
 
-### LED strip layout configuration \anchor icecube_display_eeprom
 The Teensy controllers use an 8-bit port to send serial data to 8 LED strips simultaneously.
 To make these output pins easily accessible, the Teensys are seated in a
 [OctoWS2811 adaptor](https://www.pjrc.com/store/octo28_adaptor.html).
@@ -58,6 +57,7 @@ rated to 4A, to prevent one short circuit from taking down half the display segm
 
 \image html icecube-segment-layout/segment-cabling.png "Display segment strip cabling"
 
+### LED strip layout configuration
 The way the LED strips are grouped is not predetermined and depends on the length of the available
 connecting cables, location of the microcontroller inside the module's bottom box, and of course
 personal preferences of the person doing the cabling.
