@@ -29,8 +29,8 @@
   ],
 
   "devices" : {
-    "front" : "ICD-IC-001-0001",
-    "center" : "ICD-IC-001-0002",
-    "back" : "ICD-IC-001-0003"
+    "ICD-IC-001-0001" : "front",
+    "ICD-IC-001-0002" : "center",
+    "ICD-IC-001-0003" : "back"
   }
 }
