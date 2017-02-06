@@ -2,62 +2,53 @@
 # Author: Sander Vanheule (Universiteit Gent) <sander.vanheule@ugent.be>
 # Steamshovel module used to render and display IceCube data to an LED display connected via USB
 
-__all__ = ["LedDisplay"]
-
 # Initialise logging
-from icecube.icetray import i3logging, I3Logger, I3LogLevel
 import logging
-
-class I3LoggingHandler(logging.Handler):
-    def __init__(self):
-        super(I3LoggingHandler, self).__init__()
-
-    def emit(self, record):
-        if record.levelno in i3logging.LoggingBridge.i3levels:
-            level = i3logging.LoggingBridge.i3levels[record.levelno]
-        else:
-            levels = sorted(i3logging.LoggingBridge.pylevels.items(), lambda x,y: x[1]<y[1])
-            i = len(levels)
-            while i and levels[i-1][1] > record.levelno:
-                i -= 1
-            if i:
-              level = levels[i-1][0]
-            else:
-              level = I3LogLevel.LOG_TRACE
-        message = self.format(record)
-        if record.name.startswith("icecube."):
-            name = record.name[len("icecube."):]
-        else:
-            name = record.name
-        I3Logger.global_logger.log(
-              level
-            , name
-            , record.filename
-            , record.lineno
-            , record.funcName
-            , str(message)
-        )
-
 logger = logging.getLogger("icecube.LedDisplay")
-log_handler = I3LoggingHandler()
-logger.addHandler(log_handler)
-
-i3_log_level = i3logging.LoggingBridge.global_logger.get_level_for_unit("LedDisplay")
-logger.setLevel(i3logging.LoggingBridge.pylevels[i3_log_level])
+logger.setLevel(logging.DEBUG)
 
 try:
-    import usb.core
-    import usb.util
-except:
-    i3logging.log_notice("Failed to load USB support. LED displays are not supported.", "LedDisplay")
-    raise ImportError
+    from icecube.icetray import i3logging, I3Logger, I3LogLevel
 
-from icecube.shovelart import PyArtist
-from icecube.shovelart import RangeSetting, ChoiceSetting, I3TimeColorMap
-from icecube.shovelart import PyQColor, TimeWindowColor, StepFunctionFloat
-from icecube.dataclasses import I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion, I3OMGeo
-import struct
-import threading
+    class I3LoggingHandler(logging.Handler):
+        def __init__(self):
+            super(I3LoggingHandler, self).__init__()
+
+        def emit(self, record):
+            if record.levelno in i3logging.LoggingBridge.i3levels:
+                level = i3logging.LoggingBridge.i3levels[record.levelno]
+            else:
+                levels = sorted(i3logging.LoggingBridge.pylevels.items(), lambda x,y: x[1]<y[1])
+                i = len(levels)
+                while i and levels[i-1][1] > record.levelno:
+                    i -= 1
+                if i:
+                  level = levels[i-1][0]
+                else:
+                  level = I3LogLevel.LOG_TRACE
+            message = self.format(record)
+            if record.name.startswith("icecube."):
+                name = record.name[len("icecube."):]
+            else:
+                name = record.name
+            I3Logger.global_logger.log(
+                  level
+                , name
+                , record.filename
+                , record.lineno
+                , record.funcName
+                , str(message)
+            )
+
+    log_handler = I3LoggingHandler()
+    logger.addHandler(log_handler)
+
+    i3_log_level = i3logging.LoggingBridge.global_logger.get_level_for_unit("LedDisplay")
+    log_handler.setLevel(i3logging.LoggingBridge.pylevels[i3_log_level])
+except:
+    logger.debug("IceCube logging framework not present")
+
+
 
 class DisplayLed(object):
     "Class representing the color of an RGB LED with time dependent color and brightness."
@@ -112,8 +103,21 @@ class LedWS2811(DisplayLed):
     def float_to_led_data(cls, rgb):
         return [int(round(255 * (c**2.2))) for c in rgb]
 
+## Display controller logc
+try:
+    import usb.core
+    import usb.util
+except:
+    logger.warning("Failed to load USB support. LED displays are not supported.")
+    raise ImportError
+
+import threading
+import struct
+import time
 
 class DisplayController:
+    "Object with USB display properties and some auxiliary functions."
+
     __USB_VND_DEV_IN = usb.util.build_request_type(
       usb.util.CTRL_IN
     , usb.util.CTRL_TYPE_VENDOR
@@ -125,7 +129,17 @@ class DisplayController:
       , usb.util.CTRL_RECIPIENT_DEVICE
     )
 
-    "Object with USB display properties and some auxiliary functions."
+    __USB_VND_REQ_DISPLAY_PROPERTIES = 2
+    __USB_VND_REQ_EEPROM_WRITE = 3
+    __USB_VND_REQ_EEPROM_READ = 4
+
+    # Display property types
+    DP_TYPE_INFORMATION_TYPE = 1
+    DP_TYPE_INFORMATION_RANGE = 2
+    DP_TYPE_LED_TYPE = 3
+    DP_TYPE_BUFFER_SIZE = 4
+    DP_TYPE_END = 0xff
+
     # Information types
     DATA_TYPE_IT_STATION = 0
     DATA_TYPE_IC_STRING = 1
@@ -166,7 +180,7 @@ class DisplayController:
         return pixel_length*string_length*string_count
 
     @staticmethod
-    def __parseTlvData(data):
+    def _parseTlvData(data):
         offset = 0
         data = bytearray(data)
         while offset < len(data) and offset+1 < len(data):
@@ -180,41 +194,81 @@ class DisplayController:
             yield (field_type, field_length, field_value)
 
     def __queryController(self):
-        DP_TYPE_INFORMATION_TYPE = 1
-        DP_TYPE_INFORMATION_RANGE = 2
-        DP_TYPE_LED_TYPE = 3
-        DP_TYPE_BUFFER_SIZE = 4
-        DP_TYPE_END = 0xff
-
         self.data_type = None
         self.data_ranges = list()
         self.led_type = None
 
-        if self.device:
+        data = self.readDisplayInfo()
+
+        if data and struct.unpack("<H", data[:2])[0] != len(data):
+            raise ValueError("Display information has invalid length")
+
+        for t,l,v in self._parseTlvData(data[2:]):
+            if t == self.DP_TYPE_INFORMATION_TYPE:
+                self.data_type = v[0]
+            elif t == self.DP_TYPE_INFORMATION_RANGE:
+                i = 0
+                while i < len(self.data_ranges) and self.data_ranges[i][0] < v[0]:
+                      i += 1
+                self.data_ranges.insert(i, (v[0], v[1]))
+            elif t == self.DP_TYPE_LED_TYPE:
+                self.led_type = v[0]
+
+    @classmethod
+    def findAll(cls):
+        return [cls(dev) for dev in usb.core.find(idVendor=0x1CE3, find_all=True)]
+
+    def __str__(self):
+        return '<IceCube display controller {}>'.format(self.serial_number)
+
+    def readDisplayInfo(self):
+        try:
             data = self.device.ctrl_transfer(
                 self.__USB_VND_DEV_IN
-              , 2 # Vendor request DISPLAY_PROPERTIES
+              , self.__USB_VND_REQ_DISPLAY_PROPERTIES
               , 0
               , 0
               , (1<<8)
             )
+            return data
+        except:
+            logger.error("Could not read display information report")
+            return None
 
-            if struct.unpack("<H", data[:2])[0] != len(data):
-                raise ValueError("Display information has invalid length")
+    def readEepromSegment(self, offset, length):
+        """Read an EEPROM segment from the device.
+        :param int offset: EEPROM address offset of the segment.
+        :param int length: EEPROM segment length in bytes."""
+        try:
+            data = self.device.ctrl_transfer(
+                  self.__USB_VND_DEV_IN
+                , self.__USB_VND_REQ_EEPROM_READ
+                , 0
+                , offset
+                , length
+            )
+            return bytes(data)
+        except Exception as e:
+            logger.error("Could not read EEPROM from display: {}".format(e))
 
-            for t,l,v in self.__parseTlvData(data[2:]):
-                if t == DP_TYPE_INFORMATION_TYPE:
-                    self.data_type = v[0]
-                elif t == DP_TYPE_INFORMATION_RANGE:
-                    i = 0
-                    while i < len(self.data_ranges) and self.data_ranges[i][0] < v[0]:
-                          i += 1
-                    self.data_ranges.insert(i, (v[0], v[1]))
-                elif t == DP_TYPE_LED_TYPE:
-                    self.led_type = v[0]
+    def writeEepromSegment(self, offset, data):
+        """Write an EEPROM segment to the device.
+        :param int offset: EEPROM address offset of the segment.
+        :param bytes data: EEPROM segment data."""
+        try:
+            self.device.ctrl_transfer(
+                  self.__USB_VND_DEV_OUT
+                , self.__USB_VND_REQ_EEPROM_WRITE
+                , 0
+                , offset
+                , data
+            )
+        except Exception as e:
+            logger.error("Could not write EEPROM to display: {}".format(e))
 
     def transmitDisplayBuffer(self, data):
         try:
+            logger.debug("Sending frame data to {}".format(self.serial_number))
             # Write data to EP1
             self.device.write(1, data, 40)
         except usb.core.USBError as usb_error:
@@ -284,9 +338,8 @@ class DisplayWorker(threading.Thread):
                     self.__controller.transmitDisplayBuffer(self.buffer[self.__buffer_slice])
                 self.transmit_done.set()
 
-
 class LogicalDisplay:
-    def __init__(self, controllers, multithreading=False):
+    def __init__(self, controllers):
         # \a controllers should be a list of controllers that displays a continuous string range
         if len(controllers) == 0:
             raise ValueError("Cannot create a display with 0 controllers")
@@ -298,6 +351,8 @@ class LogicalDisplay:
         self.__string_buffer_offset = dict()
         self.__buffer_length = 0
         offset = 0
+
+        self.__transmit_time = None
 
         self.controllers = dict()
         self.__data_type = None
@@ -351,8 +406,13 @@ class LogicalDisplay:
             self.__led_class = None
 
         # Optional multithreading
-        self.__multithreading = multithreading
+        self.__multithreading = len(self.controllers) > 1
         self.__workers = list()
+
+        self.__transmission_timer = None
+        self.__display_update_time = None
+        self.__data_buffer = None
+        self.__data_buffer_lock = threading.Lock()
 
     def open(self):
         self.__workers = list()
@@ -384,13 +444,18 @@ class LogicalDisplay:
 
     def canDisplayOMKey(self, geometry, om_key):
         """Check wether the display can display a certain DOM."""
-        valid_dom = False
-        omgeo = geometry.omgeo
-        if self.__data_type == DisplayController.DATA_TYPE_IC_STRING:
-              valid_dom = om_key in omgeo and omgeo[om_key].omtype == I3OMGeo.IceCube
-        elif self.__data_type == DisplayController.DATA_TYPE_IT_STATION:
-              valid_dom = om_key in omgeo and omgeo[om_key].omtype == I3OMGeo.IceTop
-        return valid_dom and (om_key.string in self.__string_buffer_offset)
+        try:
+            valid_dom = False
+            from icecube.dataclasses import I3OMGeo
+            omgeo = geometry.omgeo
+            if self.__data_type == DisplayController.DATA_TYPE_IC_STRING:
+                  valid_dom = om_key in omgeo and omgeo[om_key].omtype == I3OMGeo.IceCube
+            elif self.__data_type == DisplayController.DATA_TYPE_IT_STATION:
+                  valid_dom = om_key in omgeo and omgeo[om_key].omtype == I3OMGeo.IceTop
+            return valid_dom and (om_key.string in self.__string_buffer_offset)
+        except:
+            logger.warning("Cannot import icecube.dataclasses.I3OMGeo")
+            return False
 
     def getLedIndex(self, om_key):
         """Only provide om_key values for which canDisplayOMKey() returns True.
@@ -402,24 +467,57 @@ class LogicalDisplay:
             offset = 60*offset + dom_offset
         return offset
 
-    def transmitDisplayBuffer(self, data):
-        if len(data) != self.__buffer_length:
+    def __transmitStoredBuffer(self):
+        self.__data_buffer_lock.acquire()
+
+        if len(self.__data_buffer) != self.__buffer_length:
             raise ValueError("Data buffer has invalid length")
 
         if not self.__multithreading:
             # Single threaded working code
             for key in self.controllers.keys():
-                self.controllers[key].transmitDisplayBuffer(data[self.__buffer_slices[key]])
+                self.controllers[key].transmitDisplayBuffer(
+                    self.__data_buffer[self.__buffer_slices[key]]
+                )
         else:
             # Multi process code
             for worker in self.__workers:
-                worker.buffer = data
+                worker.buffer = self.__data_buffer
                 with worker.buffer_ready:
                     worker.buffer_ready.notify()
 
             for worker in self.__workers:
                 worker.transmit_done.wait()
                 worker.transmit_done.clear()
+
+        self.__display_update_time = time.clock()
+        self.__data_buffer_lock.release()
+
+    def transmitDisplayBuffer(self, data):
+        # Store buffer and transmit/push for transmission if possible
+        # If sending frames too fast, keep the last frame until the 25 FPS timer expires.
+        # When a new frame is received just as we're about to send the currently stored one,
+        # a lock should be used to ensure that the either the new frame gets transmitted or the
+        # new frame is queued. In no case should the new frame be dropped because we just happen
+        # to be handling an old frame.
+        self.__data_buffer_lock.acquire()
+        self.__data_buffer = data
+        self.__data_buffer_lock.release()
+
+        min_delta = 1./25
+        if self.__display_update_time is not None:
+            wait = (self.__display_update_time + min_delta) - time.clock()
+        else:
+            wait = 0
+
+        if self.__display_update_time is None or wait <= 0:
+            self.__transmitStoredBuffer()
+        else:
+            logger.debug("Rendering too fast, cannot send more than 25FPS")
+            # If we already have a running timer, just wait until it expires
+            if (self.__transmission_timer is None) or (not self.__transmission_timer.is_alive()):
+                self.__transmission_timer = threading.Timer(wait, self.__transmitStoredBuffer)
+                self.__transmission_timer.start()
 
     def close(self):
         for worker in self.__workers:
@@ -456,15 +554,14 @@ class DisplayRange:
 class DisplayManager:
     def __init__(self):
         controllers = dict()
-        for dev in usb.core.find(idVendor=0x1CE3, find_all=True):
-            controller = DisplayController(dev)
-            controllers[dev.serial_number] = controller
+        for controller in DisplayController.findAll():
+            controllers[controller.serial_number] = controller
 
         groups = self.__groupControllers(controllers)
 
         self.__displays = list()
         for group_range,group_controllers in groups:
-            display = LogicalDisplay([controllers[serial] for serial in group_controllers], True)
+            display = LogicalDisplay([controllers[serial] for serial in group_controllers])
             self.__displays.append(display)
 
             # Log device
@@ -535,296 +632,302 @@ class DisplayManager:
 
         return groups
 
+try:
+    from icecube.shovelart import PyArtist
+    from icecube.shovelart import RangeSetting, ChoiceSetting, I3TimeColorMap
+    from icecube.shovelart import PyQColor, TimeWindowColor, StepFunctionFloat
+    from icecube.dataclasses import I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion
 
-class LedDisplay(PyArtist):
-    numRequiredKeys = 2
-    _SETTING_DEVICE = "Device"
-    _SETTING_COLOR_STATIC = "Static color"
-    _SETTING_BRIGHTNESS_STATIC = "Static brightness"
-    _SETTING_COLOR = "Colormap"
-    _SETTING_INFINITE_DURATION = "Use infinite pulses"
-    _SETTING_DURATION = "Finite pulse duration (log10 ns)"
-    _SETTING_COMPRESSION_POWER = "Compression"
+    class LedDisplay(PyArtist):
+        numRequiredKeys = 2
+        _SETTING_DEVICE = "Device"
+        _SETTING_COLOR_STATIC = "Static color"
+        _SETTING_BRIGHTNESS_STATIC = "Static brightness"
+        _SETTING_COLOR = "Colormap"
+        _SETTING_INFINITE_DURATION = "Use infinite pulses"
+        _SETTING_DURATION = "Finite pulse duration (log10 ns)"
+        _SETTING_COMPRESSION_POWER = "Compression"
 
-    _manager = DisplayManager()
+        _manager = DisplayManager()
 
-    def __init__(self):
-        PyArtist.__init__(self)
+        def __init__(self):
+            PyArtist.__init__(self)
 
-        self._leds = {}
+            self._leds = {}
 
-        self._display = None
+            self._display = None
 
-        device_descriptions = []
-        if len(self._manager.displays) > 0:
-            for display in self._manager.displays:
-                # Collect device info
-                info = {
-                      "length" : display.string_count
-                    , "range_type" : "range"
-                    , "product" : "LED display"
-                }
-                if display.data_type == DisplayController.DATA_TYPE_IC_STRING:
-                    info["product"] = "IceCube display"
-                    info["range_type"] = "strings"
-                elif display.data_type == DisplayController.DATA_TYPE_IT_STATION:
-                    info["product"] = "IceTop display"
-                    info["range_type"] = "stations"
-                # Add to list of descriptors
-                description = "{product} ({length} {range_type})".format(**info)
-                device_descriptions.append(description)
-        else:
-            device_descriptions.append("no devices detected")
-
-        self.addSetting(self._SETTING_DEVICE, ChoiceSetting(device_descriptions, 0))
-        self.addSetting(self._SETTING_COLOR_STATIC, PyQColor.fromRgb(255, 0, 255))
-        self.addSetting(self._SETTING_BRIGHTNESS_STATIC, RangeSetting(0.0, 1.0, 32, 0.5))
-        self.addSetting(self._SETTING_COMPRESSION_POWER, RangeSetting(0.0, 1.0, 40, 0.18))
-        self.addSetting(self._SETTING_COLOR, I3TimeColorMap())
-        self.addSetting(self._SETTING_INFINITE_DURATION, True)
-        self.addSetting(self._SETTING_DURATION, RangeSetting(1.0, 6.0, 40, 5.0))
-        self.addCleanupAction(self._cleanupDisplay)
-
-    def _cleanupDisplay(self):
-        if self._display:
-            i3logging.log_debug("Clearing display", "LedDisplay")
-            # Blank display and release USB device interface
-            self._display.transmitDisplayBuffer(bytes(bytearray(self._display.buffer_length)))
-            self._display.close()
-
-    def description(self):
-        return "LED event display driver"
-
-    def isValidKey(self, frame, key_idx, key):
-        key_type = frame.type_name(key)
-        if key_idx == 0:
-            return "I3Geometry" == key_type
-        elif key_idx == 1:
-            # Key may be any container of OMKeys or a mask
-            # copied from Bubbles.py
-            return (   ("OMKey" in key_type and not "I3ParticleID" in key_type )
-                    or key_type.endswith("MapMask")
-                    or key_type.endswith("MapUnion"))
-        else:
-            return False
-
-    @staticmethod
-    def _merge_lists(left, right, key=lambda x: x):
-        "Merge two already sorted lists into a single sorted list."
-        merged = []
-
-        # Pick smallest from top while both lists have items
-        i = 0
-        j = 0
-        while (i < len(left) and j < len(right)):
-            if key(left[i]) < key(right[j]):
-                merged.append(left[i])
-                i = i+1
+            device_descriptions = []
+            if len(self._manager.displays) > 0:
+                for display in self._manager.displays:
+                    # Collect device info
+                    info = {
+                          "length" : display.string_count
+                        , "range_type" : "range"
+                        , "product" : "LED display"
+                    }
+                    if display.data_type == DisplayController.DATA_TYPE_IC_STRING:
+                        info["product"] = "IceCube display"
+                        info["range_type"] = "strings"
+                    elif display.data_type == DisplayController.DATA_TYPE_IT_STATION:
+                        info["product"] = "IceTop display"
+                        info["range_type"] = "stations"
+                    # Add to list of descriptors
+                    description = "{product} ({length} {range_type})".format(**info)
+                    device_descriptions.append(description)
             else:
-                merged.append(right[j])
-                j = j+1
+                device_descriptions.append("no devices detected")
 
-        # Add remaining items from left, or right
-        # Note that both cases are mutually exclusive
-        if i < len(left):
-            merged.extend(left[i:])
-        if j < len(right):
-            merged.extend(right[j:])
+            self.addSetting(self._SETTING_DEVICE, ChoiceSetting(device_descriptions, 0))
+            self.addSetting(self._SETTING_COLOR_STATIC, PyQColor.fromRgb(255, 0, 255))
+            self.addSetting(self._SETTING_BRIGHTNESS_STATIC, RangeSetting(0.0, 1.0, 32, 0.5))
+            self.addSetting(self._SETTING_COMPRESSION_POWER, RangeSetting(0.0, 1.0, 40, 0.18))
+            self.addSetting(self._SETTING_COLOR, I3TimeColorMap())
+            self.addSetting(self._SETTING_INFINITE_DURATION, True)
+            self.addSetting(self._SETTING_DURATION, RangeSetting(1.0, 6.0, 40, 5.0))
+            self.addCleanupAction(self._cleanupDisplay)
 
-        return merged
+        def _cleanupDisplay(self):
+            if self._display:
+                logger.debug("Clearing display")
+                # Blank display and release USB device interface
+                self._display.transmitDisplayBuffer(bytes(bytearray(self._display.buffer_length)))
+                self._display.close()
 
-    def _handleOMKeyMapTimed(self, output, geometry, omkey_pulses_map):
-        """Parse a map of OMKey to pulse series.
-        :returns: A dict of LED buffer offsets to LedDisplay objects."""
-        color_map = self.setting(self._SETTING_COLOR)
+        def description(self):
+            return "LED event display driver"
 
-        if self.setting(self._SETTING_INFINITE_DURATION):
-            duration = None
-        else:
-            duration = 10**self.setting(self._SETTING_DURATION)
+        def isValidKey(self, frame, key_idx, key):
+            key_type = frame.type_name(key)
+            if key_idx == 0:
+                return "I3Geometry" == key_type
+            elif key_idx == 1:
+                # Key may be any container of OMKeys or a mask
+                # copied from Bubbles.py
+                return (   ("OMKey" in key_type and not "I3ParticleID" in key_type )
+                        or key_type.endswith("MapMask")
+                        or key_type.endswith("MapUnion"))
+            else:
+                return False
 
-        # content of led_pulses: {led : [(time, charge-like)]} {int : [(float, float)]}
-        led_pulses = {}
+        @staticmethod
+        def _merge_lists(left, right, key=lambda x: x):
+            "Merge two already sorted lists into a single sorted list."
+            merged = []
 
-        for omkey, pulses in omkey_pulses_map:
-            if self._display.canDisplayOMKey(geometry, omkey):
-                i3logging.log_trace(
-                    "Data available for DOM {}-{}".format(omkey.string, omkey.om)
-                  , "LedDisplay"
-                )
-                led = self._display.getLedIndex(omkey)
-                # Ensure we're dealing with a list of pulses
-                if not hasattr(pulses, "__len__"):
-                    pulses = list(pulses)
+            # Pick smallest from top while both lists have items
+            i = 0
+            j = 0
+            while (i < len(left) and j < len(right)):
+                if key(left[i]) < key(right[j]):
+                    merged.append(left[i])
+                    i = i+1
+                else:
+                    merged.append(right[j])
+                    j = j+1
 
-                if len(pulses) > 0:
-                    if led not in led_pulses:
-                        led_pulses[led] = pulses
-                    else:
-                        # In case multiple DOMs are mapped onto the same LED, merge the pulses
-                        # Merge two already sorted lists (merge sort)
-                        led_pulses[led] = self._merge_lists(
-                              led_pulses[led]
-                            , pulses
-                            , key=lambda pulse : pulse.time
+            # Add remaining items from left, or right
+            # Note that both cases are mutually exclusive
+            if i < len(left):
+                merged.extend(left[i:])
+            if j < len(right):
+                merged.extend(right[j:])
+
+            return merged
+
+        def _handleOMKeyMapTimed(self, output, geometry, omkey_pulses_map):
+            """Parse a map of OMKey to pulse series.
+            :returns: A dict of LED buffer offsets to LedDisplay objects."""
+            color_map = self.setting(self._SETTING_COLOR)
+
+            if self.setting(self._SETTING_INFINITE_DURATION):
+                duration = None
+            else:
+                duration = 10**self.setting(self._SETTING_DURATION)
+
+            # content of led_pulses: {led : [(time, charge-like)]} {int : [(float, float)]}
+            led_pulses = {}
+
+            for omkey, pulses in omkey_pulses_map:
+                if self._display.canDisplayOMKey(geometry, omkey):
+                    i3logging.log_trace(
+                        "Data available for DOM {}-{}".format(omkey.string, omkey.om)
+                      , "LedDisplay"
+                    )
+                    led = self._display.getLedIndex(omkey)
+                    # Ensure we're dealing with a list of pulses
+                    if not hasattr(pulses, "__len__"):
+                        pulses = list(pulses)
+
+                    if len(pulses) > 0:
+                        if led not in led_pulses:
+                            led_pulses[led] = pulses
+                        else:
+                            # In case multiple DOMs are mapped onto the same LED, merge the pulses
+                            # Merge two already sorted lists (merge sort)
+                            led_pulses[led] = self._merge_lists(
+                                  led_pulses[led]
+                                , pulses
+                                , key=lambda pulse : pulse.time
+                            )
+
+            # Determine event normalisation
+            max_sum_charges = 0.
+            charges = {}
+            for led in led_pulses:
+                pulses = led_pulses[led]
+                t0 = pulses[0].time
+                has_npe = hasattr(pulses[0], "npe")
+                has_charge = hasattr(pulses[0], "charge")
+
+                total_charge = 0.
+                if has_charge:
+                    charges[led] = [(pulse.time, pulse.charge) for pulse in pulses]
+                    total_charge += pulse.charge
+                elif has_npe:
+                    charges[led] = [(pulse.time, pulse.npe) for pulse in pulses]
+                    total_charge += pulse.npe
+                else:
+                    charges[led] = [(pulse.time, 1.0) for pulse in pulses]
+                    total_charge += 1.0
+
+                if total_charge > max_sum_charges:
+                    max_sum_charges = total_charge
+
+            # Iterate second time for light curves
+            led_curves = {}
+            normalisation = max_sum_charges
+            power = self.setting(self._SETTING_COMPRESSION_POWER)
+            for led in charges:
+                brightness = StepFunctionFloat(0)
+                pulses = charges[led]
+                t0 = pulses[0][0]
+
+                if duration:
+                    tail = 0
+                    head = None
+                    # Determine pulse intervals
+                    t0s = [t0]
+                    while tail < len(pulses):
+                        accumulated_charge = 0.0
+                        head = tail
+                        t, q = pulses[head]
+                        # Add accumulated charge of currently visible pulses
+                        while pulses[head][0]+duration > t and head >= 0:
+                            accumulated_charge += pulses[head][1]
+                            head -= 1
+                        brightness.add((accumulated_charge/normalisation)**power, t)
+                        # If the current sequence doesn't overlap with the next pulse, reset the
+                        # brightness and register the new series starting point
+                        if tail < len(pulses)-1 and t+duration < pulses[tail+1][0]:
+                            t0s.append(pulses[tail+1][0])
+                            brightness.add(0, t+duration)
+                        tail += 1
+                    # Now `tail == len(pulses)`, but the brightness curve is still at the last
+                    # accumulated charge
+                    # If `head` is 0, its interval is most likely still included for the total
+                    # charge, so progress to the next change point
+                    if pulses[head][0]+duration <= pulses[-1][0]:
+                        head += 1
+                    # Scan the ends of the display intervals to see what charge is still remaining
+                    while head < len(pulses):
+                        t, q = pulses[head]
+                        accumulated_charge = 0.0
+                        tail = head + 1
+                        while tail < len(pulses):
+                            accumulated_charge += pulses[tail][1]/normalisation
+                            tail += 1
+                        brightness.add(accumulated_charge**power, t+duration)
+                        head += 1
+
+                    color = TimeWindowColor(output, t0s, color_map)
+                else:
+                    accumulated_charge = 0.0
+                    color = TimeWindowColor(output, t0, color_map)
+                    for t, q in pulses:
+                        accumulated_charge += q/normalisation
+                        brightness.add(accumulated_charge**power, t)
+
+                led_curves[led] = self._display.led_class(brightness.value, color.value)
+
+            return led_curves
+
+        def _handleOMKeyListStatic(self, output, geometry, omkey_list):
+            """Parse a map of OMKey to static values.
+            :returns: A dict of LED buffer offsets to LedDisplay objects."""
+            color_static = self.setting(self._SETTING_COLOR_STATIC)
+            brightness_static = self.setting(self._SETTING_BRIGHTNESS_STATIC)
+
+            led_curves = {}
+
+            for omkey in omkey_list:
+                if self._display.canDisplayOMKey(geometry, omkey):
+                    i3logging.log_trace(
+                          "Data available for DOM {}-{}".format(omkey.string, omkey.om)
+                        , "LedDisplay"
+                    )
+                    led = self._display.getLedIndex(omkey)
+                    if led not in led_curves:
+                        led_curves[led] = self._display.led_class(
+                              brightness_static
+                            , color_static
                         )
 
-        # Determine event normalisation
-        max_sum_charges = 0.
-        charges = {}
-        for led in led_pulses:
-            pulses = led_pulses[led]
-            t0 = pulses[0].time
-            has_npe = hasattr(pulses[0], "npe")
-            has_charge = hasattr(pulses[0], "charge")
+            return led_curves
 
-            total_charge = 0.
-            if has_charge:
-                charges[led] = [(pulse.time, pulse.charge) for pulse in pulses]
-                total_charge += pulse.charge
-            elif has_npe:
-                charges[led] = [(pulse.time, pulse.npe) for pulse in pulses]
-                total_charge += pulse.npe
+        def create(self, frame, output):
+            # Connect to newly selected display, if any
+            display_index = self.setting(self._SETTING_DEVICE)
+            if display_index < len(self._manager.displays):
+              new_display = self._manager.displays[display_index]
             else:
-                charges[led] = [(pulse.time, 1.0) for pulse in pulses]
-                total_charge += 1.0
+              new_display = None
 
-            if total_charge > max_sum_charges:
-                max_sum_charges = total_charge
+            if self._display != new_display:
+                # Close any old connection
+                if self._display is not None:
+                    self._display.close()
+                # New connection
+                if new_display is not None:
+                    new_display.open()
+                self._display = new_display
 
-        # Iterate second time for light curves
-        led_curves = {}
-        normalisation = max_sum_charges
-        power = self.setting(self._SETTING_COMPRESSION_POWER)
-        for led in charges:
-            brightness = StepFunctionFloat(0)
-            pulses = charges[led]
-            t0 = pulses[0][0]
+            if self._display:
+                (geom_key, data_key) = self.keys()
+                geometry = frame[geom_key]
+                omkey_object = frame[data_key]
 
-            if duration:
-                tail = 0
-                head = None
-                # Determine pulse intervals
-                t0s = [t0]
-                while tail < len(pulses):
-                    accumulated_charge = 0.0
-                    head = tail
-                    t, q = pulses[head]
-                    # Add accumulated charge of currently visible pulses
-                    while pulses[head][0]+duration > t and head >= 0:
-                        accumulated_charge += pulses[head][1]
-                        head -= 1
-                    brightness.add((accumulated_charge/normalisation)**power, t)
-                    # If the current sequence doesn't overlap with the next pulse, reset the
-                    # brightness and register the new series starting point
-                    if tail < len(pulses)-1 and t+duration < pulses[tail+1][0]:
-                        t0s.append(pulses[tail+1][0])
-                        brightness.add(0, t+duration)
-                    tail += 1
-                # Now `tail == len(pulses)`, but the brightness curve is still at the last
-                # accumulated charge
-                # If `head` is 0, its interval is most likely still included for the total
-                # charge, so progress to the next change point
-                if pulses[head][0]+duration <= pulses[-1][0]:
-                    head += 1
-                # Scan the ends of the display intervals to see what charge is still remaining
-                while head < len(pulses):
-                    t, q = pulses[head]
-                    accumulated_charge = 0.0
-                    tail = head + 1
-                    while tail < len(pulses):
-                        accumulated_charge += pulses[tail][1]/normalisation
-                        tail += 1
-                    brightness.add(accumulated_charge**power, t+duration)
-                    head += 1
+                # If we are displaying a mask/union, ensure omkey_object is a I3RecoPulseSeries object
+                if isinstance(omkey_object, (I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion)):
+                    omkey_object = omkey_object.apply(frame)
 
-                color = TimeWindowColor(output, t0s, color_map)
-            else:
-                accumulated_charge = 0.0
-                color = TimeWindowColor(output, t0, color_map)
-                for t, q in pulses:
-                    accumulated_charge += q/normalisation
-                    brightness.add(accumulated_charge**power, t)
-
-            led_curves[led] = self._display.led_class(brightness.value, color.value)
-
-        return led_curves
-
-    def _handleOMKeyListStatic(self, output, geometry, omkey_list):
-        """Parse a map of OMKey to static values.
-        :returns: A dict of LED buffer offsets to LedDisplay objects."""
-        color_static = self.setting(self._SETTING_COLOR_STATIC)
-        brightness_static = self.setting(self._SETTING_BRIGHTNESS_STATIC)
-
-        led_curves = {}
-
-        for omkey in omkey_list:
-            if self._display.canDisplayOMKey(geometry, omkey):
-                i3logging.log_trace(
-                      "Data available for DOM {}-{}".format(omkey.string, omkey.om)
-                    , "LedDisplay"
-                )
-                led = self._display.getLedIndex(omkey)
-                if led not in led_curves:
-                    led_curves[led] = self._display.led_class(
-                          brightness_static
-                        , color_static
-                    )
-
-        return led_curves
-
-    def create(self, frame, output):
-        # Connect to newly selected display, if any
-        display_index = self.setting(self._SETTING_DEVICE)
-        if display_index < len(self._manager.displays):
-          new_display = self._manager.displays[display_index]
-        else:
-          new_display = None
-
-        if self._display != new_display:
-            # Close any old connection
-            if self._display is not None:
-                self._display.close()
-            # New connection
-            if new_display is not None:
-                new_display.open()
-            self._display = new_display
-
-        if self._display:
-            (geom_key, data_key) = self.keys()
-            geometry = frame[geom_key]
-            omkey_object = frame[data_key]
-
-            # If we are displaying a mask/union, ensure omkey_object is a I3RecoPulseSeries object
-            if isinstance(omkey_object, (I3RecoPulseSeriesMapMask, I3RecoPulseSeriesMapUnion)):
-                omkey_object = omkey_object.apply(frame)
-
-            if hasattr(omkey_object, "keys") and len(omkey_object) > 0: # I3Map of OMKeys
-               first_value = omkey_object[omkey_object.keys()[0]]
-               if hasattr(first_value, "__len__") and len(first_value) > 0:
-                   if hasattr(first_value[0], "time"):
+                if hasattr(omkey_object, "keys") and len(omkey_object) > 0: # I3Map of OMKeys
+                   first_value = omkey_object[omkey_object.keys()[0]]
+                   if hasattr(first_value, "__len__") and len(first_value) > 0:
+                       if hasattr(first_value[0], "time"):
+                           self._leds = self._handleOMKeyMapTimed(output, geometry, omkey_object)
+                   elif hasattr(first_value, "time"):
                        self._leds = self._handleOMKeyMapTimed(output, geometry, omkey_object)
-               elif hasattr(first_value, "time"):
-                   self._leds = self._handleOMKeyMapTimed(output, geometry, omkey_object)
-               else:
-                   self._leds = self._handleOMKeyListStatic(output, omkey_object.keys())
-            elif hasattr(omkey_object, "__len__") and len(omkey_object) > 0:
-               self._leds = self._handleOMKeyListStatic(output, omkey_object)
+                   else:
+                       self._leds = self._handleOMKeyListStatic(output, omkey_object.keys())
+                elif hasattr(omkey_object, "__len__") and len(omkey_object) > 0:
+                   self._leds = self._handleOMKeyListStatic(output, omkey_object)
 
-            output.addPhantom(self._cleanupEvent, self._updateEvent)
+                output.addPhantom(self._cleanupEvent, self._updateEvent)
 
-    def _updateEvent(self, event_time):
-        if self._display:
-            data_length = self._display.led_class.DATA_LENGTH
-            frame = bytearray(self._display.buffer_length)
+        def _updateEvent(self, event_time):
+            if self._display:
+                data_length = self._display.led_class.DATA_LENGTH
+                frame = bytearray(self._display.buffer_length)
 
-            for led in self._leds.keys():
-                led_value = self._leds[led].get_value(event_time)
-                frame[led*data_length:(led+1)*data_length] = led_value
+                for led in self._leds.keys():
+                    led_value = self._leds[led].get_value(event_time)
+                    frame[led*data_length:(led+1)*data_length] = led_value
 
-            i3logging.log_trace("Sending frame data", "LedDisplay")
-            self._display.transmitDisplayBuffer(bytes(frame))
+                self._display.transmitDisplayBuffer(bytes(frame))
 
-    def _cleanupEvent(self):
-        self._leds = {}
+        def _cleanupEvent(self):
+            self._leds = {}
+except:
+    logger.debug("LedDispay steamshovel artist not defined")
 
