@@ -18,6 +18,9 @@ existing displays can be compiled using Doxygen:
 $ doxygen Doxyfile
 ```
 
+A copy of the documentation may be found at
+http://icecube.wisc.edu/~svanheule/icecube-display
+
 ## Hardware
 The `hardware` directory contains design documents for the displays.
 This includes both mechanical documents for the display construction, as well as possible
