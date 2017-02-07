@@ -1,0 +1,2 @@
+# IceCube steamshovel displays
+SUBSYSTEM=="usb", ATTRS{idVendor}=="1ce3", ATTRS{idProduct}=="000[12]" GROUP="leddisplay", MODE="0666"
