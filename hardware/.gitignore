@@ -10,3 +10,6 @@
 
 # Production output files
 production
+
+# PDF files are allowed here as documentation
+!*.pdf
