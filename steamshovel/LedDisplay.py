@@ -48,6 +48,12 @@ try:
 except:
     logger.debug("IceCube logging framework not present")
 
+# Display controller logic: fail early if we can't load USB support
+try:
+    import usb.core
+    import usb.util
+except:
+    raise ImportError("Failed to load pyUSB. LED displays are not supported.")
 
 
 class DisplayLed(object):
@@ -102,14 +108,6 @@ class LedWS2811(DisplayLed):
     @classmethod
     def float_to_led_data(cls, rgb):
         return [int(round(255 * (c**2.2))) for c in rgb]
-
-## Display controller logc
-try:
-    import usb.core
-    import usb.util
-except:
-    logger.warning("Failed to load USB support. LED displays are not supported.")
-    raise ImportError
 
 import threading
 import struct
@@ -280,14 +278,14 @@ class DisplayController:
             )
             if usb_error.errno == 32:
                 # EP stalled, try to clear
-                logger.info("Endpoint stalled")
+                logger.debug("Endpoint stalled")
                 try:
                     self.device.clear_halt(1)
                 except:
                     pass
             elif usb_error.errno == 19:
                 # No such device. Maybe it was reattached to the USB port, so try to find it back
-                logger.info("Device removed")
+                logger.debug("Device removed")
                 try:
                     match_function = lambda d: d.serial_number == self.serial_number
                     self.device = usb.core.find(idVendor=0x1CE3, custom_match=match_function)
