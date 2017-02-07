@@ -162,4 +162,20 @@ After programming the device firmware, the `upload_eeprom` target can be used to
 device's EEPROM file.
 After a reset, the device will now be able to read out sensible EEPROM values and be ready for use.
 
-    make upload_eeprom
+## Cost estimate
+The prices list below do not include VAT.
+Total estimate (without labor costs) for the UGent display is ~€3000.
+The UW River Falls cost estimate was $4000, mainly due to more expensive LED strips.
+
+  * Custom PCBs (EuroCircuits): €300
+  * Electronics (Mouser, Farnell): €1200
+    * Cables: 4 core, 6 core, 2 core (0.88mm²/18AWG)
+    * Connectors: 4P4C, 6P6C, terminal blocks, a few case mount USB plugs
+    * Power supplies
+    * Teensys
+  * LED strips: €750 + €150 import customs (shipping from China)
+    * 32× 5m WS2812B
+    * Silicone sleeving, endcaps
+  * Plywood 5.5mm × (2500mm × 1220mm (?)): cost unknown.
+    UW-River Falls states $400 (8 sheets 5mm, 4 sheets 12mm inch)
+  * Black backdrop curtain: €70
