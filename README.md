@@ -19,7 +19,13 @@ $ doxygen Doxyfile
 ```
 
 A copy of the documentation may be found at
-http://icecube.wisc.edu/~svanheule/icecube-display
+http://icecube.wisc.edu/~svanheule/icecube-display.
+
+Builds of the microcontroller firmwares can be found at
+http://icecube.wisc.edu/~svanheule/images.
+These builds can be used to upgrade existing devices, or provide a starting point for uploading
+the device EEPROM when using a new device.
+
 
 ## Hardware
 The `hardware` directory contains design documents for the displays.
