@@ -488,7 +488,7 @@ class LogicalDisplay:
                 worker.transmit_done.wait()
                 worker.transmit_done.clear()
 
-        self.__display_update_time = time.clock()
+        self.__display_update_time = time.time()
         self.__data_buffer_lock.release()
 
     def transmitDisplayBuffer(self, data):
@@ -498,20 +498,20 @@ class LogicalDisplay:
         # a lock should be used to ensure that the either the new frame gets transmitted or the
         # new frame is queued. In no case should the new frame be dropped because we just happen
         # to be handling an old frame.
+        min_delta = 1./25
+
         self.__data_buffer_lock.acquire()
         self.__data_buffer = data
-        self.__data_buffer_lock.release()
-
-        min_delta = 1./25
         if self.__display_update_time is not None:
-            wait = (self.__display_update_time + min_delta) - time.clock()
+            wait = min_delta - (time.time() - self.__display_update_time)
         else:
             wait = 0
+        self.__data_buffer_lock.release()
 
-        if self.__display_update_time is None or wait <= 0:
+        if wait <= 0:
             self.__transmitStoredBuffer()
         else:
-            logger.debug("Rendering too fast, cannot send more than 25FPS")
+            logger.debug("Rendering too fast, cannot send more than 25FPS. Wait {:.3f} ms".format(1000*wait))
             # If we already have a running timer, just wait until it expires
             if (self.__transmission_timer is None) or (not self.__transmission_timer.is_alive()):
                 self.__transmission_timer = threading.Timer(wait, self.__transmitStoredBuffer)
