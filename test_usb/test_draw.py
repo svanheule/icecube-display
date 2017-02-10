@@ -4,9 +4,12 @@
 import logging
 logger = logging.getLogger("icecube.LedDisplay")
 logger.setLevel(logging.INFO)
-logger.addHandler(logging.StreamHandler())
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+logger.addHandler(handler)
 
-from time import sleep, time
+
+from time import sleep
 
 import sys, os
 sys.path.append(os.path.dirname(os.path.realpath(__file__))+"/../steamshovel")
@@ -27,13 +30,8 @@ import colorsys
 #
 
 if len(manager.displays) and offset:
-  transmission_durations = list()
-  for display in manager.displays:
-    transmission_durations.append(list())
-
   while offset:
     logger.debug("{} frames to go".format(offset))
-    time_start = time()
     for i,display in enumerate(manager.displays):
       pixel_size = display.led_class.DATA_LENGTH
       rgb_to_data = display.led_class.float_to_led_data
@@ -63,18 +61,13 @@ if len(manager.displays) and offset:
 
       frame = bytes(frame)
 
-      transfer_start = time()
       display.transmitDisplayBuffer(frame)
-      transfer_stop = time()
-      transmission_durations[i].append(transfer_stop-transfer_start)
  
     offset -= 1
-    sleep(max(0, 1./25 - (time()-time_start)))
-  
+    sleep(1./25)
+
   for i,display in enumerate(manager.displays):
     logger.debug("Clearing display")
     clear_frame = bytearray(display.buffer_length)
     display.transmitDisplayBuffer(clear_frame)
-    tx = transmission_durations[i]
-    logger.info("Mean TX duration: {} ms".format(sum(tx)/len(tx)*1000))
 
