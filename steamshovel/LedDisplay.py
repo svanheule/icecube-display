@@ -511,7 +511,7 @@ class LogicalDisplay:
         if wait <= 0:
             self.__transmitStoredBuffer()
         else:
-            logger.debug("Rendering too fast, cannot send more than 25FPS. Wait {:.3f} ms".format(1000*wait))
+            logger.debug("Rendering too fast, cannot send more than 25FPS")
             # If we already have a running timer, just wait until it expires
             if (self.__transmission_timer is None) or (not self.__transmission_timer.is_alive()):
                 self.__transmission_timer = threading.Timer(wait, self.__transmitStoredBuffer)
