@@ -111,7 +111,7 @@ ISR(USB_GEN_vect) {
       enable_pll();
       CLEAR_FLAG(USBCON, FRZCLK);
       SET_FLAG(UDIEN, EORSTE);
-      SET_FLAG(UDIEN, SUSPI);
+      SET_FLAG(UDIEN, SUSPE);
       set_device_state(POWERED);
     }
     else {
