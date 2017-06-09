@@ -1,5 +1,5 @@
-[submodule "teensy/loader"]
-	path = teensy/loader
+[submodule "firmware/icecube-teensy32/configurations/loader"]
+	path = firmware/icecube-teensy32/configurations/loader
 	url = git@github.com:PaulStoffregen/teensy_loader_cli.git
 [submodule "firmware/icecube-teensy32/cores"]
 	path = firmware/icecube-teensy32/cores

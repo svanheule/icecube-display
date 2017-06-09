@@ -17,7 +17,7 @@ logger.addHandler(handler)
 logger = logging.getLogger("icecube.LedDisplay.eeprom")
 
 import sys, os
-sys.path.append(os.path.dirname(os.path.realpath(__file__))+"/../steamshovel")
+sys.path.append(os.path.dirname(os.path.realpath(__file__))+"/../../../steamshovel")
 
 from LedDisplay import DisplayController
 
