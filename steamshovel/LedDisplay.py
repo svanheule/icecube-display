@@ -5,7 +5,8 @@
 # Initialise logging
 import logging
 logger = logging.getLogger("icecube.LedDisplay")
-logger.setLevel(logging.DEBUG)
+if __name__ == "__main__":
+  logger.setLevel(logging.DEBUG)
 
 try:
     from icecube.icetray import i3logging, I3Logger, I3LogLevel
