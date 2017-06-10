@@ -32,5 +32,10 @@
     "ICD-IC-001-0001" : "front",
     "ICD-IC-001-0002" : "center",
     "ICD-IC-001-0003" : "back"
+  },
+
+  "led_config" : {
+    "type" : "WS2812B",
+    "order" : "GRB"
   }
 }
