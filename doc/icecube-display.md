@@ -79,8 +79,8 @@ and none on the last port(s).
 
 \include display_config.json
 
-A utility is provided (`teensy/update_string_config.py`) to generate and upload the EEPROM data
-starting from this JSON file.
+A utility is provided (`firmware/icecube-teensy32/configurations/update_eeprom.py`) to generate and
+upload the EEPROM data starting from this JSON file.
 Note that after uploading a new configuration, the device should be power cycled for changes
 to take effect.
 

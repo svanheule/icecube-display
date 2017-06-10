@@ -154,7 +154,7 @@ add_custom_target(
 # Custom make target for uploading to microcontroller
 set(
   PROGRAM_COMMAND
-  ${CMAKE_SOURCE_DIR}/../../teensy/loader/teensy_loader_cli --mcu=$<UPPER_CASE:${TARGET_DEVICE}> -w
+  ${CMAKE_SOURCE_DIR}/configurations/loader/teensy_loader_cli --mcu=$<UPPER_CASE:${TARGET_DEVICE}> -w
 )
 
 add_custom_target(
