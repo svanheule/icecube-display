@@ -208,13 +208,46 @@ class DisplayConfiguration:
 
 if __name__ == "__main__":
   import argparse
-  parser = argparse.ArgumentParser(description="Update IceCube display string configuration")
+  parser = argparse.ArgumentParser(description="Update IceCube display EEPROM")
   parser.add_argument("configuration_file", type=str, help="JSON file with display configuration")
+  parser.add_argument("-f", "--full", action="store_true", help="Always ask to write the entire EEPROM")
   args = parser.parse_args(sys.argv[1:])
 
   config = DisplayConfiguration(args.configuration_file)
   for controller in DisplayController.findAll():
-    if controller.serial_number in config.segments:
+    if args.full or len(controller.serial_number) == 0:
+      if len(controller.serial_number) == 0:
+        print("Found device without serial number")
+        write_full = True
+      else:
+        print("Found device with current serial number {}".format(controller.serial_number))
+        write_full = None
+        while write_full is None:
+          user_in = input("Overwrite existing EEPROM? [y/N]: ").lower()
+          if len(user_in) == 0 or user_in[0] == 'n':
+            write_full = False
+          elif user_in[0] == 'y':
+            write_full = True
+
+      if write_full:
+        print("Please select one of the available device configurations to configure the device:")
+        sorted_serials = sorted(config.segments.keys)
+        for serial in sorted_serials:
+          print("    * {} (S/N {})".format(config.segments[serial].name), serial)
+        selected = None
+        while selected is None:
+          selected = input("Select configuration: ").lower()
+          if selected in config.configurations:
+            serial = config.configurations[selected]
+            segment = config.segments[serial]
+            segment.write_eeprom_complete(controller)
+            print("Configuration uploaded. Please mark the device to be able to match it with its")
+            print("serial number ({}) or configuration ({}).".format(serial, segment.name))
+          else:
+            selected = None
+            print("Invalid configuration! Please try again or exit to cancel.")
+
+    elif controller.serial_number in config.segments:
       segment = config.segments[controller.serial_number]
       print("Found matching configuration for device '{}'".format(segment.serial))
       if not segment.validate(controller):
@@ -224,24 +257,6 @@ if __name__ == "__main__":
       if do_update.lower()[0] == 'y':
         segment.write_string_config(controller)
         print("Please reboot the device for the new configuration to take effect.")
-
-    elif len(controller.serial_number) == 0:
-      print("Found device without serial number")
-      print("Please select one of the available device configurations to configure the device:")
-      for serial in config.segments:
-        print("    * {}".format(config.segments[serial].name))
-      selected = None
-      while selected is None:
-        selected = input("Select configuration: ")
-        if selected.lower() in config.configurations:
-          serial = config.configurations[selected.lower()]
-          segment = config.segments[serial]
-          segment.write_eeprom_complete(controller)
-          print("Configuration uploaded. Please mark the device to be able to match it with its")
-          print("serial number ({}) or configuration ({}).".format(serial, segment.name))
-        else:
-          selected = None
-          print("Invalid configuration! Please try again or exit to cancel.")
 
     else:
       print("Skipping device '{}' which is not present in configuration".format(controller.serial_number))
