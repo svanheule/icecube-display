@@ -92,6 +92,9 @@ def draw_loop(display, offset):
   return frame
 
 if len(manager.displays) and frame_count:
+  for display in manager.displays:
+    display.open()
+
   for offset in range(frame_count):
     logger.debug("{} frames to go".format(frame_count-offset))
     for display in manager.displays:
@@ -111,4 +114,5 @@ if len(manager.displays) and frame_count:
     logger.debug("Clearing display")
     clear_frame = bytearray(display.buffer_length)
     display.transmitDisplayBuffer(clear_frame)
+    display.close()
 
