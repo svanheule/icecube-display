@@ -231,9 +231,9 @@ if __name__ == "__main__":
 
       if write_full:
         print("Please select one of the available device configurations to configure the device:")
-        sorted_serials = sorted(config.segments.keys)
+        sorted_serials = sorted(config.segments.keys())
         for serial in sorted_serials:
-          print("    * {} (S/N {})".format(config.segments[serial].name), serial)
+          print("    * {} (S/N {})".format(config.segments[serial].name, serial))
         selected = None
         while selected is None:
           selected = input("Select configuration: ").lower()
@@ -260,3 +260,4 @@ if __name__ == "__main__":
 
     else:
       print("Skipping device '{}' which is not present in configuration".format(controller.serial_number))
+      print("Use the option --full to enable overwriting the full EEPROM contents")
