@@ -46,10 +46,13 @@ def led_order_to_int(order):
     return None
 
 class SegmentConfiguration:
+  # 15 character (+ null) utf-16-le string
   __OFFSET_SERIAL = 0
   __SERIAL = struct.Struct("<32s")
+  # {led_type, color_order, string_start, string_stop, has_deepcore}
   __OFFSET_CONFIG = 0x20
   __CONFIG = struct.Struct("<BBBB?")
+  # 4×(1+8) bytes string-to-strip mapping
   __OFFSET_PORT_MAP = 0x30
   __PORT_MAP = struct.Struct("<B8sB8sB8sB8s")
 
