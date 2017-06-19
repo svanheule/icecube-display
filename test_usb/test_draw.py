@@ -31,7 +31,7 @@ parser.add_argument("-d", "--duration", type=float, help="Duration of a single f
 parser.add_argument("-c", "--count", type=int, help="Number of frames to render. Defaults to 0.", default=0)
 args = parser.parse_args(sys.argv[1:])
 
-offset = args.count
+frame_count = args.count
 duration = args.duration
 
 import colorsys
@@ -53,7 +53,7 @@ def draw_hsv(display, offset):
         hue += 1
       data = rgb_to_data(colorsys.hls_to_rgb(hue, 0.1, 1.0))
       for string_offset in range(display.string_count):
-        buffer_offset = string_offset*60+pixel_offset
+        buffer_offset = string_offset*60+pixel
         frame[buffer_offset*pixel_size:(buffer_offset+1)*pixel_size] = data
 
   elif display.data_type == DisplayController.DATA_TYPE_IT_STATION:
@@ -76,13 +76,14 @@ def draw_loop(display, offset):
   buffer_length = display.buffer_length
   frame = bytearray(buffer_length)
 
-  pixel_data = rgb_to_data(0.1, 0.1, 0.1)
+  pixel_data = rgb_to_data((0.1, 0.1, 0.1))
 
   if display.data_type == DisplayController.DATA_TYPE_IC_STRING:
     string_offset = offset % display.string_count
     pixel_offset = string_offset*60
-    for pixel in range(60):
-      frame[pixel_offset*pixel_size:(pixel_offset+1)*pixel_size] = pixel_data
+    for pixel in range(pixel_offset, pixel_offset+60):
+      buffer_offset = pixel*pixel_size
+      frame[buffer_offset:buffer_offset+pixel_size] = pixel_data
 
   elif display.data_type == DisplayController.DATA_TYPE_IT_STATION:
     pixel = offset % display.string_count
@@ -90,11 +91,10 @@ def draw_loop(display, offset):
 
   return frame
 
-
-if len(manager.displays) and offset:
+if len(manager.displays) and frame_count:
   for offset in range(frame_count):
-    logger.debug("{} frames to go".format(offset))
-    for i,display in enumerate(manager.displays):
+    logger.debug("{} frames to go".format(frame_count-offset))
+    for display in manager.displays:
       if args.mode == 'string':
         frame = draw_loop(display, offset)
       elif args.mode == 'rgb':
@@ -107,7 +107,7 @@ if len(manager.displays) and offset:
  
     sleep(duration)
 
-  for i,display in enumerate(manager.displays):
+  for display in manager.displays:
     logger.debug("Clearing display")
     clear_frame = bytearray(display.buffer_length)
     display.transmitDisplayBuffer(clear_frame)
