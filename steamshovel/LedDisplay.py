@@ -116,14 +116,14 @@ class DisplayController:
     "Object with USB display properties and some auxiliary functions."
 
     __USB_VND_DEV_IN = usb.util.build_request_type(
-      usb.util.CTRL_IN
-    , usb.util.CTRL_TYPE_VENDOR
-    , usb.util.CTRL_RECIPIENT_DEVICE
+          usb.util.CTRL_IN
+        , usb.util.CTRL_TYPE_VENDOR
+        , usb.util.CTRL_RECIPIENT_DEVICE
     )
     __USB_VND_DEV_OUT = usb.util.build_request_type(
-        usb.util.CTRL_OUT
-      , usb.util.CTRL_TYPE_VENDOR
-      , usb.util.CTRL_RECIPIENT_DEVICE
+          usb.util.CTRL_OUT
+        , usb.util.CTRL_TYPE_VENDOR
+        , usb.util.CTRL_RECIPIENT_DEVICE
     )
 
     __USB_VND_REQ_DISPLAY_PROPERTIES = 2
