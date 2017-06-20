@@ -406,7 +406,7 @@ class LogicalDisplay:
 
         # Optional multithreading
         self.__multithreading = len(self.controllers) > 1
-        self.__workers = list()
+        self.__workers = None
 
         self.__transmission_timer = None
         self.__display_update_time = None
@@ -414,8 +414,8 @@ class LogicalDisplay:
         self.__data_buffer_lock = threading.Lock()
 
     def open(self):
-        self.__workers = list()
-        if self.__multithreading:
+        if self.__multithreading and self.__workers is None:
+            self.__workers = list()
             for key in self.controllers.keys():
                 w = DisplayWorker(self.controllers[key], self.__buffer_slices[key])
                 w.start()
@@ -478,7 +478,7 @@ class LogicalDisplay:
                 self.controllers[key].transmitDisplayBuffer(
                     self.__data_buffer[self.__buffer_slices[key]]
                 )
-        else:
+        elif self.__workers is not None:
             # Multi process code
             for worker in self.__workers:
                 worker.buffer = self.__data_buffer
@@ -488,6 +488,8 @@ class LogicalDisplay:
             for worker in self.__workers:
                 worker.transmit_done.wait()
                 worker.transmit_done.clear()
+        else:
+            logger.error("Cannot transmit frame because worker threads are not initialised")
 
         self.__display_update_time = time.time()
         self.__data_buffer_lock.release()
@@ -524,6 +526,8 @@ class LogicalDisplay:
 
         for worker in self.__workers:
             worker.join()
+
+        self.__workers = None
 
 
 class DisplayRange:
