@@ -5,8 +5,6 @@
 # Initialise logging
 import logging
 logger = logging.getLogger("icecube.LedDisplay")
-if __name__ == "__main__":
-  logger.setLevel(logging.DEBUG)
 
 try:
     from icecube.icetray import i3logging, I3Logger, I3LogLevel
@@ -23,7 +21,7 @@ try:
                 i = len(levels)
                 while i and levels[i-1][1] > record.levelno:
                     i -= 1
-                if i:
+                if i > 0:
                   level = levels[i-1][0]
                 else:
                   level = I3LogLevel.LOG_TRACE
@@ -45,7 +43,7 @@ try:
     logger.addHandler(log_handler)
 
     i3_log_level = i3logging.LoggingBridge.global_logger.get_level_for_unit("LedDisplay")
-    log_handler.setLevel(i3logging.LoggingBridge.pylevels[i3_log_level])
+    logger.setLevel(i3logging.LoggingBridge.pylevels[i3_log_level])
 except:
     logger.debug("IceCube logging framework not present")
 
@@ -582,6 +580,7 @@ class DisplayManager:
                   "Found display with %(strings)d %(type)s (%(led)s, buffer size %(buffer)d)"
                 , display_info
             )
+        logger.debug("Found {} display(s)".format(len(self.__displays)))
 
     @property
     def displays(self):

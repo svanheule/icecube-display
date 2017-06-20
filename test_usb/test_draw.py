@@ -5,7 +5,6 @@ import logging
 logger = logging.getLogger("icecube.LedDisplay")
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
 logger.addHandler(handler)
 
 
