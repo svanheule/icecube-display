@@ -519,13 +519,12 @@ class LogicalDisplay:
                 self.__transmission_timer.start()
 
     def close(self):
-        for worker in self.__workers:
-            worker.halt()
-
-        for worker in self.__workers:
-            worker.join()
-
-        self.__workers = None
+        if self.__multithreading and self.__workers is not None:
+            for worker in self.__workers:
+                worker.halt()
+            for worker in self.__workers:
+                worker.join()
+            self.__workers = None
 
 
 class DisplayRange:
