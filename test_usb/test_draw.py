@@ -98,10 +98,15 @@ if len(manager.displays) and (frame_count > 0 or initial_offset > 0):
     print("Opening display")
     display.open()
 
-  if initial_offset > 1 and frame_count == 0:
-    frame_count = 1
+  if initial_offset > 0:
+    if frame_count > 0:
+      frame_range = range(initial_offset-1, initial_offset-1+frame_count)
+    else:
+      frame_range = range(initial_offset-1, 1)
+  else:
+    frame_range = range(0, frame_count)
 
-  for offset in range(initial_offset, initial_offset+frame_count):
+  for offset in frame_range:
     logger.debug("{} frames to go".format(frame_count-offset))
     for display in manager.displays:
       if args.mode == 'string':
