@@ -27,9 +27,12 @@ parser.add_argument(
       , required=True
 )
 parser.add_argument("-d", "--duration", type=float, help="Duration of a single frame. Defaults to 1/25.", default=1./25)
-parser.add_argument("-c", "--count", type=int, help="Number of frames to render. Defaults to 0.", default=0)
+parser.add_argument("-c", "--count", type=int, help="Number of frames to render. Defaults to 0, or 1 if offset is not 0.", default=0)
+parser.add_argument("-o", "--offset", type=int, help="Initial frame offset number. Defaults to 0.", default=0)
+parser.add_argument("-p", "--persist", action="store_true", help="If present, do not clear display after last frame.", default=False)
 args = parser.parse_args(sys.argv[1:])
 
+initial_offset = args.offset
 frame_count = args.count
 duration = args.duration
 
@@ -90,11 +93,15 @@ def draw_loop(display, offset):
 
   return frame
 
-if len(manager.displays) and frame_count:
+if len(manager.displays) and (frame_count > 0 or initial_offset > 0):
   for display in manager.displays:
+    print("Opening display")
     display.open()
 
-  for offset in range(frame_count):
+  if initial_offset > 1 and frame_count == 0:
+    frame_count = 1
+
+  for offset in range(initial_offset, initial_offset+frame_count):
     logger.debug("{} frames to go".format(frame_count-offset))
     for display in manager.displays:
       if args.mode == 'string':
@@ -104,14 +111,14 @@ if len(manager.displays) and frame_count:
       else:
         frame = bytearray(display.buffer_length)
 
-      frame = bytes(frame)
       display.transmitDisplayBuffer(frame)
  
     sleep(duration)
 
   for display in manager.displays:
     logger.debug("Clearing display")
-    clear_frame = bytearray(display.buffer_length)
-    display.transmitDisplayBuffer(clear_frame)
+    if not args.persist:
+      clear_frame = bytearray(display.buffer_length)
+      display.transmitDisplayBuffer(clear_frame)
     display.close()
 
