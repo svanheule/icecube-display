@@ -1,0 +1,12 @@
+# Verifying display controller interface functionality
+
+In order to test if the python scripts function as expected without the need of
+having actual controllers handy, a number of `VirtualController`s can be used.
+
+By declaring/setting the environment variable `VIRTUAL_DEVICES`,
+DisplayController.findAll() will return a list of virtual devices. These
+objects implement the same interface as regular DisplayController objects, but
+only exist in memory.
+Optionally, display frames that are written to these virtual devices can be
+stored in a directory that is specified by the `DEBUG_FRAME_PATH` environment
+variable.

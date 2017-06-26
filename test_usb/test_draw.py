@@ -52,13 +52,18 @@ def draw_hsv(display, offset):
   buffer_length = display.buffer_length
   frame = bytearray(buffer_length)
 
+  if os.getenv("VIRTUAL_DEVICES") is None:
+    lightness = 0.1
+  else:
+    lightness = 0.5
+
   if display.data_type == DisplayController.DATA_TYPE_IC_STRING:
     pixel_offset = offset%60
     for pixel in range(60):
       hue = float(pixel-pixel_offset)/60
       if hue < 0:
         hue += 1
-      data = rgb_to_data(colorsys.hls_to_rgb(hue, 0.1, 1.0))
+      data = rgb_to_data(colorsys.hls_to_rgb(hue, lightness, 1.0))
       for string_offset in range(display.string_count):
         buffer_offset = string_offset*60+pixel
         frame[buffer_offset*pixel_size:(buffer_offset+1)*pixel_size] = data
@@ -69,7 +74,7 @@ def draw_hsv(display, offset):
       hue = (pixel-pixel_offset)/display.string_count
       if hue < 0:
         hue += 1
-      data = rgb_to_data(colorsys.hls_to_rgb(hue, 0.1, 1.0))
+      data = rgb_to_data(colorsys.hls_to_rgb(hue, lightness, 1.0))
       buffer_offset = pixel_size*pixel_offset
       frame[pixel*pixel_size:(pixel+1)*pixel_size] = data
 
@@ -83,7 +88,10 @@ def draw_loop(display, offset):
   buffer_length = display.buffer_length
   frame = bytearray(buffer_length)
 
-  pixel_data = rgb_to_data((0.1, 0.1, 0.1))
+  if os.getenv("VIRTUAL_DEVICES") is None:
+    pixel_data = rgb_to_data((0.1, 0.1, 0.1))
+  else:
+    pixel_data = rgb_to_data((1, 1, 1))
 
   if display.data_type == DisplayController.DATA_TYPE_IC_STRING:
     string_offset = offset % display.string_count

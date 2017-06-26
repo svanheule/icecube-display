@@ -54,6 +54,7 @@ try:
 except:
     raise ImportError("Failed to load pyUSB. LED displays are not supported.")
 
+import os
 
 class DisplayLed(object):
     "Class representing the color of an RGB LED with time dependent color and brightness."
@@ -211,6 +212,9 @@ class DisplayController:
 
     @classmethod
     def findAll(cls):
+        if os.getenv("VIRTUAL_DEVICES") is not None:
+            import virtual
+            return virtual.VirtualController.findAll()
         return [cls(dev) for dev in usb.core.find(idVendor=0x1CE3, find_all=True)]
 
     def __str__(self):
