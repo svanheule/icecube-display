@@ -36,6 +36,11 @@ initial_offset = args.offset
 frame_count = args.count
 duration = args.duration
 
+class OMKey:
+  def __init__(self, string, om):
+    self.string = string
+    self.om = om
+
 import colorsys
 
 #
@@ -50,7 +55,7 @@ def draw_hsv(display, offset):
   if display.data_type == DisplayController.DATA_TYPE_IC_STRING:
     pixel_offset = offset%60
     for pixel in range(60):
-      hue = (pixel-pixel_offset)/60
+      hue = float(pixel-pixel_offset)/60
       if hue < 0:
         hue += 1
       data = rgb_to_data(colorsys.hls_to_rgb(hue, 0.1, 1.0))
@@ -82,7 +87,7 @@ def draw_loop(display, offset):
 
   if display.data_type == DisplayController.DATA_TYPE_IC_STRING:
     string_offset = offset % display.string_count
-    pixel_offset = string_offset*60
+    pixel_offset = display.getLedIndex(OMKey(string_offset+1, 1))
     for pixel in range(pixel_offset, pixel_offset+60):
       buffer_offset = pixel*pixel_size
       frame[buffer_offset:buffer_offset+pixel_size] = pixel_data
@@ -102,7 +107,7 @@ if len(manager.displays) and (frame_count > 0 or initial_offset > 0):
     if frame_count > 0:
       frame_range = range(initial_offset-1, initial_offset-1+frame_count)
     else:
-      frame_range = range(initial_offset-1, 1)
+      frame_range = range(initial_offset-1, initial_offset)
   else:
     frame_range = range(0, frame_count)
 
