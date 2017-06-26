@@ -177,9 +177,10 @@ class DisplayController:
         return pixel_length*string_length*string_count
 
     @staticmethod
-    def _parseTlvData(data):
+    def __parseTlvData(data):
         offset = 0
         data = bytearray(data)
+        tlv_list = list()
         while offset < len(data) and offset+1 < len(data):
             field_type = data[offset]
             field_length = data[offset+1]
@@ -188,19 +189,15 @@ class DisplayController:
             if field_length > 0:
                 field_value = data[offset:offset+field_length]
                 offset += field_length
-            yield (field_type, field_length, field_value)
+            tlv_list.append((field_type, field_length, field_value))
+        return tlv_list
 
     def __queryController(self):
         self.data_type = None
         self.data_ranges = list()
         self.led_type = None
 
-        data = self.readDisplayInfo()
-
-        if data and struct.unpack("<H", data[:2])[0] != len(data):
-            raise ValueError("Display information has invalid length")
-
-        for t,l,v in self._parseTlvData(data[2:]):
+        for t,l,v in self.readDisplayInfo():
             if t == self.DP_TYPE_INFORMATION_TYPE:
                 self.data_type = v[0]
             elif t == self.DP_TYPE_INFORMATION_RANGE:
@@ -219,6 +216,7 @@ class DisplayController:
         return '<IceCube display controller {}>'.format(self.serial_number)
 
     def readDisplayInfo(self):
+        tlv_list = []
         try:
             data = self.device.ctrl_transfer(
                 self.__USB_VND_DEV_IN
@@ -227,10 +225,15 @@ class DisplayController:
               , 0
               , (1<<8)
             )
-            return data
+            if data and struct.unpack("<H", data[:2])[0] != len(data):
+                raise ValueError("Display information has invalid length")
+            tlv_list = self.__parseTlvData(data[2:])
+        except ValueError as e:
+            logger.error(str(e))
         except:
             logger.error("Could not read display information report")
-            return None
+        finally:
+            return tlv_list
 
     def readEepromSegment(self, offset, length):
         """Read an EEPROM segment from the device.

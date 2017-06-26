@@ -41,9 +41,7 @@ for controller in DisplayController.findAll():
   print("Querying device: {}".format(controller.serial_number))
 
   try:
-    data = controller.readDisplayInfo()
-
-    for field in DisplayController._parseTlvData(data[2:]):
+    for field in controller.readDisplayInfo():
       print("  * {}".format(formatTlvField(field)))
 
   except Exception as e:
