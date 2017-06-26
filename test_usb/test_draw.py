@@ -95,7 +95,8 @@ def draw_loop(display, offset):
 
   if display.data_type == DisplayController.DATA_TYPE_IC_STRING:
     string_offset = offset % display.string_count
-    pixel_offset = display.getLedIndex(OMKey(string_offset+1, 1))
+    string = display.string_range[0]-1 + string_offset
+    pixel_offset = display.getLedIndex(OMKey(string+1, 1))
     for pixel in range(pixel_offset, pixel_offset+60):
       buffer_offset = pixel*pixel_size
       frame[buffer_offset:buffer_offset+pixel_size] = pixel_data
