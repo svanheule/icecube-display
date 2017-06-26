@@ -276,7 +276,7 @@ if __name__ == "__main__":
         continue
 
       do_update = input("Update string mapping? [Y/n]: ")
-      if do_update.lower()[0] == 'y':
+      if len(do_update) == 0 or do_update.lower()[0] == 'y':
         segment.write_string_config(controller)
         print("Please reboot the device for the new configuration to take effect.")
 
