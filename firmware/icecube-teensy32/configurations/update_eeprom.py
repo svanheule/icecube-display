@@ -2,6 +2,7 @@
 import struct
 import json
 import re
+import hashlib
 
 import logging
 
@@ -55,8 +56,11 @@ class SegmentConfiguration:
   # 4×(1+8) bytes string-to-strip mapping
   __OFFSET_PORT_MAP = 0x30
   __PORT_MAP = struct.Struct("<B8sB8sB8sB8s")
+  # group identifier: binary encoded MD5 hash
+  __OFFSET_GROUP_ID = 0x60
+  __GROUP_ID = struct.Struct("<16s")
 
-  def __init__(self, serial, name, led_config, string_config):
+  def __init__(self, serial, name, led_config, string_config, other_serials=None):
     self.serial = serial
     self.name = name
     self.led_config = led_config
@@ -66,6 +70,8 @@ class SegmentConfiguration:
     for port in self.string_config:
       self._string_list_sorted.extend(port)
     self._string_list_sorted.sort()
+
+    self.__other_serials = other_serials
 
     if not self.validate_string_config():
       raise ValueError("Invalid string configuration")
@@ -117,6 +123,17 @@ class SegmentConfiguration:
 
     return self.__PORT_MAP.pack(*port_map_data)
 
+  def __pack_group_id(self):
+    serials = {self.serial}
+    if self.__other_serials is not None:
+      serials |= self.__other_serials
+
+    serials = list(serials)
+    serials.sort()
+    identifier = '+'.join(serials)
+    h = hashlib.md5(identifier.encode('utf-8'))
+    return self.__GROUP_ID.pack(h.digest())
+
   def __update_eeprom(self, controller, offset, data):
     # Write and validate binary data
     data_original = controller.readEepromSegment(offset, len(data))
@@ -142,6 +159,7 @@ class SegmentConfiguration:
   def write_eeprom_complete(self, controller):
     self.__update_eeprom(controller, self.__OFFSET_SERIAL, self.__pack_serial())
     self.__update_eeprom(controller, self.__OFFSET_CONFIG, self.__pack_config())
+    self.__update_eeprom(controller, self.__OFFSET_GROUP_ID, self.__pack_group_id())
     self.write_string_config(controller)
 
   def write_string_config(self, controller):
@@ -205,6 +223,7 @@ class DisplayConfiguration:
           , segment_key
           , config['led_config']
           , config[segment_key]
+          , set(config["devices"].keys()) - {serial}
         )
         self.configurations[segment_key.lower()] = serial
 

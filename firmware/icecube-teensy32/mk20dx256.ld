@@ -74,6 +74,8 @@ SECTIONS
 		KEEP(*(.displayprop))
 		. = ORIGIN(EEPROM) + 0x30;
 		KEEP(*(.portmap))
+		. = ORIGIN(EEPROM) + 0x60;
+		KEEP(*(.groupid))
 	} > EEPROM
 
 	.displaybuffer (NOLOAD) : {

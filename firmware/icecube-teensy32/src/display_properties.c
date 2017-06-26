@@ -32,6 +32,9 @@ static const struct dp_led_information_t DP_LED_INFORMATION DISPLAYPROP = {
   , DEVICE_HAS_DEEPCORE
 };
 
+#define GROUPPROP __attribute__((section(".groupid"), used))
+static const uint8_t DP_INFO_GROUP[16] GROUPPROP;
+
 static const enum display_led_type_t DP_INFO_LED_TYPE = LED_TYPE_WS2811;
 static const enum display_information_type_t DP_INFO_TYPE = INFORMATION_IC_STRING;
 
@@ -43,6 +46,7 @@ static const struct dp_tlv_item_t PROPERTIES_TLV_LIST[] = {
   , TLV_ENTRY(DP_INFORMATION_TYPE, MEMSPACE_PROGMEM, &DP_INFO_TYPE)
   , TLV_ENTRY(DP_BUFFER_SIZE, MEMSPACE_RAM, &dp_buffer_size)
   , TLV_ENTRY(DP_INFORMATION_RANGE, MEMSPACE_RAM, &dp_info_range_icecube)
+  , TLV_ENTRY(DP_GROUP_ID, MEMSPACE_PROGMEM, &DP_INFO_GROUP)
   , TLV_END
 };
 

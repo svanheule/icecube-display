@@ -142,6 +142,12 @@ recommendation not to use non-existent buffer offsets.
   </TR>
 </TABLE>
 
+Starting from 0x60, 16 bytes of EEPROM are used to store a group identifier. This enables
+software to easily group controllers into a single, virtual display.
+The length of this field is such that it can exactly store the binary representation of
+an MD5 hash.
+See ::DP_GROUP_ID for info on how to calculate this hash.
+
 ### Firmware flashing
 To update the firmware on the Teensy, just press the program button.
 `lsusb` should now show the Halfkay bootloader:

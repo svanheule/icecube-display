@@ -135,6 +135,7 @@ class DisplayController:
     DP_TYPE_INFORMATION_RANGE = 2
     DP_TYPE_LED_TYPE = 3
     DP_TYPE_BUFFER_SIZE = 4
+    DP_TYPE_GROUP_ID = 5
     DP_TYPE_END = 0xff
 
     # Information types
@@ -393,9 +394,6 @@ class LogicalDisplay:
             )
             self.__buffer_length += controller.buffer_length
 
-        if self.__buffer_length == 0:
-            raise ValueError("Cannot create logical display with 0 buffer length")
-
         # If control gets here, the internal state should be valid
         if led_type == DisplayController.LED_TYPE_APA102:
             self.__led_class = LedAPA102
@@ -404,6 +402,22 @@ class LogicalDisplay:
         else:
             raise ValueError("Unknown LED type: {}".format(led_type))
             self.__led_class = None
+
+        # Provide additional buffer for strings that don't map to a controller.
+        # This occurs when controllers are grouped, but there are gaps in the supported
+        # strings.
+        if self.__data_type == DisplayController.DATA_TYPE_IC_STRING:
+            string_size = 60*self.__led_class.DATA_LENGTH
+        elif self.__data_type == DisplayController.DATA_TYPE_IT_STATION:
+            string_size = self.__led_class.DATA_LENGTH
+        else:
+            raise ValueError("Unsupported data type: {}".format(self.__data_type))
+
+        for string in range(self.__range_start, self.__range_end):
+            if string not in self.__string_buffer_offset:
+                self.__string_buffer_offset[string] = offset
+                offset += 1
+                self.__buffer_length += string_size
 
         # Optional multithreading
         self.__multithreading = len(self.controllers) > 1
@@ -530,41 +544,15 @@ class LogicalDisplay:
             self.__workers = None
 
 
-class DisplayRange:
-    def __init__(self, serial_number, range_type, start, end):
-        self.serial_number = serial_number
-        self.type = range_type
-        self.start = start
-        self.end = end
-
-    def __lt__(self, other):
-        # display range sorting:
-        #   * Range type
-        #   * Range start
-        #   * Serial number
-        if self.type != other.type:
-            return self.type < other.type
-        elif self.start != other.start:
-            return self.start < other.start
-        else:
-            # Assume key is of form XX-YY-III-KKKK
-            return int(self.serial_number.split('-')[:-1]) < int(other.serial_number.split('-')[:-1])
-
-    def __repr__(self):
-        return "<({}:{}) for '{}'>".format(self.start, self.end, self.serial_number)
-
-
 class DisplayManager:
     def __init__(self):
-        controllers = dict()
-        for controller in DisplayController.findAll():
-            controllers[controller.serial_number] = controller
+        controllers = DisplayController.findAll()
 
         groups = self.__groupControllers(controllers)
 
         self.__displays = list()
-        for group_range,group_controllers in groups:
-            display = LogicalDisplay([controllers[serial] for serial in group_controllers])
+        for group_controllers in groups:
+            display = LogicalDisplay(group_controllers)
             self.__displays.append(display)
 
             # Log device
@@ -591,48 +579,24 @@ class DisplayManager:
     @staticmethod
     def __groupControllers(controllers):
         """
-        Determine unified display string range
-        Return a list of ((start, end), {controllers}) tuples
+        Return a list of lists of controllers.
+        Ungrouped controllers are returned as length-1 lists.
+        Controllers that advertise a grouping are returned grouped, irrespective of
+        whether all group members are present.
         """
-        ranges = list()
-        if isinstance(controllers, dict):
-            for key,controller in controllers.items():
-                for data_range in controller.data_ranges:
-                    ranges.append(DisplayRange(key, controller.data_type, *data_range))
-        else:
-            try:
-                for controller in controllers:
-                    for data_range in controller.data_ranges:
-                        ranges.append(DisplayRange(controller.serial_number, controller.data_type, *data_range))
-            except:
-                raise ValueError("'controllers' is not iterable")
-
-        ranges.sort()
-
-        # The following loop searches a (the last) range whose current end corresponds to the
-        # start of the next segment. If multiple logical displays are present which can show
-        # the same range, this will result in them being joined into multiple groups.
-        # If multiple display groups exist for the same range, they will be grouped by serial number
-        # FIXME If one range is longer than the other, the first range encountered by the loop will be
-        #       the extended, irrespective of whether this is the correct serial number grouping
         groups = list()
-        for display_range in ranges:
-            segment_start = display_range.start
-            segment_end = display_range.end
-            segment_type = display_range.type
-            segment_serial = display_range.serial_number
-            i = len(groups)
-            while i > 0:
-                (start, end), group_controllers = groups[i-1]
-                if end+1 == segment_start:
-                    end = segment_end
-                    group_controllers.add(segment_serial)
-                    groups[i-1] = ((start,end), group_controllers)
-                    break
-                i -= 1
+        advertised_groups = dict()
+        for controller in controllers:
+            if controller.group is not None:
+                if controller.group not in advertised_groups:
+                    advertised_groups[controller.group] = [controller]
+                else:
+                    advertised_groups[controller.group].append(controller)
+            else:
+                groups.append([controller])
 
-            if i == 0:
-                groups.append( ((segment_start, segment_end), {segment_serial}) )
+        for group in advertised_groups.values():
+            groups.append(group)
 
         return groups
 

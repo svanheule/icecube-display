@@ -33,7 +33,7 @@ for controller in DisplayController.findAll():
   elif serial.startswith("ICD-IT-001"):
     eeprom_len = 0x20 + 0x10
   elif serial.startswith("ICD-IC-001"):
-    eeprom_len = 0x20 + 0x10 + 4*9
+    eeprom_len = 0x20 + 0x10 + 0x30 + 0x10
   else:
     eeprom_len = 4096
 

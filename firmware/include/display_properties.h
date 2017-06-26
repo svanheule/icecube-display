@@ -72,7 +72,15 @@ enum display_property_type_t {
   /// Depends on the number of LEDs present and the [LED type](\ref ::display_led_type_t).
   /// This information is optional and should only be used to check the buffer size calculated
   /// from the LED type, information type, and information ranges.
-  DP_BUFFER_SIZE = 4
+  DP_BUFFER_SIZE = 4,
+  /// Display grouping.
+  /// The display controller should advertise which group it belongs to. To determine the
+  /// group identifier the serial number of the controllers should be sorted and concatenated
+  /// into a single string, delimited by '+' characters: e.g. "ICD-IC-001-0001+ICD-IC-001-0002".
+  /// The group identifier is then given by the (binary value) of MD5 hash of the identifier
+  /// string encoded in UTF-8.
+  /// This 128 bit value is stored as big-endian 16 byte integer.
+  DP_GROUP_ID = 5
 };
 
 /// Type of information the display is capable of showing.

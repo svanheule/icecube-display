@@ -33,6 +33,8 @@ def formatTlvField(field):
     return "[end of display properties]"
   elif t == DisplayController.DP_TYPE_BUFFER_SIZE:
     return "Display buffer size: {}".format(struct.unpack("<H", v[:2])[0])
+  elif t == DisplayController.DP_TYPE_GROUP_ID:
+    return "Group id: {}".format(binascii.hexlify(v))
   else:
     return "Unknown field ({}) or invalid length ({}): {}".format(t, l, binascii.hexlify(v))
 
