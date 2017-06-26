@@ -26,7 +26,7 @@ class VirtualController(DisplayController):
         if group is not None:
             group_string = '+'.join(group)
             h = hashlib.md5(group_string.encode('utf-8'))
-            self.group = h.digest()
+            self.group = bytes(h.digest())
 
         self.__frame_counter = 0
         self.__frame_path = None

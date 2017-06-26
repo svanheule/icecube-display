@@ -211,7 +211,7 @@ class DisplayController:
             elif t == self.DP_TYPE_LED_TYPE:
                 self.led_type = v[0]
             elif t == self.DP_TYPE_GROUP_ID:
-                self.group = v
+                self.group = bytes(v)
 
     @classmethod
     def findAll(cls):
