@@ -198,6 +198,7 @@ class DisplayController:
         self.data_type = None
         self.data_ranges = list()
         self.led_type = None
+        self.group = None
 
         for t,l,v in self.readDisplayInfo():
             if t == self.DP_TYPE_INFORMATION_TYPE:
@@ -209,6 +210,8 @@ class DisplayController:
                 self.data_ranges.insert(i, (v[0], v[1]))
             elif t == self.DP_TYPE_LED_TYPE:
                 self.led_type = v[0]
+            elif t == self.DP_TYPE_GROUP_ID:
+                self.group = v
 
     @classmethod
     def findAll(cls):
