@@ -884,9 +884,9 @@ try:
                    elif hasattr(first_value, "time"):
                        self._leds = self._handleOMKeyMapTimed(output, geometry, omkey_object)
                    else:
-                       self._leds = self._handleOMKeyListStatic(output, omkey_object.keys())
+                       self._leds = self._handleOMKeyListStatic(output, geometry, omkey_object.keys())
                 elif hasattr(omkey_object, "__len__") and len(omkey_object) > 0:
-                   self._leds = self._handleOMKeyListStatic(output, omkey_object)
+                   self._leds = self._handleOMKeyListStatic(output, geometry, omkey_object)
 
                 output.addPhantom(self._cleanupEvent, self._updateEvent)
 
