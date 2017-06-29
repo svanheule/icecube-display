@@ -62,22 +62,24 @@ enum display_property_type_t {
   /// Allowed only once per metadata report.
   DP_INFORMATION_TYPE = 1,
   /// Information range, always length 2: `{start, end}`.
-  /// If multiple ranges are supplies in a single report, they should be sorted and the
-  /// buffer data concatenated to form a single display buffer.
+  /// If multiple ranges are supported by a device, they must not overlap.
+  /// The supported ranges can be reported in any order.
+  /// The data buffers corresponding to each range must be sorted by the staring value of
+  /// their supported range, and concatenated for tranmisson to form a single display buffer.
   DP_INFORMATION_RANGE = 2,
   /// Type of LED used in the display, always length 1. See ::display_led_type_t.
   /// Allowed only once per metadata report.
   DP_LED_TYPE = 3,
-  /// Display frame buffer size.
+  /// Display frame buffer size. Allowed once per metadata report.
   /// Depends on the number of LEDs present and the [LED type](\ref ::display_led_type_t).
   /// This information is optional and should only be used to check the buffer size calculated
   /// from the LED type, information type, and information ranges.
   DP_BUFFER_SIZE = 4,
-  /// Display grouping.
+  /// Display grouping. Always length 16.
   /// The display controller should advertise which group it belongs to. To determine the
   /// group identifier the serial number of the controllers should be sorted and concatenated
   /// into a single string, delimited by '+' characters: e.g. "ICD-IC-001-0001+ICD-IC-001-0002".
-  /// The group identifier is then given by the (binary value) of MD5 hash of the identifier
+  /// The group identifier is then given by the (binary value) of the MD5 hash of the identifier
   /// string encoded in UTF-8.
   /// This 128 bit value is stored as big-endian 16 byte integer.
   DP_GROUP_ID = 5
