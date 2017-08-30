@@ -1,4 +1,5 @@
 #include "display_properties.h"
+#include "device_properties.h"
 #include "display_types.h"
 #include "frame_buffer.h"
 #include <avr/eeprom.h>
@@ -21,6 +22,7 @@ struct dp_led_information_t {
   uint8_t ic_string_start;
   uint8_t ic_string_end;
   uint8_t has_deepcore;
+  uint8_t reverse_first_strip_segment;
 } __attribute__((packed));
 
 #define DISPLAYPROP __attribute__((section(".displayprop"), used))
@@ -30,6 +32,7 @@ static const struct dp_led_information_t DP_LED_INFORMATION DISPLAYPROP = {
   , DEVICE_ICECUBE_STRING_START
   , DEVICE_ICECUBE_STRING_END
   , DEVICE_HAS_DEEPCORE
+  , DEVICE_REVERSE_FIRST_STRIP_SEGMENT
 };
 
 #define GROUPPROP __attribute__((section(".groupid"), used))
@@ -90,6 +93,15 @@ enum display_led_color_order_t get_color_order() {
   }
   else {
     return 0;
+  }
+}
+
+bool get_reverse_first_strip_segment() {
+  if (use_eeprom) {
+    return eeprom_read_byte(&DP_LED_INFORMATION.reverse_first_strip_segment);
+  }
+  else {
+    return true;
   }
 }
 

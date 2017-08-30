@@ -5,6 +5,7 @@
   * \brief Device specific display properties.
   * \details As multiple LED configurations are supported, some definitions and functions need
   *   to be provided in order for the firmware to determine how to drive the display.
+  *   For platform dependent properties, see device_properties.h.
   * \author Sander Vanheule (Universiteit Gent)
   */
 

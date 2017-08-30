@@ -10,6 +10,7 @@
 
 #include "display_driver.h"
 #include "display_properties.h"
+#include "device_properties.h"
 #include "display_types.h"
 
 
@@ -31,6 +32,9 @@
 static ptrdiff_t color_offset_initial;
 static ptrdiff_t delta_0;
 static ptrdiff_t delta_1;
+
+// Strip orientation
+static bool reverse_first_segment;
 
 // LED strip to buffer offset mapping
 struct port_map_t {
@@ -192,6 +196,9 @@ void init_display_driver() {
     }
   }
 
+  // Strip orientation
+  reverse_first_segment = get_reverse_first_strip_segment();
+
   // PDB configuration for frame reset timer
   ATOMIC_REGISTER_BIT_SET(SIM_SCGC6, 22); // Enable PDB clock
   PDB0_SC = PDB_SC_PDBIE | PDB_SC_TRGSEL(15);
@@ -337,12 +344,16 @@ static void copy_buffer(const void* restrict src, void* restrict dest) {
   unsigned int segment = 0;
   while (segment < SEGMENT_COUNT && led_mapping[segment].ports_length > 0) {
     const uint8_t used_port_count = led_mapping[segment].ports_length;
-    // If even segment, LED data is in reverse order as DOM numbering starts at the top of a string
-    const bool is_odd = segment % 2;
+    // Reverse even segments if first one is reversed, otherwise reverse odd segments.
+    // rF\E| 0 1
+    // ---------
+    //   0 | 1 0
+    //   1 | 0 1
+    const bool is_even = (segment % 2) == 0;
+    const bool is_reversed = reverse_first_segment == is_even;
 
     const uint8_t* initial_position = ((const uint8_t*) src) + color_offset_initial;
-    if (!is_odd) {
-      // Pointer is always 'increment/decrement after', so initial value cannot be past-the-end
+    if (is_reversed) {
       initial_position += (STRING_LENGTH-1)*BUFFER_STEP;
     }
 
@@ -351,7 +362,7 @@ static void copy_buffer(const void* restrict src, void* restrict dest) {
       input[port] = initial_position + STRING_LENGTH*BUFFER_STEP*string;
     }
 
-    if (is_odd) {
+    if (!is_reversed) {
       input_0_end = input[0] + STRING_LENGTH*BUFFER_STEP;
       delta_color_offset[2] = color_offset_rewind + BUFFER_STEP;
     }

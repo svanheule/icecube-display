@@ -36,6 +36,7 @@
 
   "led_config" : {
     "type" : "WS2812B",
-    "order" : "GRB"
+    "order" : "GRB",
+    "reverse_first" : 1
   }
 }

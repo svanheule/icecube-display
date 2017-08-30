@@ -91,7 +91,7 @@ It also uses the newlib C library implementation and a few headers provided by t
 upstream Teensy repositories for compatibility with some `avr-libc` functionality.
 
 ### EEPROM usage
-5 bytes of EEPROM are used to store the display specific properties.
+6 bytes of EEPROM are used to store the display specific properties.
 The first and last supported string number denote a continous, inclusive range of IceCube strings
 that can be displayed by the device.
 
@@ -102,6 +102,7 @@ Address offset | Description
 0x20 + 0x2     | First supported IceCube string number (in range 1-78)
 0x20 + 0x3     | Last supported IceCube string number (in range 1-78)
 0x20 + 0x4     | Support for DeepCore strings (boolean)
+0x20 + 0x5     | Whether the first strip segment in each group is reversed (boolean)
 
 Starting from offset 0x30, \f$4\times(1+8)\f$ bytes are used to store the LED strip mapping.
 The first of each of these nine bytes indicates how many values

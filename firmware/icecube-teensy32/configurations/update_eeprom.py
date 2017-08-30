@@ -50,9 +50,9 @@ class SegmentConfiguration:
   # 15 character (+ null) utf-16-le string
   __OFFSET_SERIAL = 0
   __SERIAL = struct.Struct("<32s")
-  # {led_type, color_order, string_start, string_stop, has_deepcore}
+  # {led_type, color_order, string_start, string_stop, has_deepcore, reverse_first_strip_segment}
   __OFFSET_CONFIG = 0x20
-  __CONFIG = struct.Struct("<BBBB?")
+  __CONFIG = struct.Struct("<BBBB??")
   # 4×(1+8) bytes string-to-strip mapping
   __OFFSET_PORT_MAP = 0x30
   __PORT_MAP = struct.Struct("<B8sB8sB8sB8s")
@@ -90,12 +90,18 @@ class SegmentConfiguration:
       i_max -= 1
     ic_string_max = self._string_list_sorted[i_max]
 
+    if 'reverse_first' in self.led_config:
+      reverse_first = bool(self.led_config['reverse_first'])
+    else:
+      reverse_first = True
+
     return self.__CONFIG.pack(
         led_type
       , led_order
       , ic_string_min
       , ic_string_max
       , has_deepcore
+      , reverse_first
     )
 
   def __pack_port_map(self):
