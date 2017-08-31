@@ -161,6 +161,8 @@ class SegmentConfiguration:
       logger.info(
         "EEPROM '{}' at offset 0x{:02x} succesfully updated".format(self.name, offset)
       )
+      printable_data = " ".join(map("{:02X}".format, data))
+      logger.debug("Wrote data: " + printable_data)
 
   def write_eeprom_complete(self, controller):
     self.__update_eeprom(controller, self.__OFFSET_SERIAL, self.__pack_serial())
@@ -239,7 +241,11 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser(description="Update IceCube display EEPROM")
   parser.add_argument("configuration_file", type=str, help="JSON file with display configuration")
   parser.add_argument("-f", "--full", action="store_true", help="Always ask to write the entire EEPROM")
+  parser.add_argument("-v", "--verbose", action="store_true", help="Display the written EEPROM contents")
   args = parser.parse_args(sys.argv[1:])
+
+  if args.verbose:
+    logger.setLevel(logging.DEBUG)
 
   config = DisplayConfiguration(args.configuration_file)
   for controller in DisplayController.findAll():
