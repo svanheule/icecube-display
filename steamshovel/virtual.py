@@ -54,6 +54,7 @@ class VirtualController(DisplayController):
                 , cls(sn('IC', 3), ic, [(51,78)], g)
                 , cls(sn('IC', 4), ic, [(1,30)], m)
                 , cls(sn('IC', 5), ic, [(31,50),(79,86)], m)
+                , cls(sn('IC', 6), ic, [(51,78)], m)
                 , cls(sn('IT', 1), it, [(1,78)])
             ]
         return cls.__VIRT_CONTROLLERS
@@ -64,7 +65,11 @@ class VirtualController(DisplayController):
             , (self.DP_TYPE_LED_TYPE, 1, bytearray([self.led_type]))
         ]
         for data_range in self.data_ranges:
-            tlv_list.append((self.DP_TYPE_INFORMATION_RANGE, 2, bytearray(data_range)))
+            tlv = (self.DP_TYPE_INFORMATION_RANGE, 2, bytearray(data_range))
+            if data_range[0] == 79:
+                tlv_list.insert(0, tlv)
+            else:
+                tlv_list.append(tlv)
         if self.group is not None:
             tlv_list.append((self.DP_TYPE_GROUP_ID, 16, self.group))
         return tlv_list
@@ -82,6 +87,8 @@ class VirtualController(DisplayController):
             raise ValueError("data block out of range")
 
     def transmitDisplayBuffer(self, data):
+        if len(data) != self.buffer_length:
+          raise ValueError("Invalid buffer length")
         if self.__frame_path is not None:
             pixels = self.buffer_length // 3
 
