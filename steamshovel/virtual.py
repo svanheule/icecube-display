@@ -13,20 +13,47 @@ class VirtualController(DisplayController):
     in this directory.
     '''
     __EEPROM_SIZE = 2048
+    __EEPROM_SEG_SN = slice(0, 0x20)
+    __EEPROM_SEG_DEV = slice(0x20, 0x20+0x10)
     __VIRT_CONTROLLERS = None
 
     def __init__(self, serial, data_type, ranges, group=None):
         self.device = None
         self.__eeprom = bytearray(self.__EEPROM_SIZE)
+
         self.serial_number = serial
+        self.__eeprom[self.__EEPROM_SEG_SN] = self.serial_number.encode('utf-16-le')
+
         self.data_type = data_type
         self.led_type = self.LED_TYPE_WS2811
-        self.data_ranges = ranges
+        self.data_ranges = sorted(ranges, key=lambda r: r[0])
+
         self.group = None
         if group is not None:
             group_string = '+'.join(group)
             h = hashlib.md5(group_string.encode('utf-8'))
             self.group = bytes(h.digest())
+
+        if self.data_type == self.DATA_TYPE_IC_STRING:
+          self.__eeprom[0x60:0x60+0x10] = self.group
+          start, stop = self.data_ranges[0]
+          deepcore = int(any(start == 79 for start, _ in self.data_ranges))
+          device_data = bytearray([self.led_type, 0, start, stop, deepcore, 1])
+          string_count = sum([stop-start+1 for start, stop in self.data_ranges])
+          for first_string in range(0,4):
+            offsets = list(range(first_string, string_count, 4))
+            offsets.insert(0, len(offsets))
+            eeprom_offset = 0x30+9*first_string
+            self.__eeprom[eeprom_offset:eeprom_offset+len(offsets)] = bytearray(offsets)
+        elif self.data_type == self.DATA_TYPE_IT_STATION:
+          start, stop = self.data_ranges[0]
+          nstations = stop-start+1
+          device_data = bytearray([nstations, self.led_type, 0])
+        data_slice = slice(
+          self.__EEPROM_SEG_DEV.start,
+          self.__EEPROM_SEG_DEV.start+len(device_data)
+        )
+        self.__eeprom[data_slice] = device_data
 
         self.__frame_counter = 0
         self.__frame_path = None
