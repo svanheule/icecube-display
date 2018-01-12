@@ -336,11 +336,6 @@ ISR(USB_COM_vect) {
     if (ENDPOINT_IRQ_ENABLED_AND_SET(RXOUT) && FLAG_IS_SET(UEINTX, RWAL)) {
       CLI(RXOUTI);
 
-      // ~~~
-      // Endpoint stack manipulations seem to be not allowed before the FIFOCON flag is cleared.
-      // Only use fifo_*() functions to access the required information directly.
-      // ~~~
-
       // If a transfer is possible, copy the received data. Otherwise, halt the endpoint.
       struct frame_transfer_state_t* transfer = remote_renderer_get_transfer_state();
       if (transfer->write_pos) {

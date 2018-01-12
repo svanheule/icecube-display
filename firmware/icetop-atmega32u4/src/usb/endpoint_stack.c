@@ -21,8 +21,8 @@ bool endpoint_push(const uint8_t ep_num) {
 
 bool endpoint_pop() {
   if (ep_stack_index) {
-    // Select previous endpoint and decrement stack count
-    UENUM = ep_stack[ep_stack_index--];
+    // Select previous endpoint by decrementing stack count
+    UENUM = ep_stack[--ep_stack_index];
     return true;
   }
   else {
